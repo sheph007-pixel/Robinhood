@@ -1389,22 +1389,28 @@ let VOICEV=null; function pickVoice(){if(VOICEV)return VOICEV; const vs=(TTS?TTS
 if(TTS)TTS.onvoiceschanged=()=>{VOICEV=null;};
 function plain(t){return String(t).replace(/```[\s\S]*?```/g,'').replace(/[*_#>`]/g,'').replace(/\[(.*?)\]\(.*?\)/g,'$1').replace(/^\s*[-•]\s+/gm,'').replace(/\$([\d.,]+)M\b/g,'$1 million dollars').replace(/\$([\d.,]+)k\b/gi,'$1 thousand dollars').replace(/\s+/g,' ').trim();}
 // one recognizer helper: live text, ends after a short silence
-function startRec(onText,onDone,silenceMs){
+function startRec(onText,onDone,silenceMs,onBlocked){
   const rec=new SR(); rec.lang='en-US'; rec.interimResults=true; rec.continuous=true;
   let fin='',cur='',timer=null,ended=false;
   const done=()=>{if(ended)return;ended=true;clearTimeout(timer);try{rec.stop();}catch(e){} onDone((fin+cur).trim());};
   rec.onresult=e=>{cur='';for(let k=e.resultIndex;k<e.results.length;k++){const r=e.results[k];if(r.isFinal)fin+=r[0].transcript+' ';else cur+=r[0].transcript;}
     onText((fin+cur).trim()); clearTimeout(timer); timer=setTimeout(done,silenceMs);};
-  rec.onend=()=>done(); rec.onerror=ev=>{if(ev.error==='not-allowed'||ev.error==='service-not-allowed')onText('Microphone access is off for this site.');};
+  rec.onend=()=>done(); rec.onerror=ev=>{if(ev.error==='not-allowed'||ev.error==='service-not-allowed'||ev.error==='audio-capture'){ended=true;clearTimeout(timer);if(onBlocked)onBlocked(ev.error);else onText(micHelp(ev.error));}};
   try{rec.start();}catch(e){setTimeout(done,0);}
   return {finish:done, abort:()=>{ended=true;clearTimeout(timer);try{rec.abort();}catch(e){}}};
 }
+const STANDALONE=!!(window.navigator.standalone||matchMedia('(display-mode: standalone)').matches);
+function micHelp(err){
+  if(STANDALONE)return 'iPhone doesn\'t allow voice input inside home-screen apps. Open robinhood.up.railway.app in Safari to talk, or use the keyboard\'s mic here.';
+  if(err==='service-not-allowed')return 'Voice input is off. Turn on Settings → General → Keyboard → Enable Dictation (and Siri), then try again.';
+  return 'Microphone is blocked for this site. In Safari tap aA → Website Settings → Microphone → Allow, then try again.';}
 // dictation into the message box
 let dict=null; $('aiMic').hidden=!SR;
 $('aiMic').addEventListener('click',()=>{
   if(dict){dict.finish();return;}
   $('aiMic').classList.add('on'); $('aiIn').placeholder='Listening…';
-  dict=startRec(t=>{$('aiIn').value=t;$('aiIn').dispatchEvent(new Event('input'));},()=>{dict=null;$('aiMic').classList.remove('on');$('aiIn').placeholder='Message';$('aiIn').focus();},2500);
+  dict=startRec(t=>{$('aiIn').value=t;$('aiIn').dispatchEvent(new Event('input'));},()=>{dict=null;$('aiMic').classList.remove('on');$('aiIn').placeholder='Message';$('aiIn').focus();},2500,
+    err=>{dict=null;$('aiMic').classList.remove('on');$('aiIn').placeholder='Message';$('aiNote').textContent=micHelp(err);});
 });
 // voice mode
 let VM=null;
@@ -1413,7 +1419,7 @@ function vmSet(st,cap){if(!VM)return;VM.st=st;$('vm').dataset.s=st;$('vmStat').t
 function vmOpen(){
   if(!aiReady)return;
   unlockTTS(); VM={gen:0,muted:false,st:'',ctl:null}; $('vm').hidden=false; document.body.classList.add('vm-on');
-  if(!SR){vmSet('paused','Voice input isn\'t available here. On iPhone, open the site in Safari (not the home-screen app) to talk.');return;}
+  if(!SR){vmSet('paused',micHelp('none'));return;}
   vmListen();
 }
 function vmClose(){if(!VM)return; VM.gen++; if(VM.ctl)VM.ctl.abort(); if(TTS)TTS.cancel(); VM=null; $('vm').hidden=true; document.body.classList.remove('vm-on'); aiRender(); const l=$('aiLog').lastElementChild; if(l)l.scrollIntoView({block:'end'});}
@@ -1421,7 +1427,8 @@ function vmListen(){
   if(!VM)return; if(VM.ctl){VM.ctl.abort();VM.ctl=null;}
   if(VM.muted||!SR){vmSet('paused',SR?'Tap the mic to talk':null);return;}
   vmSet('listening','');
-  VM.ctl=startRec(t=>{if(VM)$('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening')return; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},1000);
+  VM.ctl=startRec(t=>{if(VM)$('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening')return; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},1000,
+    err=>{if(!VM)return;VM.ctl=null;VM.muted=true;$('vmMute').setAttribute('aria-pressed','true');vmSet('paused',micHelp(err));});
 }
 async function vmAsk(q){
   const g=++VM.gen, v=pickVoice(), queue=[]; let used=0, busy=false, finished=false;
