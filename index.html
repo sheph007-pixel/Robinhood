@@ -731,7 +731,7 @@ const price=sym=>(Q[sym]&&Q[sym].price)||S.px[sym]||0;
 
 // ---------- inputs ----------
 function fill(){
-  const ro=!!S.rh; ['shVTI','shVXUS','cash'].forEach(id=>{$(id).readOnly=ro;$(id).classList.toggle('ro',ro);}); $('rhBadge').hidden=!ro;
+  const ro=!!S.rh; ['shVTI','shVXUS','cash','apy'].forEach(id=>{$(id).readOnly=ro;$(id).classList.toggle('ro',ro);}); $('rhBadge').hidden=!ro;
 $('shVTI').value=fmtSh(S.shVTI); $('shVXUS').value=fmtSh(S.shVXUS);
 $('cash').value=usd(S.cash,true); $('apy').value=S.apy.toFixed(2); $('monthly').value=usd(S.monthly);
 $('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real; $('dob').value=S.dob; $('gAmt').value=usd(S.goal);  $('gAge').value=S.goalAge;}
