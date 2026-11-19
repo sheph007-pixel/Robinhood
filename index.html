@@ -180,9 +180,16 @@ input[type=text]{font-size:16px}
 .lock[hidden]{display:none}
 .lockbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 20px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
 .lockbox input{max-width:none;text-align:center;font-size:24px;letter-spacing:.3em;padding:12px}
-.future{background:linear-gradient(160deg,var(--accent),#173f80);color:#fff;border:0;gap:6px}
+.future{background:linear-gradient(160deg,#1f5fbf,#173f80);color:#fff;border:0;gap:6px}
 .future .label{font-size:15px;opacity:.9;font-weight:500}
-.future .total{font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.trio{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:8px;margin-top:6px;align-items:end}
+.trio > div{display:flex;flex-direction:column;gap:2px;background:rgba(255,255,255,.1);border-radius:12px;padding:12px;min-width:0}
+.trio .avg{background:#fff;color:#173f80}
+.trio .k{font-size:13px;opacity:.85;font-weight:500}
+.trio .v{font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.trio .avg .v{font-size:34px}
+.trio .m{font-size:13px;opacity:.85}
+.fnote{opacity:.75;margin-top:4px}
 .future .muted{color:rgba(255,255,255,.85);font-size:15px}
 .future b{color:#fff}
 .ages{margin-top:10px;background:rgba(255,255,255,.12);border-color:transparent;display:flex}
@@ -190,7 +197,7 @@ input[type=text]{font-size:16px}
 .ages button[aria-pressed="true"]{background:#fff;color:#173f80}
 tr.sel td{background:var(--soft)}
 input[type=date]{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
-@media (max-width:640px){.future .total{font-size:40px}}
+@media (max-width:640px){.trio{grid-template-columns:1fr 1fr}.trio .avg{grid-column:1/-1;order:-1}.trio .v{font-size:20px}.trio .avg .v{font-size:36px}}
 /* pull to refresh */
 #ptr{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;z-index:40;pointer-events:none;transform:translateY(-60px);transition:transform .2s}
 #ptr span{margin-top:calc(10px + env(safe-area-inset-top));background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--ink2);box-shadow:0 2px 10px rgba(0,0,0,.12)}
@@ -217,9 +224,13 @@ input[type=date]{font:inherit;font-size:16px;color:var(--ink);background:var(--b
   <div id="tab-home" class="panel">
   <!-- 0. Future -->
   <section class="card future" aria-live="polite">
-    <div class="label">At age <span id="fAge">65</span>, you're on track for</div>
-    <div class="total num" id="fVal">…</div>
-    <div class="muted num" id="fSub"></div>
+    <div class="label" id="fHead">At age 65</div>
+    <div class="trio num">
+      <div><span class="k">Poor market</span><span class="v" id="fLo"></span><span class="m" id="fLoM"></span></div>
+      <div class="avg"><span class="k">Average</span><span class="v" id="fMd"></span><span class="m" id="fMdM"></span></div>
+      <div><span class="k">Strong market</span><span class="v" id="fHi"></span><span class="m" id="fHiM"></span></div>
+    </div>
+    <div class="small fnote">Monthly amount is what the balance could pay you for life, withdrawing 4% a year.</div>
     <div class="seg ages" id="ages" role="group" aria-label="Age"></div>
   </section>
 
@@ -265,7 +276,7 @@ input[type=date]{font:inherit;font-size:16px;color:var(--ink);background:var(--b
   <!-- 5. Projection -->
   <section class="card">
     <div class="head"><h2>Your path to 75</h2></div>
-    <div class="legend"><span><i style="background:var(--s1);height:3px;vertical-align:middle"></i>Expected (median)</span><span><i style="background:var(--s1);opacity:.25"></i>Poor to strong markets (80% of outcomes)</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0;border-radius:0;vertical-align:middle"></i>What you put in</span></div>
+    <div class="legend"><span><i style="background:var(--s1);height:3px;vertical-align:middle"></i>Average</span><span><i style="background:var(--s1);opacity:.25"></i>Poor to strong markets (80% of outcomes)</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0;border-radius:0;vertical-align:middle"></i>What you put in</span></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="grid2">
       <div class="ctl"><div class="row"><label for="monthly">Adding each month</label><input type="text" inputmode="decimal" id="monthly"></div>
@@ -461,15 +472,16 @@ function draw(){
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
   $('ages').innerHTML=AG.map(a=>'<button data-a="'+a+'" aria-pressed="'+(a===S.age)+'">'+a+'</button>').join('');
   $('ages').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.age=+b.dataset.a;save();draw();});
-  $('fAge').textContent=S.age;
-  document.querySelectorAll('#outlook button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.o===S.outlook)));
+    document.querySelectorAll('#outlook button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.o===S.outlook)));
   $('outNote').textContent=OUT[S.outlook].label;
   if(!proj)return;
   const d=t=>S.real?Math.pow(1+INFL,t/12):1, Mh=proj.M, Ma=Math.min(Mh,monthsTo(S.age));
   const lo=proj.lo.map((v,t)=>v/d(t)), md=proj.md.map((v,t)=>v/d(t)), hi=proj.hi.map((v,t)=>v/d(t)), put=proj.put.map((v,t)=>v/d(t));
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
-  $('fVal').textContent=big(md[Ma]);
-  $('fSub').innerHTML='In '+yrs+' years ('+(isNaN(bday)?'':(bday.getFullYear()+S.age))+')'+(S.real?' in today\'s dollars':'')+'. That could pay you about <b>'+usd(md[Ma]*.04/12)+' a month</b> for life.<br><span class="small">Even in a poor market: '+big(lo[Ma])+'. In a strong one: '+big(hi[Ma])+'.</span>';
+  const mo=v=>usd(v*.04/12)+'/mo';
+  $('fHead').textContent='At age '+S.age+' · '+(isNaN(bday)?'':(bday.getFullYear()+S.age)+' · ')+'in '+yrs+' years'+(S.real?' · today\'s dollars':'');
+  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
+  $('fLoM').textContent=mo(lo[Ma]); $('fMdM').textContent=mo(md[Ma]); $('fHiM').textContent=mo(hi[Ma]);
 
   const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(Math.min(360,Math.max(240,W*.45))), m={l:54,r:14,t:24,b:26}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const top=Math.max(1,...hi.slice(0,Mh+1));
@@ -492,7 +504,7 @@ function draw(){
   g+='<line id="xh" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle id="xd" r="5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2" visibility="hidden"/>';
   svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
 
-  let tb='<thead><tr><th>Age</th><th>What you put in</th><th>Poor market</th><th>Expected</th><th>Strong market</th></tr></thead><tbody>';
+  let tb='<thead><tr><th>Age</th><th>What you put in</th><th>Poor market</th><th>Average</th><th>Strong market</th></tr></thead><tbody>';
   AG.forEach(a=>{const t=monthsTo(a);tb+='<tr'+(a===S.age?' class="sel"':'')+'><td>'+a+' <span class="muted small">in '+Math.round(t/12)+' yrs</span></td><td>'+big(put[t])+'</td><td>'+big(lo[t])+'</td><td class="exp">'+big(md[t])+'</td><td>'+big(hi[t])+'</td></tr>';});
   $('tbl').innerHTML=tb+'</tbody>';
 
@@ -502,7 +514,7 @@ function draw(){
     xh.setAttribute('x1',X(t));xh.setAttribute('x2',X(t));xh.setAttribute('visibility','visible');
     xd.setAttribute('cx',X(t));xd.setAttribute('cy',Y(md[t]));xd.setAttribute('visibility','visible');
     const ag=Math.floor(ageNow()+t/12+1e-6);
-    tip.innerHTML='<div class="t">'+(t===0?'Today':'Age '+ag+' · '+(new Date().getFullYear()+Math.round(t/12)))+'</div><div class="r"><span>Strong market</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Expected</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor market</span><b>'+big(lo[t])+'</b></div><div class="r"><span>What you put in</span><b>'+big(put[t])+'</b></div>';
+    tip.innerHTML='<div class="t">'+(t===0?'Today':'Age '+ag+' · '+(new Date().getFullYear()+Math.round(t/12)))+'</div><div class="r"><span>Strong market</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Average</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor market</span><b>'+big(lo[t])+'</b></div><div class="r"><span>What you put in</span><b>'+big(put[t])+'</b></div>';
     tip.style.display='block'; const tw=tip.offsetWidth; let x=X(t)+12; if(x+tw>W)x=X(t)-tw-12; tip.style.left=Math.max(0,x)+'px'; tip.style.top=(m.t+4)+'px';};
   wrap.onpointerleave=function(){tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
 }
