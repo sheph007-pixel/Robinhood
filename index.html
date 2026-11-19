@@ -459,6 +459,37 @@ input::placeholder,textarea::placeholder{color:var(--ink2);opacity:.8}
 .goalin input{width:100%!important;max-width:none}
 .gchance{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .gchance .big{margin-right:0}
+
+/* ===== Ask AI: chat-app layout ===== */
+body.on-ai .upd{display:none}
+.aipanel{display:flex;flex-direction:column;gap:0;min-height:calc(100dvh - 150px)}
+.aitop{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px}
+.aitt{font-size:17px;font-weight:700}
+.aiicon{width:36px;height:36px;border-radius:50%;border:0;background:var(--soft);color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.aiicon svg,#aiSend svg,.aimark svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.aiempty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--ink2);text-align:center;padding:40px 20px}
+.aiempty[hidden]{display:none}
+.aiempty p{font-size:16px;max-width:260px}
+.aimark{width:44px;height:44px;border-radius:50%;background:var(--soft);color:var(--g);display:grid;place-items:center}
+.aimark svg{width:22px;height:22px}
+.ailog{flex:1;display:flex;flex-direction:column;gap:18px;padding:4px 2px 16px}
+.ailog:empty{display:none}
+.msg{max-width:100%;padding:0;border-radius:0;background:none;font-size:16px;line-height:1.6}
+.msg.assistant{align-self:stretch;background:none}
+.msg.user{align-self:flex-end;max-width:85%;background:var(--soft);color:var(--ink);padding:10px 14px;border-radius:20px;border-bottom-right-radius:20px;line-height:1.45}
+.msg p{margin:0 0 10px}
+.aiform{position:sticky;bottom:0;display:flex;align-items:flex-end;gap:8px;background:var(--inbg);border:1.5px solid var(--inline);border-radius:26px;padding:6px 6px 6px 16px;margin-top:auto;box-shadow:0 -12px 24px var(--page)}
+.aiform textarea{flex:1;background:none!important;border:0!important;box-shadow:none!important;border-radius:0;padding:9px 0;font-size:16px;max-height:160px;resize:none;color:var(--ink);outline:none}
+#aiSend{width:38px;height:38px;flex:none;border-radius:50%;border:0;display:grid;place-items:center;background:var(--soft);color:var(--ink2);cursor:pointer;transition:background .15s}
+.aiform.has #aiSend{background:var(--g);color:#000}
+#aiSend:disabled{opacity:.5}
+.ainote{font-size:13px;color:var(--ink2);text-align:center;margin:8px 0 0}
+.ainote:empty{display:none}
+@media (min-width:641px){.aipanel{max-width:720px;width:100%;margin:0 auto}}
+@media (max-width:640px){
+  .aipanel{min-height:calc(100dvh - 90px - env(safe-area-inset-bottom))}
+  .aiform{bottom:calc(70px + env(safe-area-inset-bottom));padding:5px 5px 5px 14px}
+}
 </style>
 </head>
 <body>
@@ -605,16 +636,13 @@ input::placeholder,textarea::placeholder{color:var(--ink2);opacity:.8}
   </section>
   </div>
 
-  <div id="tab-ai" class="panel">
-  <section class="card chat">
-    <div class="head"><h2>Ask AI</h2><button type="button" class="rbtn" id="aiClear">New Chat</button></div>
+  <div id="tab-ai" class="panel aipanel">
+    <div class="aitop"><span class="aitt">Ask AI</span><button type="button" class="aiicon" id="aiClear" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <div id="aiEmpty" class="aiempty"><div class="aimark"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg></div><p>Ask about your portfolio, your goal or the markets.</p></div>
     <div id="aiLog" class="ailog" aria-live="polite"></div>
-    <div class="aisug" id="aiSug">
-      <button>How am I doing?</button><button>Where should my next $10,000 go?</button><button>What's happening in the markets today?</button><button>Am I on track for my goal?</button><button>Is my cash level right?</button>
-    </div>
-    <form id="aiForm" class="aiform"><textarea id="aiIn" rows="1" placeholder="Ask anything…" aria-label="Message"></textarea><button class="btn" id="aiSend" type="submit" aria-label="Send">Send</button></form>
-    <p class="muted small" id="aiNote"></p>
-  </section>
+    <div id="aiSug" hidden></div>
+    <form id="aiForm" class="aiform"><textarea id="aiIn" rows="1" placeholder="Message" aria-label="Message"></textarea><button id="aiSend" type="submit" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>
+    <p class="ainote" id="aiNote"></p>
   </div>
 
   <div id="tab-money" class="panel">
@@ -934,7 +962,7 @@ $('refresh').addEventListener('click',async function(){this.classList.add('spin'
   await Promise.all([loadQuotes(),synced?pull():null]);this.classList.remove('spin');this.disabled=false;});
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
 function showTab(t){const changed=S.tab!==t;S.tab=t;save();document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 async function markets(){
@@ -1004,12 +1032,12 @@ function md(t){
 }
 function aiRender(){
   $('aiLog').innerHTML=AIM.map(m=>'<div class="msg '+m.role+'">'+(m.role==='user'?esc(m.content).replace(/\n/g,'<br>'):md(m.content))+'</div>').join('');
-  $('aiSug').hidden=AIM.length>0;
+  $('aiEmpty').hidden=AIM.length>0;
 }
 let aiReady=null;
 async function aiShow(){aiRender();
   if(aiReady===null){try{const r=await fetch('/api/chat/status');const j=await r.json();aiReady=j.ready;}catch(e){aiReady=false;}}
-  $('aiNote').textContent=aiReady?'Uses your live numbers. Answers can be wrong; double-check before acting.':'The assistant isn\'t connected yet. In Railway, add your Anthropic key as a variable named ANTHROPIC_API_KEY.';
+  $('aiNote').textContent=aiReady?'':'The assistant isn\'t connected yet. In Railway, add your Anthropic key as a variable named ANTHROPIC_API_KEY.';
   $('aiSend').disabled=!aiReady;
 }
 async function aiAsk(text){
@@ -1031,8 +1059,7 @@ async function aiAsk(text){
 }
 $('aiForm').addEventListener('submit',e=>{e.preventDefault();aiAsk($('aiIn').value);});
 $('aiIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!('ontouchstart' in window)){e.preventDefault();aiAsk($('aiIn').value);}});
-$('aiIn').addEventListener('input',function(){this.style.height='';this.style.height=Math.min(140,this.scrollHeight)+'px';});
-$('aiSug').addEventListener('click',e=>{if(e.target.tagName==='BUTTON')aiAsk(e.target.textContent);});
+$('aiIn').addEventListener('input',function(){$('aiForm').classList.toggle('has',!!this.value.trim());this.style.height='';this.style.height=Math.min(140,this.scrollHeight)+'px';});
 $('aiClear').addEventListener('click',()=>{AIM=[];aiSave();aiRender();});
 showTab(['money','hold','mkt','ai'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes(); setInterval(loadQuotes,60000);
