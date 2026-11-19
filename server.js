@@ -420,6 +420,31 @@ async function getBrief(force) {
   }).finally(() => { briefJob = null; });
   try { return await briefJob; } catch (e) { if (b) return Object.assign({ stale: true }, b); throw e; }
 }
+// ---------- speech-to-text for voice mode where the browser can't (iPhone home-screen apps) ----------
+function sttKey() { return (process.env.OPENAI_API_KEY || '').trim() || null; }
+function readRaw(req, limit) {
+  return new Promise((resolve, reject) => { const parts = []; let n = 0;
+    req.on('data', c => { n += c.length; if (n > limit) { reject(new Error('too large')); req.destroy(); } else parts.push(c); });
+    req.on('end', () => resolve(Buffer.concat(parts))); req.on('error', reject); });
+}
+async function handleStt(req, res) {
+  const key = sttKey(); if (!key) return json(res, 503, { error: 'no_stt_key' });
+  let audio; try { audio = await readRaw(req, 10 * 1024 * 1024); } catch (e) { return json(res, 413, { error: 'too large' }); }
+  if (!audio.length) return json(res, 400, { error: 'empty' });
+  const type = String(req.headers['content-type'] || 'audio/mp4').split(';')[0];
+  const ext = type.includes('webm') ? 'webm' : type.includes('ogg') ? 'ogg' : type.includes('wav') ? 'wav' : 'm4a';
+  const fd = new FormData();
+  fd.append('file', new Blob([audio], { type }), 'speech.' + ext);
+  fd.append('model', process.env.STT_MODEL || 'gpt-4o-mini-transcribe');
+  fd.append('language', 'en');
+  fd.append('prompt', 'Investing conversation about VTI, VXUS, Robinhood, the S&P 500, dollar-cost averaging and retirement.');
+  try {
+    const r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: fd });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { console.error('stt error', r.status, j && j.error && j.error.message); return json(res, 502, { error: 'stt failed' }); }
+    return json(res, 200, { text: String(j.text || '').trim() });
+  } catch (e) { console.error('stt error', e.message); return json(res, 502, { error: 'stt failed' }); }
+}
 async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
 // Daily sync after the close: weekdays 4:20 PM ET.
 let lastAutoSync = '';
@@ -509,7 +534,8 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/rh-sync') return handleRhSync(req, res);
   if (url.pathname === '/api/chat' && req.method === 'POST') return handleChat(req, res);
   if (url.pathname.startsWith('/api/chats')) return handleChats(req, res, url);
-  if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL });
+  if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL, stt: !!sttKey() });
+  if (url.pathname === '/api/stt' && req.method === 'POST') return handleStt(req, res);
   if (url.pathname === '/api/history') {
     const sym = String(url.searchParams.get('s') || '').toUpperCase();
     const rng = String(url.searchParams.get('r') || 'max');
