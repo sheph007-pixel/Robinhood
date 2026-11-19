@@ -1068,7 +1068,9 @@ async function loadQuotes(){
     const first=!live; Q=j; live=true; S.px={VTI:j.VTI.price,VXUS:j.VXUS.price}; save();
     $('dot').className='dot live';
     const tm=new Date(Math.max(j.VTI.time,j.VXUS.time)), now=new Date(), same=tm.toDateString()===now.toDateString();
-    $('qstat').innerHTML='Prices as of '+(same?'':tm.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+', ')+tm.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'<span class="chk"> · checked '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'</span>';
+    const etHM=+tm.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:false,hour:'2-digit',minute:'2-digit'}).replace(':',''), day=same?'today':tm.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const hm=d=>d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+    $('qstat').innerHTML=(etHM>=1600?'Closing prices '+day+' ('+hm(tm)+')':'Prices as of '+(same?'':day+', ')+hm(tm))+'<span class="chk"> · checked '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'</span>';
     render(first); sale();
   }catch(e){
     if(!live){$('qstat').textContent=S.px.VTI?'Live prices unavailable · using last saved prices':'Live prices unavailable · enter prices below';render(true);}
