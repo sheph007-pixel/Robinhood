@@ -132,7 +132,6 @@ details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;
       <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span></span>
     </div>
     <div class="total num" id="total">$0</div>
-    <div class="chg num small" id="daychg"></div>
     <div class="split3 num">
       <div><span class="k">Invested in stocks</span><span class="v" id="invested"></span></div>
       <div><span class="k">Cash</span><span class="v" id="cashTot"></span></div>
@@ -311,16 +310,13 @@ function project(){
 function render(reproject){
   const h=holdings(), w=weights(), T=h.total;
   $('total').textContent=usd(T,true);
-  const dc=['VTI','VXUS'].reduce((s,k)=>s+(Q[k]&&Q[k].change!=null?Q[k].change*(k==='VTI'?S.shVTI:S.shVXUS):0),0);
-  const stocks=h.vti+h.vxus, base=stocks-dc;
-  if(live&&stocks>0&&dc){$('daychg').className='chg num small '+(dc>=0?'up':'down');$('daychg').textContent=(dc>=0?'+':'-')+usd(Math.abs(dc),true)+' ('+(dc>=0?'+':'')+(dc/base*100).toFixed(2)+'%) today';}
-  else $('daychg').textContent='';
+  const stocks=h.vti+h.vxus;
   $('invested').textContent=usd(stocks,true); $('cashTot').textContent=usd(h.cash,true);
   $('interest').textContent=usd(h.cash*S.apy/100)+' at '+S.apy.toFixed(2)+'%';
 
   ['VTI','VXUS'].forEach(k=>{
     const el=$('px'+k), q=Q[k];
-    if(live&&q){el.innerHTML='<div>'+usd(q.price,true)+'</div>'+(q.changePct!=null?'<div class="small chg '+(q.change>=0?'up':'down')+'">'+(q.change>=0?'+':'')+q.changePct.toFixed(2)+'%</div>':'');}
+    if(live&&q){el.textContent=usd(q.price,true);}
     else if(!el.querySelector('input')){el.innerHTML='<input type="text" inputmode="decimal" aria-label="'+k+' price" value="'+(S.px[k]?S.px[k].toFixed(2):'')+'" placeholder="Price">';
       el.querySelector('input').addEventListener('change',function(){S.px[k]=parse(this.value);save();render(true);});}
   });
