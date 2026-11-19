@@ -523,6 +523,13 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
   html{scrollbar-gutter:auto}
   main{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 }
+@media (max-width:640px){
+  /* Chart readouts sit as a slim strip above the plot instead of covering it */
+  #tip{left:0!important;right:0;top:-6px!important;transform:translateY(-100%);min-width:0;display:none;padding:6px 10px;font-size:12px}
+  #tip .t{margin:0 8px 0 0;display:inline}
+  #tip .r{display:inline-flex;gap:4px;margin-right:10px}
+  .mtip{top:-4px!important;transform:translateY(-100%);font-size:12px}
+}
 </style>
 </head>
 <body>
@@ -980,6 +987,7 @@ function draw(){
     const ag=Math.floor(ageNow()+t/12+1e-6);
     tip.innerHTML='<div class="t">'+(t===0?'Today':'Age '+ag+' · '+(new Date().getFullYear()+Math.round(t/12)))+'</div><div class="r"><span>Strong Market</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Average</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor Market</span><b>'+big(lo[t])+'</b></div><div class="r"><span>What You Put In</span><b>'+big(put[t])+'</b></div>';
     tip.style.display='block'; const tw=tip.offsetWidth; let x=X(t)+12; if(x+tw>W)x=X(t)-tw-12; tip.style.left=Math.max(0,x)+'px'; tip.style.top=(m.t+4)+'px';};
+  wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
   wrap.onpointerleave=function(){tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
 }
 
@@ -1053,6 +1061,7 @@ function mchart(el,sym,h){
     xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.setAttribute('visibility','visible');xd.setAttribute('cx',X(i));xd.setAttribute('cy',Y(c[i]));xd.setAttribute('visibility','visible');
     tip.innerHTML='<b>'+usd(c[i],true)+'</b>'+(ma[i]!=null?'<br><span class="muted">200-day avg '+usd(ma[i],true)+'</span>':'')+'<br>'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'});tip.style.display='block';
     const tw=tip.offsetWidth;let x=X(i)+10;if(x+tw>W)x=X(i)-tw-10;tip.style.left=Math.max(0,x)+'px';};
+  wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
   wrap.onpointerleave=()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
 }
 document.querySelectorAll('#mRange button').forEach(b=>b.addEventListener('click',()=>{S.mr=b.dataset.r;save();markets();}));
