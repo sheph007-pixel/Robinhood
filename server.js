@@ -55,7 +55,8 @@ async function quotes() {
 
 const crypto = require('crypto');
 const Anthropic = require('@anthropic-ai/sdk');
-const AI_MODEL = 'claude-opus-5-5';
+// Haiku 5.5: plenty for a personal portfolio chat and ~40x cheaper than Opus. Override with AI_MODEL.
+const AI_MODEL = process.env.AI_MODEL || 'claude-haiku-5-5';
 const AI_SYSTEM = `You are the built-in assistant in a personal long-term investing app. The owner holds three things: VTI (Vanguard Total Stock Market ETF), VXUS (Vanguard Total International Stock ETF) and a high-yield cash bucket. Their goal is building wealth for the long run; the app is deliberately designed to counter the day-to-day noise of trading apps.
 
 Every request includes a snapshot of their live portfolio data (holdings, prices, targets, projections). Use those exact numbers. Do math carefully and show the key figures.
@@ -144,17 +145,15 @@ async function handleChat(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
   try {
     for (let round = 0; round < 8; round++) {
-      const stream = client.beta.messages.stream({
+      const stream = client.messages.stream({
         model: AI_MODEL,
         max_tokens: 16000,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
         output_config: { effort: 'medium' },
         system: [
           { type: 'text', text: AI_SYSTEM, cache_control: { type: 'ephemeral' } },
           { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot (synced from the Robinhood Core account):\n' + context },
         ],
-        tools: [...AI_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
+        tools: [...AI_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages,
       });
       stream.on('text', (t) => res.write(t));
