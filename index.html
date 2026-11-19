@@ -660,6 +660,17 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
 .recent summary::after{content:' ›';display:inline-block;transition:transform .15s}
 .recent[open] summary::after{transform:rotate(90deg)}
 .recent[open] summary{margin-bottom:8px}
+
+/* voice */
+.airt{display:flex;gap:8px}
+#aiVoice[aria-pressed="false"] .wave{opacity:.25}
+#aiVoice[aria-pressed="true"]{background:var(--g);color:#000}
+#aiMic{width:38px;height:38px;flex:none;border-radius:50%;border:0;display:grid;place-items:center;background:none;color:var(--ink2);cursor:pointer}
+#aiMic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#aiMic.on{background:#e5484d;color:#fff;animation:micp 1.2s ease-in-out infinite}
+@keyframes micp{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.5)}50%{box-shadow:0 0 0 8px rgba(229,72,77,0)}}
+.aiform.has #aiMic{display:none}
+.vstat{font-size:13px;color:var(--ink2);text-align:center;margin:0 0 6px}
 </style>
 </head>
 <body>
@@ -806,12 +817,12 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
   </div>
 
   <div id="tab-ai" class="panel aipanel">
-    <div class="aitop"><button type="button" class="aiicon" id="aiHist" aria-label="Chat history" title="Chat history"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button><span class="aitt" id="aiTitle">Ask AI</span><button type="button" class="aiicon" id="aiClear" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <div class="aitop"><button type="button" class="aiicon" id="aiHist" aria-label="Chat history" title="Chat history"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button><span class="aitt" id="aiTitle">Ask AI</span><span class="airt"><button type="button" class="aiicon" id="aiVoice" aria-label="Read answers aloud" aria-pressed="false" title="Read answers aloud"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button><button type="button" class="aiicon" id="aiClear" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
     <div class="aihist" id="aiHistPanel" hidden><div class="aihh"><b>Chats</b><button type="button" class="aiicon" id="aiHistClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><button type="button" class="ainew" id="aiNew"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New chat</button><div id="aiHistList"></div></div>
     <div id="aiEmpty" class="aiempty"><div class="aimark"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg></div><p>Ask about your portfolio, your goal or the markets.</p></div>
     <div id="aiLog" class="ailog" aria-live="polite"></div>
     <div id="aiSug" hidden></div>
-    <form id="aiForm" class="aiform"><textarea id="aiIn" rows="1" placeholder="Message" aria-label="Message"></textarea><button id="aiSend" type="submit" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>
+    <form id="aiForm" class="aiform"><textarea id="aiIn" rows="1" placeholder="Message" aria-label="Message"></textarea><button type="button" id="aiMic" aria-label="Talk" title="Talk" hidden><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button id="aiSend" type="submit" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></form>
     <p class="ainote" id="aiNote"></p>
   </div>
 
@@ -1293,8 +1304,9 @@ async function aiAsk(text){
   AIM.push({role:'user',content:text}); const a={role:'assistant',content:''}; AIM.push(a); aiRender();
   $('aiIn').value=''; $('aiIn').style.height=''; $('aiSend').disabled=true;
   const log=$('aiLog'), el=log.lastElementChild; el.innerHTML='<span class="typing">Thinking…</span>'; el.scrollIntoView({block:'end',behavior:'smooth'});
+  let r0ok=false;
   try{
-    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:AIM.slice(0,-1).filter(m=>m.content),context:aiContext()})});
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:AIM.slice(0,-1).filter(m=>m.content),context:aiContext()})}); r0ok=r.ok;
     if(!r.ok){a.content=r.status===503?'The assistant is not set up yet (missing API key on the server).':'Sorry, something went wrong. Please try again.';}
     else{const rd=r.body.getReader(), dec=new TextDecoder(); let searching=false;
       for(;;){const {value,done}=await rd.read(); if(done)break; let chunk=dec.decode(value,{stream:true});
@@ -1308,8 +1320,40 @@ async function aiAsk(text){
   }catch(e){a.content=a.content||'Connection lost. Please try again.';}
   if(!a.content)a.content='No answer came back. Please try again.';
   aiRender(); aiSave(); $('aiSend').disabled=!aiReady; $('aiLog').lastElementChild.scrollIntoView({block:'nearest'});
+  if(window.aiSpoken&&r0ok)window.aiSpoken(a.content);
 }
-$('aiForm').addEventListener('submit',e=>{e.preventDefault();aiAsk($('aiIn').value);});
+// ---------- voice: talk to Ask AI and hear answers (browser speech, no extra cost) ----------
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition, TTS=window.speechSynthesis;
+let rec=null, listening=false, voiceTurn=false, VOICE=false;
+try{VOICE=localStorage.getItem('aiVoice')==='1';}catch(e){}
+function voiceBtn(){$('aiVoice').setAttribute('aria-pressed',String(VOICE));$('aiVoice').hidden=!TTS;}
+voiceBtn(); $('aiMic').hidden=!SR;
+function unlockTTS(){if(!TTS)return;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;TTS.speak(u);}catch(e){}}
+$('aiVoice').addEventListener('click',()=>{VOICE=!VOICE;try{localStorage.setItem('aiVoice',VOICE?'1':'0');}catch(e){} if(!VOICE&&TTS)TTS.cancel(); else unlockTTS(); voiceBtn();});
+function pickVoice(){const vs=TTS.getVoices().filter(v=>/^en(-|_)US/i.test(v.lang)); return vs.find(v=>/premium|enhanced|natural/i.test(v.name))||vs.find(v=>/samantha|ava|allison|google us/i.test(v.name))||vs[0]||null;}
+function plain(md){return String(md).replace(/```[\s\S]*?```/g,'').replace(/[*_#>`]/g,'').replace(/\[(.*?)\]\(.*?\)/g,'$1').replace(/^\s*[-•]\s+/gm,'').replace(/\$([\d.,]+)M\b/g,'$$$1 million').replace(/\$([\d.,]+)k\b/gi,'$$$1 thousand').replace(/\n+/g,'. ');}
+function speak(text,done){if(!TTS){done&&done();return;} TTS.cancel(); const parts=plain(text).match(/[^.!?]+[.!?]*/g)||[]; const v=pickVoice(); let i=0;
+  const next=()=>{if(i>=parts.length){done&&done();return;} const u=new SpeechSynthesisUtterance(parts[i++].trim()); if(v)u.voice=v; u.rate=1.05; u.onend=next; u.onerror=()=>done&&done(); TTS.speak(u);}; next();}
+function stopListening(){listening=false;$('aiMic').classList.remove('on');try{rec&&rec.stop();}catch(e){}}
+function listen(){
+  if(!SR)return; if(TTS)TTS.cancel(); if(listening){stopListening();return;}
+  unlockTTS(); rec=new SR(); rec.lang='en-US'; rec.interimResults=true; rec.continuous=false;
+  let finalTxt=''; listening=true; $('aiMic').classList.add('on'); $('aiIn').placeholder='Listening…';
+  rec.onresult=e=>{let t='';for(let k=e.resultIndex;k<e.results.length;k++){const r=e.results[k];if(r.isFinal)finalTxt+=r[0].transcript;else t+=r[0].transcript;} $('aiIn').value=(finalTxt+t).trim();};
+  rec.onerror=()=>{};
+  rec.onend=()=>{const was=listening; listening=false; $('aiMic').classList.remove('on'); $('aiIn').placeholder='Message';
+    const q=$('aiIn').value.trim(); if(was&&q){voiceTurn=true; aiAsk(q);}};
+  try{rec.start();}catch(e){stopListening();}
+}
+$('aiMic').addEventListener('click',listen);
+// called when an answer finishes: read it aloud, then keep the conversation going if it started by voice
+window.aiSpoken=function(answer){
+  const turn=voiceTurn; voiceTurn=false;
+  if(!(VOICE||turn)||!answer||document.visibilityState!=='visible')return;
+  speak(answer,()=>{ if(turn&&VOICE&&S.tab==='ai')setTimeout(listen,250); });
+};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){if(TTS)TTS.cancel();stopListening();}});
+$('aiForm').addEventListener('submit',e=>{e.preventDefault();if(VOICE)unlockTTS();aiAsk($('aiIn').value);});
 $('aiIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!('ontouchstart' in window)){e.preventDefault();aiAsk($('aiIn').value);}});
 $('aiIn').addEventListener('input',function(){$('aiForm').classList.toggle('has',!!this.value.trim());this.style.height='';this.style.height=Math.min(140,this.scrollHeight)+'px';});
 $('aiClear').addEventListener('click',aiNewChat);
