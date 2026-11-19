@@ -281,6 +281,14 @@ td.exp{color:var(--gt)}
   .duo .dv{font-size:42px}
 }
 .hi52{font-size:12px;color:var(--ink2);font-weight:500}
+.upd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 2px;font-size:13px}
+.upd .status{font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.upd .dot{flex:none}
+.rbtn{font:inherit;font-size:13px;font-weight:700;color:var(--gt);background:var(--soft);border:0;border-radius:99px;padding:6px 12px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;flex:none}
+.rbtn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.rbtn.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:640px){.upd{padding-top:calc(4px + env(safe-area-inset-top))}}
 </style>
 </head>
 <body>
@@ -304,6 +312,11 @@ td.exp{color:var(--gt)}
     <button role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>New money</span></button>
   </nav>
 
+  <div class="upd">
+    <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="sync"></span></span>
+    <button type="button" class="rbtn" id="refresh" aria-label="Refresh prices"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg><span>Refresh</span></button>
+  </div>
+
   <div id="tab-home" class="panel">
   <!-- 0. Now and later -->
   <section class="future" aria-live="polite">
@@ -311,23 +324,23 @@ td.exp{color:var(--gt)}
       <div class="side">
         <span class="k">You have today</span>
         <span class="dv" id="total">$0</span>
-        <span class="dm" id="payNow"></span>
+        
       </div>
       <div class="arrow" aria-hidden="true">→</div>
       <div class="side">
         <span class="k" id="fHead">At age 65</span>
         <span class="dv g" id="fMd">…</span>
-        <span class="dm" id="fMdM"></span>
+        
       </div>
     </div>
     <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="range num">
-      <div><span class="k">Poor market</span><span class="v" id="fLo"></span><span class="m" id="fLoM"></span></div>
-      <div><span class="k">Average</span><span class="v" id="fMd2"></span><span class="m" id="fMdM2"></span></div>
-      <div><span class="k">Strong market</span><span class="v" id="fHi"></span><span class="m" id="fHiM"></span></div>
+      <div><span class="k">Poor market</span><span class="v" id="fLo"></span></div>
+      <div><span class="k">Average</span><span class="v" id="fMd2"></span></div>
+      <div><span class="k">Strong market</span><span class="v" id="fHi"></span></div>
     </div>
-    <p class="fnote">Based on 4,000 simulated markets with stocks averaging about 7% a year. Shaded area: poor to strong markets. Dashed line: what you put in. Monthly amounts assume you withdraw 4% a year.</p>
+    <p class="fnote">Based on 4,000 simulated markets with stocks averaging about 7% a year. Shaded area: poor to strong markets. Dashed line: what you put in.</p>
   </section>
 
   <section class="card hero">
@@ -335,7 +348,6 @@ td.exp{color:var(--gt)}
       <div class="mrow num"><span id="mileT"></span><span class="muted" id="mileR"></span></div>
       <div class="pbar"><div id="mileB"></div></div>
     </div>
-    <div class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="sync" style="margin-left:6px"></span></div>
   </section>
 
   <div class="sale" id="saleHome" hidden></div>
@@ -523,7 +535,6 @@ function project(){
 function render(reproject){
   const h=holdings(), w=weights(), T=h.total;
   $('total').textContent=big(T);
-  $('payNow').textContent=T?'Pays about '+usd(T*.04/12)+'/mo for life':'';
   const MS=[1e5,2.5e5,5e5,7.5e5,1e6,1.25e6,1.5e6,2e6,2.5e6,3e6,4e6,5e6,6e6,7.5e6,1e7,1.5e7,2e7,3e7,5e7];
   const nxt=MS.find(x=>x>T)||T*1.5, prv=[0,...MS].filter(x=>x<=T).pop()||0;
   $('mileT').textContent=T&&prv?'Passed '+big(prv)+' ✓':'Next milestone';
@@ -589,8 +600,7 @@ function draw(){
   const mo=v=>usd(v*.04/12)+'/mo';
   $('fHead').textContent='At age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
-  $('fLoM').textContent=mo(lo[Ma]); $('fHiM').textContent=mo(hi[Ma]); $('fMd2').textContent=big(md[Ma]); $('fMdM2').textContent=mo(md[Ma]);
-  $('fMdM').textContent='Pays about '+usd(md[Ma]*.04/12)+'/mo for life';
+  $('fMd2').textContent=big(md[Ma]);
 
   const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(Math.min(360,Math.max(240,W*.45))), m={l:54,r:14,t:24,b:26}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const top=Math.max(1,...hi.slice(0,Mh+1));
@@ -651,13 +661,16 @@ async function loadQuotes(){
     const j=await r.json(); if(!j.VTI||!j.VXUS)throw 0;
     const first=!live; Q=j; live=true; S.px={VTI:j.VTI.price,VXUS:j.VXUS.price}; save();
     $('dot').className='dot live';
-    $('qstat').textContent='Live prices · '+new Date(Math.max(j.VTI.time,j.VXUS.time)).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    const tm=new Date(Math.max(j.VTI.time,j.VXUS.time)), now=new Date(), same=tm.toDateString()===now.toDateString();
+    $('qstat').textContent='Prices as of '+(same?'':tm.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+', ')+tm.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+' · checked '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     render(first); sale();
   }catch(e){
     if(!live){$('qstat').textContent=S.px.VTI?'Live prices unavailable · using last saved prices':'Live prices unavailable · enter prices below';render(true);}
   }
 }
 window.addEventListener('resize',draw);
+$('refresh').addEventListener('click',async function(){this.classList.add('spin');this.disabled=true;
+  await Promise.all([loadQuotes(),synced?pull():null]);this.classList.remove('spin');this.disabled=false;});
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
 function showTab(t){S.tab=t;save();document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
   $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; if(t==='home')draw();}
