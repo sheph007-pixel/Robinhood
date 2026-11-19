@@ -117,12 +117,13 @@ async function handleChat(req, res) {
   }
   res.end();
 }
-const HIST_RANGES = { '1y': '1d', '5y': '1wk', '10y': '1wk', 'max': '1mo' };
+// Each view fetches extra history so a 200-day moving average is complete from the first visible point.
+const HIST_RANGES = { '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': ['max', '1wk'], 'max': ['max', '1mo'] };
 const histCache = new Map();
 async function history(sym, rng) {
-  const key = sym + rng, hit = histCache.get(key);
+  const key = sym + rng + 'v2', hit = histCache.get(key);
   if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.data;
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${rng}&interval=${HIST_RANGES[rng]}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${HIST_RANGES[rng][0]}&interval=${HIST_RANGES[rng][1]}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!r.ok) throw new Error('yahoo ' + r.status);
   const j = (await r.json()).chart.result[0], t = [], c = [];
   j.timestamp.forEach((ts, i) => { const v = j.indicators.quote[0].close[i]; if (v != null) { t.push(ts * 1000); c.push(Math.round(v * 100) / 100); } });
