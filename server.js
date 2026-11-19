@@ -63,7 +63,7 @@ Every request includes a snapshot of their live portfolio data (holdings, prices
 How to help:
 - Answer questions about their portfolio, where they stand against their targets and goal, how much to put where, and what the projections mean.
 - For prices, today's moves and performance of any ticker or index (VTI, VXUS, S&P 500 ^GSPC, Nasdaq ^IXIC, Dow ^DJI, VIX ^VIX, 10-year yield ^TNX, etc.), use get_quotes and get_price_history first. Use web search only for news and explanations (why something moved), and say when that information is from.
-- The portfolio snapshot comes from the owner's Robinhood Core account (synced daily and on request): shares, average cost, cash, recurring buys and recent recurring orders. Margin is intentionally ignored.
+- When the robinhood tool is available, use it for account questions that need fresher or more detailed data than the snapshot (positions, cost basis, orders, recurring buys, realized gains, fundamentals, analyst ratings, earnings). Only the Core account is used.\n- The portfolio snapshot comes from the owner's Robinhood Core account (synced daily and on request): shares, average cost, cash, recurring buys and recent recurring orders. Margin is intentionally ignored.
 - Keep a calm, long-term perspective. Explain short-term drops in context; don't encourage timing the market or trading on headlines.
 - Give clear, practical suggestions when asked (e.g. how to split a deposit to reach their targets, whether their cash level fits their stated targets), and explain the reasoning. Mention big trade-offs or risks briefly. You are not a licensed advisor; say so only when the question is about taxes, legal matters or a major life decision, not on every answer.
 - Be concise: short paragraphs or a few bullets, plain language, no tables unless asked. Use dollar amounts rounded sensibly (e.g. $1.28M, $54,180).`;
@@ -82,6 +82,8 @@ const AI_TOOLS = [
   { name: 'get_price_history', description: 'Price history summary for one ticker over a period: start and end price, total % change, annualized return, high, low, maximum drawdown, current 200-day moving average (for 1y or longer), and ~24 sampled points. Prices are not dividend-adjusted. Use for performance and trend questions.', strict: true,
     input_schema: { type: 'object', properties: { symbol: { type: 'string' }, range: { type: 'string', enum: ['5d', '1mo', '3mo', '6mo', 'ytd', '1y', '2y', '5y', '10y', 'max'] } }, required: ['symbol', 'range'], additionalProperties: false } },
 ];
+const RH_TOOL = { name: 'robinhood', description: 'Read-only access to the owner\'s Robinhood Core account and Robinhood market data. Call with the name of one allowed Robinhood tool and its arguments; the account number is filled in automatically (Core account only). Allowed tools: get_equity_positions, get_portfolio (account value, cash; ignore negative cash, which is margin), get_equity_orders (e.g. placed_agent "recurring", created_at_gte "YYYY-MM-DD", symbol, state), get_equity_quotes (symbols), get_equity_historicals, get_equity_fundamentals, get_equity_analyst_ratings, get_index_quotes, get_index_historicals, get_indexes, get_earnings_calendar, get_equity_tax_lots, get_realized_pnl, search. If unsure of a tool\'s arguments, call it with {} and read the error.',
+  input_schema: { type: 'object', properties: { tool: { type: 'string', enum: ['get_equity_positions', 'get_portfolio', 'get_equity_orders', 'get_equity_quotes', 'get_equity_historicals', 'get_equity_fundamentals', 'get_equity_analyst_ratings', 'get_index_quotes', 'get_index_historicals', 'get_indexes', 'get_earnings_calendar', 'get_equity_tax_lots', 'get_realized_pnl', 'search'] }, arguments: { type: 'object', description: 'Arguments for that tool (omit account_number).' } }, required: ['tool'] } };
 const SYM_RE = /^[A-Za-z0-9.^=\-]{1,15}$/;
 async function yChart(sym, range, interval) {
   const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -90,6 +92,11 @@ async function yChart(sym, range, interval) {
   return j.chart.result[0];
 }
 async function runAiTool(name, input) {
+  if (name === 'robinhood') {
+    if (!rh.connected()) throw new Error('Robinhood is not connected to this site yet.');
+    const out = await rh.call(String(input.tool || ''), input.arguments || {});
+    const txt = JSON.stringify(out); return txt.length > 60000 ? txt.slice(0, 60000) + '…(truncated)' : out;
+  }
   if (name === 'get_quotes') {
     const syms = (Array.isArray(input.symbols) ? input.symbols : []).filter(x => SYM_RE.test(x)).slice(0, 10);
     if (!syms.length) throw new Error('No valid symbols');
@@ -145,7 +152,7 @@ async function handleChat(req, res) {
           { type: 'text', text: AI_SYSTEM, cache_control: { type: 'ephemeral' } },
           { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot (synced from the Robinhood Core account):\n' + context },
         ],
-        tools: [...AI_TOOLS, { type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
+        tools: [...AI_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
         messages,
       });
       stream.on('text', (t) => res.write(t));
@@ -214,6 +221,36 @@ function pinOk(req) {
   const want = Buffer.from(PIN);
   return got.length === want.length && crypto.timingSafeEqual(got, want);
 }
+// ---- Login: PIN -> signed session cookie (6 months) ----
+const SECRET_FILE = path.join(DATA_DIR, 'session_secret');
+function sessionSecret() {
+  try { return fs.readFileSync(SECRET_FILE, 'utf8'); } catch (e) {
+    const s = crypto.randomBytes(32).toString('hex'); fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(SECRET_FILE, s, { mode: 0o600 }); return s;
+  }
+}
+const sign = v => crypto.createHmac('sha256', sessionSecret() + '|' + PIN).update(v).digest('hex');
+function sessionCookie() { const exp = String(Date.now() + 180 * 864e5); return exp + '.' + sign(exp); }
+function cookieOk(req) {
+  const m = /(?:^|;\s*)hs=([0-9]+)\.([a-f0-9]{64})/.exec(req.headers.cookie || ''); if (!m) return false;
+  if (+m[1] < Date.now()) return false;
+  const a = Buffer.from(m[2]), b = Buffer.from(sign(m[1]));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function authed(req) { return !PIN || cookieOk(req) || (req.headers['x-pin'] && pinOk(req)); }
+async function handleLogin(req, res) {
+  const ip = clientIp(req), f = fails.get(ip);
+  if (f && f.until > Date.now()) return json(res, 429, { error: 'Too many tries. Wait 15 minutes.' });
+  let b; try { b = JSON.parse(await readBody(req, 2048)); } catch (e) { b = {}; }
+  const got = Buffer.from(String(b.pin || '')), want = Buffer.from(PIN);
+  if (!PIN || (got.length === want.length && crypto.timingSafeEqual(got, want))) {
+    fails.delete(ip);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': `hs=${sessionCookie()}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${180 * 86400}` });
+    return res.end('{"ok":true}');
+  }
+  const n = (f ? f.n : 0) + 1; fails.set(ip, { n, until: n >= 10 ? Date.now() + 15 * 60e3 : 0 });
+  json(res, 401, { error: 'Wrong PIN' });
+}
+
 function json(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(obj));
@@ -245,9 +282,7 @@ function summarizeRecurring(orders) {
   }
   return { recurring, recent: filled.slice(0, 20) };
 }
-async function handleRhSync(req, res) {
-  if (req.method !== 'POST') return json(res, 405, { error: 'method' });
-  let b; try { b = JSON.parse(await readBody(req, 300 * 1024)); } catch (e) { return json(res, 400, { error: 'bad data' }); }
+function applySync(b) {
   const st = readState(), pos = Array.isArray(b.positions) ? b.positions : [];
   const q = sym => { const p = pos.find(x => String(x.symbol).toUpperCase() === sym); return p ? +p.quantity : 0; };
   st.shVTI = q('VTI'); st.shVXUS = q('VXUS');
@@ -258,7 +293,12 @@ async function handleRhSync(req, res) {
   st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent };
   st.rhSync = st.rh.syncedAt;
   writeState(st);
-  json(res, 200, { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring });
+  return { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring };
+}
+async function handleRhSync(req, res) {
+  if (req.method !== 'POST') return json(res, 405, { error: 'method' });
+  let b; try { b = JSON.parse(await readBody(req, 300 * 1024)); } catch (e) { return json(res, 400, { error: 'bad data' }); }
+  json(res, 200, applySync(b));
 }
 
 // ---- Saved Ask AI conversations (shared across devices) ----
@@ -290,7 +330,7 @@ async function handleChats(req, res, url) {
 async function handleState(req, res) {
   const ip = clientIp(req), f = fails.get(ip);
   if (f && f.until > Date.now()) return json(res, 429, { error: 'Too many tries. Wait 15 minutes.' });
-  if (!pinOk(req)) {
+  if (!authed(req)) {
     const n = (f && f.until > Date.now() - 15 * 60e3 ? f.n : 0) + 1;
     fails.set(ip, { n, until: n >= 10 ? Date.now() + 15 * 60e3 : 0 });
     return json(res, 401, { error: 'Wrong PIN' });
@@ -318,8 +358,47 @@ async function handleState(req, res) {
 }
 
 
+const rh = require('./rh')(DATA_DIR);
+async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
+// Daily sync after the close: weekdays 4:20 PM ET.
+let lastAutoSync = '';
+setInterval(() => {
+  if (!rh.connected()) return;
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date());
+  const g = k => p.find(x => x.type === k).value, day = g('year') + g('month') + g('day'), min = (+g('hour') % 24) * 60 + (+g('minute'));
+  if (['Sat', 'Sun'].includes(g('weekday')) || min < 16 * 60 + 20 || lastAutoSync === day) return;
+  lastAutoSync = day; serverSync().catch(e => console.error('Robinhood auto sync failed', e.message));
+}, 60e3);
+const baseUrl = req => (req.headers['x-forwarded-proto'] || 'https') + '://' + req.headers.host;
+
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (url.pathname === '/api/login' && req.method === 'POST') return handleLogin(req, res);
+  if (url.pathname === '/api/me') return authed(req) ? json(res, 200, { ok: true }) : json(res, 401, { error: 'login' });
+  const open = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/health' || STATIC[url.pathname];
+  if (!open && !authed(req)) {
+    if (url.pathname.startsWith('/api/')) return json(res, 401, { error: 'login' });
+    res.writeHead(302, { Location: '/' }); return res.end();
+  }
+  if (url.pathname === '/oauth/connect') {
+    try { const to = await rh.startAuth(baseUrl(req) + '/oauth/callback'); res.writeHead(302, { Location: to }); return res.end(); }
+    catch (e) { res.writeHead(502, { 'Content-Type': 'text/plain' }); return res.end('Could not start Robinhood login: ' + e.message); }
+  }
+  if (url.pathname === '/oauth/callback') {
+    const code = url.searchParams.get('code'), state = url.searchParams.get('state');
+    try {
+      if (!code || !state) throw new Error(url.searchParams.get('error_description') || url.searchParams.get('error') || 'Login was cancelled');
+      await rh.finishAuth(code, state);
+      try { await serverSync(); } catch (e) { console.error('first sync failed', e.message); }
+      res.writeHead(302, { Location: '/?rh=connected' }); return res.end();
+    } catch (e) { res.writeHead(400, { 'Content-Type': 'text/html' }); return res.end('<p style="font-family:sans-serif">Robinhood connection failed: ' + String(e.message).replace(/[<>&]/g, '') + '</p><p><a href="/">Back to Hood Investing</a></p>'); }
+  }
+  if (url.pathname === '/api/rh/status') return json(res, 200, { connected: rh.connected(), connectedAt: rh.connectedAt(), syncedAt: (readState().rh || {}).syncedAt || null });
+  if (url.pathname === '/api/rh/sync' && req.method === 'POST') {
+    if (!rh.connected()) return json(res, 409, { error: 'not connected' });
+    try { return json(res, 200, await serverSync()); } catch (e) { return json(res, 502, { error: e.message }); }
+  }
+  if (url.pathname === '/api/rh/disconnect' && req.method === 'POST') { rh.disconnect(); return json(res, 200, { ok: true }); }
   if (url.pathname === '/api/quotes') {
     try {
       const data = await quotes();

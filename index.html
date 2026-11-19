@@ -567,13 +567,21 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .aihi:hover,.aihi.on{background:var(--soft)}
 .aidel{font:inherit;font-size:20px;line-height:1;color:var(--ink2);background:none;border:0;cursor:pointer;padding:0 4px;opacity:.7}
 @media (max-width:640px){.aihist,.ailog,textarea{scrollbar-width:none}.aihist::-webkit-scrollbar,textarea::-webkit-scrollbar{display:none}}
+@media (max-width:640px){
+  .tabs{padding:5px 4px max(4px, calc(env(safe-area-inset-bottom) - 16px))!important}
+  .tabs button{padding:4px 0!important;gap:2px!important;font-size:10.5px!important}
+  .tabs svg{width:22px!important;height:22px!important}
+  main{padding-bottom:calc(70px + max(4px, calc(env(safe-area-inset-bottom) - 16px)))!important}
+  .aiform{bottom:calc(62px + max(4px, calc(env(safe-area-inset-bottom) - 16px)))!important}
+}
+#rhConnect{margin-left:6px}
 </style>
 </head>
 <body>
 <div id="lock" class="lock" hidden>
   <form id="pinForm" class="lockbox">
     <h2>Enter your PIN</h2>
-    <p class="muted small">Your portfolio is saved on the server so it shows on every device.</p>
+    <p class="muted small">Hood Investing is private. Enter your PIN to continue; this device stays signed in for 6 months.</p>
     <input type="password" id="pin" inputmode="numeric" autocomplete="current-password" aria-label="PIN">
     <p class="small" id="pinErr" style="color:var(--down)"></p>
     <button class="btn" type="submit">Unlock</button>
@@ -746,7 +754,7 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
   </div>
 
   <div class="upd">
-    <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="rhs"></span><span id="sync"></span></span>
+    <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="rhs"></span><a id="rhConnect" class="rlink" href="/oauth/connect" hidden>Connect Robinhood</a><span id="sync"></span></span>
     <button type="button" class="rlink" id="refresh">Refresh</button>
   </div>
 </main>
@@ -1053,6 +1061,7 @@ async function loadQuotes(){
 }
 window.addEventListener('resize',draw);
 $('refresh').addEventListener('click',async function(){this.textContent='Refreshing…';this.disabled=true;lastQ=Date.now();
+  if(RHC){try{await fetch('/api/rh/sync',{method:'POST'});}catch(e){}}
   await Promise.all([loadQuotes(),synced?pull():null]);this.textContent='Refresh';this.disabled=false;});
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
 const phoneScroll=()=>window.matchMedia('(max-width:640px)').matches;
@@ -1213,7 +1222,9 @@ function maybeRefresh(){if(lastQ<lastBoundary()){lastQ=Date.now();loadQuotes();}
 setInterval(maybeRefresh,60000);
 
 // ---------- saved on the server, shared across devices ----------
-let lastSJ=null;
+let lastSJ=null, RHC=false;
+async function rhStatus(){try{const j=await (await fetch('/api/rh/status',{cache:'no-store'})).json();RHC=!!j.connected;$('rhConnect').hidden=RHC;}catch(e){}}
+rhStatus(); if(/[?&]rh=connected/.test(location.search))history.replaceState(null,'',location.pathname);
 function syncNote(){const el=$('rhs'); if(!el)return; if(!S.rhSync){el.textContent='';return;}
   const d=new Date(S.rhSync); el.textContent='Synced from Robinhood '+d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
 async function pull(){
@@ -1228,7 +1239,10 @@ async function pull(){
   if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';migrate();fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
   synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent=''; syncNote();
 }
-$('pinForm').addEventListener('submit',e=>{e.preventDefault();PINV=$('pin').value.trim();pull();});
+$('pinForm').addEventListener('submit',async e=>{e.preventDefault();
+  const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:$('pin').value.trim()})});
+  if(r.ok){location.reload();return;} const j=await r.json().catch(()=>({}));$('pinErr').textContent=j.error||'Wrong PIN';$('pin').value='';$('pin').focus();});
+(async()=>{try{const r=await fetch('/api/me',{cache:'no-store'});if(r.status===401){$('lock').hidden=false;$('pinErr').textContent='';$('pin').focus();}}catch(e){}})();
 pull();
 setInterval(()=>{if(synced&&document.visibilityState==='visible')pull();},60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){maybeRefresh();if(synced)pull();}});
