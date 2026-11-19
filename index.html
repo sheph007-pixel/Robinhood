@@ -202,18 +202,6 @@ details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;
     </div>
     <label class="check"><input type="checkbox" id="real"> Show in today's dollars (2.5% inflation)</label>
     <div class="scroll"><table id="tbl"></table></div>
-    <details>
-      <summary>How the projection works</summary>
-      <ul>
-        <li>Monte Carlo simulation, the same approach Betterment, Vanguard and most robo-advisors use: 5,000 possible markets, month by month.</li>
-        <li>VTI and VXUS each grow at the outlook's yearly return with random ups and downs (about 16% and 17% a year), and they tend to move together (correlation 0.85). Fund fees (0.03% and 0.05%) are taken out.</li>
-        <li>Cash grows at your APY, compounded monthly. Change the APY in Holdings whenever your rate changes.</li>
-        <li>Monthly additions go in at your target mix, and the portfolio is rebalanced to target once a year.</li>
-        <li>Expected is the middle result: half the markets do better, half worse. Poor is the 10th percentile and strong is the 90th, so 8 in 10 outcomes land between them.</li>
-        <li>Historical uses long-run averages (US stocks about 10% a year since 1926, international about 8% since 1970). Moderate and Cautious are closer to what big firms currently forecast for the next decade.</li>
-        <li>Estimates, not promises. Taxes are not included. Not financial advice. Your numbers are saved in this browser only.</li>
-      </ul>
-    </details>
   </section>
 
 </main>
