@@ -500,6 +500,23 @@ body.on-ai .upd{display:none}
 .rlink{font:inherit;font-size:13px;font-weight:600;color:var(--gt);background:none;border:0;padding:0 2px;cursor:pointer}
 .rlink:disabled{color:var(--ink2)}
 .upd .status::after{content:'·';margin-left:6px;color:var(--ink2)}
+.rhbadge{font-size:12px;font-weight:600;color:var(--gt);background:color-mix(in srgb,var(--g) 14%,transparent);border-radius:99px;padding:4px 10px}
+input.ro{background:transparent!important;border-color:transparent!important;padding-left:0!important;cursor:default;box-shadow:none!important}
+.hold .cell input.ro{text-align:right}
+@media (max-width:640px){.hold .cell input.ro{text-align:left}}
+.gns{font-weight:500;color:var(--ink2);font-size:13px}
+.dcasum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px}
+.dcasum > div{background:var(--soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;min-width:0}
+.dcasum .k{font-size:13px;color:var(--ink2);font-weight:600}
+.dcasum .v{font-size:22px;font-weight:700} .dcasum .v.g{color:var(--gt)}
+.dcarow{display:grid;grid-template-columns:4px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.dcarow i{align-self:stretch;border-radius:3px}
+.dcarow .dn,.dcarow .dv{display:flex;flex-direction:column}
+.dcarow .dv{text-align:right}
+.dcarow b{font-size:16px} .dcarow span{font-size:13px;color:var(--ink2)}
+.dcalist > div{display:grid;grid-template-columns:70px 60px 1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.dcalist > div:last-child{border-bottom:0}
+@media (max-width:640px){.dcasum .v{font-size:17px}.dcasum{gap:8px}.dcasum > div{padding:10px}}
 </style>
 </head>
 <body>
@@ -521,6 +538,7 @@ body.on-ai .upd{display:none}
     <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
     <button role="tab" data-tab="hold"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Holdings</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
+    <button role="tab" data-tab="dca"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/></svg><span>DCA</span></button>
     <button role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>New Money</span></button>
     <button role="tab" data-tab="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
   </nav>
@@ -581,7 +599,7 @@ body.on-ai .upd{display:none}
   <div id="tab-hold" class="panel">
   <!-- 2. Holdings -->
   <section class="card">
-    <div class="head"><h2>Holdings</h2></div>
+    <div class="head"><h2>Holdings</h2><span class="rhbadge" id="rhBadge" hidden>From Robinhood · Core ••8555</span></div>
     <div class="hold num" id="hold">
       <div class="hrow hh"><div class="h">Holding</div><div class="h r">Shares / Balance</div><div class="h r">Price / APY</div><div class="h r">Value</div><div class="h r">% of Total</div></div>
 
@@ -651,6 +669,17 @@ body.on-ai .upd{display:none}
     <p class="ainote" id="aiNote"></p>
   </div>
 
+  <div id="tab-dca" class="panel">
+  <section class="card">
+    <div class="head"><h2>Recurring Investments</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
+    <div id="dcaBody"></div>
+  </section>
+  <section class="card">
+    <div class="head"><h2>Recent Recurring Buys</h2></div>
+    <div id="dcaRecent"></div>
+  </section>
+  </div>
+
   <div id="tab-money" class="panel">
   <!-- 4. New money -->
   <section class="card">
@@ -666,7 +695,7 @@ body.on-ai .upd{display:none}
   </div>
 
   <div class="upd">
-    <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="sync"></span></span>
+    <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="rhs"></span><span id="sync"></span></span>
     <button type="button" class="rlink" id="refresh">Refresh</button>
   </div>
 </main>
@@ -693,7 +722,7 @@ migrate();
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
 let synced=false, pushT;
 function push(){clearTimeout(pushT);pushT=setTimeout(async()=>{
-  try{const r=await fetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':PINV},body:JSON.stringify(S)});
+  try{const body=JSON.stringify(S);const r=await fetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':PINV},body});if(r.ok)lastSJ=body;
     $('sync').textContent=r.ok?'':'Not saved';}catch(e){$('sync').textContent='Offline, saved on this device';}},600);}
 const save=()=>{try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){} if(synced)push();};
 
@@ -702,6 +731,7 @@ const price=sym=>(Q[sym]&&Q[sym].price)||S.px[sym]||0;
 
 // ---------- inputs ----------
 function fill(){
+  const ro=!!S.rh; ['shVTI','shVXUS','cash'].forEach(id=>{$(id).readOnly=ro;$(id).classList.toggle('ro',ro);}); $('rhBadge').hidden=!ro;
 $('shVTI').value=fmtSh(S.shVTI); $('shVXUS').value=fmtSh(S.shVXUS);
 $('cash').value=usd(S.cash,true); $('apy').value=S.apy.toFixed(2); $('monthly').value=usd(S.monthly);
 $('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real; $('dob').value=S.dob; $('gAmt').value=usd(S.goal);  $('gAge').value=S.goalAge;}
@@ -759,21 +789,23 @@ function monthsTo(age){const b=new Date(S.dob+'T00:00:00'),n=new Date();if(isNaN
 function ageNow(){return 75-monthsTo(75)/12;}
 function ages(){return AGES.filter(a=>monthsTo(a)>0);}
 let base=null;
+function REC(){const r=(S.rh&&S.rh.recurring)||[], g=sym=>r.filter(x=>x.symbol===sym).reduce((a,x)=>a+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily').reduce((a,x)=>a+(+x.amount||0),0);
+  return {a1:g('VTI'),a2:g('VXUS'),daily:dly,list:r};}
 // Final values at month m for a given daily buy (split by target US/Intl), small sample for speed.
 function goalVals(daily,m){
   const h=holdings(), w=weights(), o=OUT[S.outlook], N=1500, r=rng(7);
   const mu1=Math.log(1+o.us-FEE.us)/12, mu2=Math.log(1+o.intl-FEE.intl)/12, s1=VOL.us/Math.sqrt(12), s2=VOL.intl/Math.sqrt(12), cm=Math.pow(1+S.apy/100,1/12)-1, k2=Math.sqrt(1-RHO*RHO);
-  const add=daily*21, u=S.us/100, out=new Float64Array(N);
+  const add=daily*21, u=S.us/100, out=new Float64Array(N), R=REC();
   const gauss=()=>{let x=0;while(x===0)x=r();return Math.sqrt(-2*Math.log(x))*Math.cos(2*Math.PI*r());};
   for(let i=0;i<N;i++){let a=h.vti,b=h.vxus,c=h.cash;
-    for(let t=1;t<=m;t++){const z1=gauss(),z2=RHO*z1+k2*gauss();a*=Math.exp(mu1+s1*z1);b*=Math.exp(mu2+s2*z2);c*=1+cm;a+=add*u;b+=add*(1-u);
+    for(let t=1;t<=m;t++){const z1=gauss(),z2=RHO*z1+k2*gauss();a*=Math.exp(mu1+s1*z1);b*=Math.exp(mu2+s2*z2);c*=1+cm;a+=add*u+R.a1;b+=add*(1-u)+R.a2;
       if(t%12===0){const T=a+b+c;a=T*w.vti;b=T*w.vxus;c=T*w.cash;}}
     out[i]=a+b+c;}
   return out.sort();
 }
 const GN={};
 function goalNeed(p){ // daily amount so that P(value >= goal) >= p
-  const m=Math.max(1,monthsTo(S.goalAge)), key=[p,S.goal,S.goalAge,S.shVTI,S.shVXUS,S.cash,S.apy,S.eq,S.us,Math.round(price('VTI')),Math.round(price('VXUS'))].join('|');
+  const m=Math.max(1,monthsTo(S.goalAge)), key=[REC().a1,REC().a2,p,S.goal,S.goalAge,S.shVTI,S.shVXUS,S.cash,S.apy,S.eq,S.us,Math.round(price('VTI')),Math.round(price('VXUS'))].join('|');
   if(key in GN)return GN[key];
   const ok=d=>{const v=goalVals(d,m);return v[Math.floor((1-p)*(v.length-1))]>=S.goal;};
   let res;
@@ -802,8 +834,8 @@ function sim(a1,a2,L,full){
   return {lo,lq,md,hq,hi,put,M,cols};
 }
 function project(){
-  proj=sim(0,0,0,true); base=proj;
-  scen=SC?sim(SC.a1,SC.a2,SC.L,false):null;
+  const R=REC(); proj=sim(R.a1,R.a2,0,true); base=proj;
+  scen=SC?sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,false):null;
 }
 
 // ---------- render ----------
@@ -931,7 +963,7 @@ function draw(){
     $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
     const T0=md[0]; $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
     { const n50=goalNeed(.5), n75=goalNeed(.75), tile=(lab,v)=>'<div class="gt"><span class="gl">'+lab+'</span><span class="gv">'+(v===0?'On Track':v==null?'Out of Reach':usd(v)+'<em>/day</em>')+'</span><span class="gm">'+(v?'≈ '+usd(v*21)+'/mo':v===0?'No extra buys needed':'Try a later age')+'</span></div>';
-      $('gNeed').innerHTML='<div class="gnh">Buy Daily to Reach It</div><div class="gtiles">'+tile('Average Market',n50)+tile('75% Chance',n75)+'</div>'; }
+      const RD=REC().daily; $('gNeed').innerHTML='<div class="gnh">'+(RD?'Extra Daily Buys Needed':'Buy Daily to Reach It')+(RD?'<span class="gns"> on top of your '+usd(RD)+'/day</span>':'')+'</div><div class="gtiles">'+tile('Average Market',n50)+tile('75% Chance',n75)+'</div>'; }
     $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%). '+(when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
@@ -971,8 +1003,8 @@ window.addEventListener('resize',draw);
 $('refresh').addEventListener('click',async function(){this.textContent='Refreshing…';this.disabled=true;lastQ=Date.now();
   await Promise.all([loadQuotes(),synced?pull():null]);this.textContent='Refresh';this.disabled=false;});
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
-function showTab(t){const changed=S.tab!==t;S.tab=t;save();document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
+function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-dca').hidden=t!=='dca'; if(t==='dca')dcaRender(); document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 async function markets(){
@@ -1028,7 +1060,10 @@ function aiContext(){
   lines.push('Total: $'+f(T));
   lines.push('Actual split: US/Intl '+(st?(h.vti/st*100).toFixed(1):0)+'/'+(st?(h.vxus/st*100).toFixed(1):0)+'; Stocks/Cash '+(T?(st/T*100).toFixed(1):0)+'/'+(T?(h.cash/T*100).toFixed(1):0));
   lines.push('Target split: US/Intl '+S.us+'/'+(100-S.us)+'; Stocks/Cash '+S.eq+'/'+(100-S.eq));
-  lines.push('Projections assume no new deposits.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
+  lines.push('Account: Robinhood Core ••8555 only (equities and cash; margin ignored).'+(S.rh?' Last synced '+S.rh.syncedAt+'.':''));
+  { const R=REC(); if(R.list.length)lines.push('Recurring investments (from Robinhood, included in projections): '+R.list.map(x=>x.symbol+' $'+x.amount+' '+x.freq+' (~$'+x.perMonth+'/mo, last '+x.lastDate+')').join('; '));
+    if(S.rh&&S.rh.recent)lines.push('Recent recurring buys: '+S.rh.recent.slice(0,10).map(o=>o.date+' '+o.symbol+' $'+o.amount+(o.price?' @ $'+o.price:'')).join('; ')); }
+  lines.push('Projections include the recurring investments above.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
   lines.push('Goal: $'+f(S.goal)+' by age '+S.goalAge+(GOALPCT!=null?' ('+GOALPCT+'% chance per simulation)':''));
   if(proj){lines.push('Projection (Monte Carlo, 4,000 paths, stocks ~7%/yr avg, 16-17% volatility, yearly rebalance to target, includes deposits): age -> poor (10th pct) / average (median) / strong (90th pct)');
     AGES.forEach(a=>{const t=Math.min(proj.M,monthsTo(a));if(t>0)lines.push('  '+a+': $'+f(proj.lo[t])+' / $'+f(proj.md[t])+' / $'+f(proj.hi[t]));});}
@@ -1077,7 +1112,17 @@ $('aiForm').addEventListener('submit',e=>{e.preventDefault();aiAsk($('aiIn').val
 $('aiIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!('ontouchstart' in window)){e.preventDefault();aiAsk($('aiIn').value);}});
 $('aiIn').addEventListener('input',function(){$('aiForm').classList.toggle('has',!!this.value.trim());this.style.height='';this.style.height=Math.min(140,this.scrollHeight)+'px';});
 $('aiClear').addEventListener('click',()=>{AIM=[];aiSave();aiRender();});
-showTab(['money','hold','mkt','ai'].includes(S.tab)?S.tab:'home');
+function dcaRender(){
+  const R=REC(), rh=S.rh;
+  if(!rh||!R.list.length){$('dcaBody').innerHTML='<p class="muted">No recurring investments synced yet. Ask Claude to sync Robinhood.</p>';$('dcaRecent').innerHTML='';return;}
+  const fq={daily:'every market day',weekly:'every week',monthly:'every month'}, d=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const tot=R.list.reduce((a,x)=>a+(+x.perMonth||0),0), l30=R.list.reduce((a,x)=>a+(+x.last30||0),0);
+  $('dcaBody').innerHTML='<div class="dcasum num"><div><span class="k">Per Month</span><span class="v g">'+usd(tot)+'</span></div><div><span class="k">Per Year</span><span class="v">'+big(tot*12)+'</span></div><div><span class="k">Last 30 Days</span><span class="v">'+usd(l30)+'</span></div></div>'+
+    R.list.map(x=>'<div class="dcarow num"><i style="background:var('+(x.symbol==='VTI'?'--s1':'--s2')+')"></i><div class="dn"><b>'+x.symbol+'</b><span>'+usd(x.amount)+' '+(fq[x.freq]||x.freq)+'</span></div><div class="dv"><b>≈ '+usd(x.perMonth)+'/mo</b><span>last buy '+d(x.lastDate)+'</span></div></div>').join('')+
+    '<p class="muted small">Included in all projections. Change amounts in the Robinhood app; they sync here automatically.</p>';
+  $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
+}
+showTab(['money','hold','mkt','ai','dca'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes();
 // Prices refresh after the open (9:30 ET) and the close (4:00 ET), or by hand.
 let lastQ=Date.now();
@@ -1091,17 +1136,24 @@ function maybeRefresh(){if(lastQ<lastBoundary()){lastQ=Date.now();loadQuotes();}
 setInterval(maybeRefresh,60000);
 
 // ---------- saved on the server, shared across devices ----------
+let lastSJ=null;
+function syncNote(){const el=$('rhs'); if(!el)return; if(!S.rhSync){el.textContent='';return;}
+  const d=new Date(S.rhSync); el.textContent=' · Synced from Robinhood '+d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
 async function pull(){
   let r; try{r=await fetch('/api/state',{headers:{'X-Pin':PINV},cache:'no-store'});}catch(e){$('sync').textContent='Offline, saved on this device';return;}
   if(r.status===401||r.status===429){const j=await r.json().catch(()=>({}));$('lock').hidden=false;$('pinErr').textContent=PINV?(j.error||'Wrong PIN'):'';$('pin').value='';$('pin').focus();return;}
   if(!r.ok){$('sync').textContent='Saved on this device';return;}
   const j=await r.json(); $('lock').hidden=true;
   try{localStorage.setItem('portfolio-pin',PINV);}catch(e){}
+  const sj=j.state?JSON.stringify(j.state):null, ae=document.activeElement, editing=ae&&/^(INPUT|TEXTAREA)$/.test(ae.tagName);
+  if(j.state&&synced&&(sj===lastSJ||editing)){ $('sync').textContent=''; syncNote(); return; }
+  lastSJ=sj;
   if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';migrate();fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
-  synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent='';
+  synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent=''; syncNote();
 }
 $('pinForm').addEventListener('submit',e=>{e.preventDefault();PINV=$('pin').value.trim();pull();});
 pull();
+setInterval(()=>{if(synced&&document.visibilityState==='visible')pull();},60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){maybeRefresh();if(synced)pull();}});
 (function(){let y0=null,dy=0;const ptr=$('ptr'),T=$('ptrT');
   window.addEventListener('touchstart',e=>{if(window.scrollY<=0&&!$('lock').offsetParent&&e.touches.length===1){y0=e.touches[0].clientY;dy=0;}else y0=null;},{passive:true});
