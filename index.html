@@ -264,6 +264,22 @@ td.exp{color:var(--gt)}
   .tabs .brand{display:block;font-size:20px;font-weight:800;letter-spacing:-.02em;margin-right:auto}
   .tabs button{font-size:16px;padding:14px 16px}
 }
+.duo{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:8px 0 16px}
+.duo .side{display:flex;flex-direction:column;gap:2px;min-width:0}
+.duo .k{font-size:16px;font-weight:600;color:var(--ink2)}
+.duo .dv{font-size:48px;font-weight:700;letter-spacing:-.03em;line-height:1.05}
+.duo .dv.g{color:var(--gt)}
+.duo .dm{font-size:15px;color:var(--ink2)}
+.duo .arrow{font-size:32px;color:var(--ink2);padding:0 8px}
+.future .agerow{border-bottom:0;padding-bottom:0}
+.hero .status{margin-top:12px}
+.card.hero{padding-top:16px}
+@media (max-width:640px){
+  .duo{grid-template-columns:1fr;gap:4px;padding-top:4px}
+  .duo .arrow{display:none}
+  .duo .side + .arrow + .side{border-top:1px solid var(--line);padding-top:12px;margin-top:8px}
+  .duo .dv{font-size:42px}
+}
 </style>
 </head>
 <body>
@@ -276,6 +292,7 @@ td.exp{color:var(--gt)}
     <button class="btn" type="submit">Unlock</button>
   </form>
 </div>
+<div hidden><input type="checkbox" id="real"><input type="date" id="dob"><table id="tbl"></table></div>
 <div id="ptr"><span id="ptrT">Pull to refresh</span></div>
 <main>
 
@@ -287,14 +304,23 @@ td.exp{color:var(--gt)}
   </nav>
 
   <div id="tab-home" class="panel">
-  <!-- 0. Future -->
+  <!-- 0. Now and later -->
   <section class="future" aria-live="polite">
-    <h2>Your future</h2>
-    <div class="flabel" id="fHead">At age 65</div>
-    <div class="fnum num" id="fMd">…</div>
-    <div class="fsub num" id="fMdM"></div>
-    <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
+    <div class="duo num">
+      <div class="side">
+        <span class="k">You have today</span>
+        <span class="dv" id="total">$0</span>
+        <span class="dm" id="payNow"></span>
+      </div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="side">
+        <span class="k" id="fHead">At age 65</span>
+        <span class="dv g" id="fMd">…</span>
+        <span class="dm" id="fMdM"></span>
+      </div>
+    </div>
     <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
+    <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="range num">
       <div><span class="k">Poor market</span><span class="v" id="fLo"></span><span class="m" id="fLoM"></span></div>
       <div><span class="k">Average</span><span class="v" id="fMd2"></span><span class="m" id="fMdM2"></span></div>
@@ -303,20 +329,15 @@ td.exp{color:var(--gt)}
     <p class="fnote">Based on 4,000 simulated markets with stocks averaging about 7% a year. Shaded area: poor to strong markets. Dashed line: what you put in. Monthly amounts assume you withdraw 4% a year.</p>
   </section>
 
-  <div class="sale" id="saleHome" hidden></div>
-  <!-- 1. Balance -->
-  <section class="card hero" aria-live="polite">
-    <div class="head">
-      <h2>Today <span class="muted small" id="sync" style="margin-left:6px;font-weight:500"></span></h2>
-      <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span></span>
-    </div>
-    <div class="total num" id="total">$0</div>
-    <div class="paynow num" id="payNow"></div>
+  <section class="card hero">
     <div class="mile">
       <div class="mrow num"><span id="mileT"></span><span class="muted" id="mileR"></span></div>
       <div class="pbar"><div id="mileB"></div></div>
     </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="sync" style="margin-left:6px"></span></div>
   </section>
+
+  <div class="sale" id="saleHome" hidden></div>
 
   <!-- Goal -->
   <section class="card goal">
@@ -360,16 +381,6 @@ td.exp{color:var(--gt)}
       </div>
     </div>
   </section>
-  <section class="card">
-    <div class="head"><h2>Settings</h2></div>
-    <div class="grid2">
-      <div class="ctl"><div class="row"><label for="monthly">Adding each month</label><input type="text" inputmode="decimal" id="monthly"></div>
-        <small class="muted">Used in your projections, invested at your target mix.</small></div>
-      <div class="ctl"><div class="row"><label for="dob">Birthday</label><input type="date" id="dob"></div></div>
-    </div>
-    <label class="check" hidden><input type="checkbox" id="real"></label>
-    <div hidden><table id="tbl"></table></div>
-  </section>
   </div>
 
   <div id="tab-money" class="panel">
@@ -381,6 +392,11 @@ td.exp{color:var(--gt)}
       <button class="btn" id="apply" disabled>I did it, update my holdings</button></div>
     <div class="plan num" id="plan"></div>
     <p class="callout" id="planNote"></p>
+  </section>
+
+  <section class="card">
+    <div class="ctl"><div class="row"><label for="monthly">Planning to add each month</label><input type="text" inputmode="decimal" id="monthly"></div>
+      <small class="muted">Used in your projections on Home.</small></div>
   </section>
 
   <!-- 3. Target mix -->
@@ -505,8 +521,8 @@ function project(){
 // ---------- render ----------
 function render(reproject){
   const h=holdings(), w=weights(), T=h.total;
-  $('total').textContent=usd(T,true);
-  $('payNow').innerHTML=T?'Already enough to pay you about <b>'+usd(T*.04/12)+' a month</b> for life':'';
+  $('total').textContent=big(T);
+  $('payNow').textContent=T?'Pays about '+usd(T*.04/12)+'/mo for life':'';
   const MS=[1e5,2.5e5,5e5,7.5e5,1e6,1.25e6,1.5e6,2e6,2.5e6,3e6,4e6,5e6,6e6,7.5e6,1e7,1.5e7,2e7,3e7,5e7];
   const nxt=MS.find(x=>x>T)||T*1.5, prv=[0,...MS].filter(x=>x<=T).pop()||0;
   $('mileT').textContent=T&&prv?'Passed '+big(prv)+' ✓':'Next milestone';
@@ -569,10 +585,10 @@ function draw(){
   const lo=proj.lo.map((v,t)=>v/d(t)), md=proj.md.map((v,t)=>v/d(t)), hi=proj.hi.map((v,t)=>v/d(t)), put=proj.put.map((v,t)=>v/d(t));
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
   const mo=v=>usd(v*.04/12)+'/mo';
-  $('fHead').textContent='At age '+S.age+' · '+(isNaN(bday)?'':(bday.getFullYear()+S.age)+' · ')+'in '+yrs+' years'+(S.real?' · today\'s dollars':'');
+  $('fHead').textContent='At age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
   $('fLoM').textContent=mo(lo[Ma]); $('fHiM').textContent=mo(hi[Ma]); $('fMd2').textContent=big(md[Ma]); $('fMdM2').textContent=mo(md[Ma]);
-  $('fMdM').textContent='Average outcome · about '+usd(md[Ma]*.04/12)+' a month for life';
+  $('fMdM').textContent='Pays about '+usd(md[Ma]*.04/12)+'/mo for life';
 
   const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(Math.min(360,Math.max(240,W*.45))), m={l:54,r:14,t:24,b:26}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const top=Math.max(1,...hi.slice(0,Mh+1));
