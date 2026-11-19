@@ -602,10 +602,14 @@ body.on-ai .ft{display:none}
 /* today's dollars, on-track line, habit card */
 .dnote{display:block;font-size:12px;color:var(--ink2);margin-top:2px}
 .dolrow .chips button{padding:6px 12px}
-.ontrack{display:block;position:relative;padding-right:34px!important;width:100%;margin:10px 0 2px;padding:10px 14px;border-radius:12px;border:0;font:inherit;font-size:14px;text-align:left;cursor:pointer;color:var(--ink);background:var(--soft)}
+.ontrack{display:flex;align-items:center;gap:12px;position:relative;width:100%;margin:10px 0 2px;padding:10px 14px;border-radius:12px;border:0;font:inherit;font-size:14px;text-align:left;cursor:pointer;color:var(--ink);background:var(--soft)}
 .ontrack b{font-weight:700}
 .ontrack.ok b{color:var(--gt)} .ontrack.mid b,.ontrack.low b{color:#d08a00}
-.ontrack .chev{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--ink2);font-size:18px;line-height:1}
+.ontrack .chev{color:var(--ink2);font-size:20px;line-height:1}
+.ontrack .otl{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.ontrack .otr{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.ontrack .otl b{font-size:16px} .ontrack .otr b{font-size:16px;color:var(--ink)!important}
+.ontrack .ots{font-size:13px;color:var(--ink2)}
 .ontrack b{white-space:nowrap}
 .htiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .htiles>div{background:var(--soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
@@ -1097,7 +1101,7 @@ function draw(){
     const pct=Math.round((col.length-lo2)/col.length*100), when=md.findIndex(v=>v>=S.goal);
     $('gPct').textContent=pct+'%'; GOALPCT=pct;
     { const ot=$('onTrack'), st=pct>=70?['ok','On Track']:pct>=40?['mid','Getting Close']:['low','Not on Track Yet'];
-      ot.className='ontrack '+st[0]; ot.innerHTML='<b>'+st[1]+'</b> for '+big(S.goal)+' by age '+S.goalAge+' · '+pct+'% chance<span class="chev">›</span>'; ot.hidden=false; }
+      ot.className='ontrack '+st[0]; ot.innerHTML='<span class="otl"><b>'+st[1]+'</b><span class="ots">'+big(S.goal)+' by age '+S.goalAge+'</span></span><span class="otr"><b>'+(pct>=99?'99%+':pct+'%')+'</b><span class="ots">chance</span></span><span class="chev">›</span>'; ot.hidden=false; }
     $('gTxt').textContent='chance of '+big(S.goal)+' by '+S.goalAge;
     $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
     const T0=md[0]; $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
