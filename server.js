@@ -281,7 +281,9 @@ function summarizeRecurring(orders) {
     const last30 = mine.filter(o => (Date.now() - Date.parse(o.date)) <= 30 * 864e5).reduce((s, o) => s + o.amount, 0);
     recurring.push({ symbol: sym, amount: Math.round(amount * 100) / 100, freq, perMonth: Math.round(perMonth), lastDate: last, last30: Math.round(last30) });
   }
-  return { recurring, recent: filled.slice(0, 20) };
+  const days30 = new Set(filled.filter(o => (Date.now() - Date.parse(o.date)) <= 30 * 864e5).map(o => o.date)).size;
+  const invested30 = Math.round(filled.filter(o => (Date.now() - Date.parse(o.date)) <= 30 * 864e5).reduce((s, o) => s + o.amount, 0));
+  return { recurring, recent: filled.slice(0, 20), days30, invested30 };
 }
 function applySync(b) {
   const st = readState(), pos = Array.isArray(b.positions) ? b.positions : [];
@@ -291,7 +293,7 @@ function applySync(b) {
   st.avgCost = { VTI: ac('VTI'), VXUS: ac('VXUS') };
   if (b.cash != null && isFinite(+b.cash)) st.cash = Math.max(0, Math.round(+b.cash * 100) / 100);
   const r = summarizeRecurring(Array.isArray(b.orders) ? b.orders : []);
-  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent };
+  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30 };
   st.rhSync = st.rh.syncedAt;
   writeState(st);
   return { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring };
