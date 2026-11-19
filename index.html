@@ -707,6 +707,10 @@ body.vm-on .tabs{visibility:hidden}
 #vmMute .sl{display:none} #vmMute[aria-pressed="true"]{background:#e5484d;color:#fff} #vmMute[aria-pressed="true"] .sl{display:block}
 .vmend{padding:0 30px;background:var(--soft);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.vmorb i{animation:none!important}}
+
+/* orb follows your voice level while listening */
+.vm{--lvl:0}
+.vm[data-s="listening"] .vmorb i:first-child{transform:scale(calc(.94 + var(--lvl)*.22))!important;transition:transform .08s linear}
 </style>
 </head>
 <body>
@@ -1351,9 +1355,10 @@ function aiRender(){
   $('aiLog').innerHTML=AIM.map(m=>'<div class="msg '+m.role+'">'+(m.role==='user'?esc(m.content).replace(/\n/g,'<br>'):md(m.content))+'</div>').join('');
   $('aiEmpty').hidden=AIM.length>0;
 }
-let aiReady=null;
+let aiReady=null, STT_OK=false;
 async function aiShow(){ if(CID&&!AIM.length)await aiLoad(CID); aiRender();
-  if(aiReady===null){try{const r=await fetch('/api/chat/status');const j=await r.json();aiReady=j.ready;}catch(e){aiReady=false;}}
+  if(aiReady===null){try{const r=await fetch('/api/chat/status');const j=await r.json();aiReady=j.ready;STT_OK=!!j.stt;}catch(e){aiReady=false;}}
+  { const m=document.getElementById('aiMic'); if(m&&typeof micAvail==='function')m.hidden=!micAvail(); }
   $('aiNote').textContent=aiReady?'':'The assistant isn\'t connected yet. In Railway, add your Anthropic key as a variable named ANTHROPIC_API_KEY.';
   $('aiSend').disabled=!aiReady;
 }
@@ -1401,15 +1406,54 @@ function startRec(onText,onDone,silenceMs,onBlocked){
 }
 const STANDALONE=!!(window.navigator.standalone||matchMedia('(display-mode: standalone)').matches);
 function micHelp(err){
-  if(STANDALONE)return 'iPhone doesn\'t allow voice input inside home-screen apps. Open robinhood.up.railway.app in Safari to talk, or use the keyboard\'s mic here.';
+  if(STANDALONE&&!STT_OK)return 'Voice in the home-screen app needs speech-to-text set up on the server (OPENAI_API_KEY in Railway). Until then, open the site in Safari to talk.';
+  if(STANDALONE)return 'Microphone is blocked for this app. Open iPhone Settings → Apps → Safari → Microphone → Allow, then reopen the app.';
   if(err==='service-not-allowed')return 'Voice input is off. Turn on Settings → General → Keyboard → Enable Dictation (and Siri), then try again.';
   return 'Microphone is blocked for this site. In Safari tap aA → Website Settings → Microphone → Allow, then try again.';}
+// Record audio and transcribe on the server (iPhone home-screen apps block browser speech recognition).
+let MIC=null, ACTX=null;
+const useServerSTT=()=>STT_OK&&(!SR||STANDALONE)&&!!(navigator.mediaDevices&&window.MediaRecorder);
+function setLevel(v){const el=$('vm'); if(el)el.style.setProperty('--lvl',Math.min(1,v*12).toFixed(3));}
+function releaseMic(){if(MIC){MIC.getTracks().forEach(t=>t.stop());MIC=null;}}
+function startServerRec(onText,onDone,silenceMs,onBlocked){
+  const ctl={ended:false}; let mr=null, src=null, chunks=[], spoke=false, started=Date.now(), lastLoud=0, floor=null, mime='';
+  const cleanup=()=>{try{src&&src.disconnect();}catch(e){} setLevel(0); releaseMic();};
+  const finish=(empty)=>{ if(ctl.ended)return; ctl.ended=true;
+    if(!mr||mr.state==='inactive'){cleanup();onDone('');return;}
+    mr.onstop=async()=>{ cleanup(); if(empty||!spoke){onDone('');return;}
+      onText('…'); const blob=new Blob(chunks,{type:mr.mimeType||mime||'audio/mp4'});
+      try{const r=await fetch('/api/stt',{method:'POST',headers:{'Content-Type':blob.type},body:blob}); const j=await r.json(); onDone(r.ok?(j.text||'').trim():'');}catch(e){onDone('');} };
+    try{mr.stop();}catch(e){cleanup();onDone('');} };
+  ctl.finish=()=>finish(false);
+  ctl.abort=()=>{ if(ctl.ended)return; ctl.ended=true; try{if(mr){mr.onstop=null;mr.stop();}}catch(e){} cleanup(); };
+  (async()=>{
+    try{ MIC=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}); }
+    catch(e){ ctl.ended=true; if(onBlocked)onBlocked('not-allowed'); return; }
+    if(ctl.ended){releaseMic();return;}
+    ACTX=ACTX||new (window.AudioContext||window.webkitAudioContext)(); try{await ACTX.resume();}catch(e){}
+    src=ACTX.createMediaStreamSource(MIC); const an=ACTX.createAnalyser(); an.fftSize=1024; src.connect(an);
+    mime=['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||'';
+    mr=new MediaRecorder(MIC,mime?{mimeType:mime}:{}); mr.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);}; mr.start(250);
+    const buf=new Float32Array(an.fftSize); started=Date.now();
+    const tick=()=>{ if(ctl.ended)return; an.getFloatTimeDomainData(buf); let r=0; for(let k=0;k<buf.length;k++)r+=buf[k]*buf[k]; r=Math.sqrt(r/buf.length); setLevel(r);
+      const t=Date.now()-started; if(t<350){floor=floor==null?r:Math.min(floor,r);}
+      const th=Math.max(0.015,(floor||0)*3);
+      if(r>th){ if(!spoke){spoke=true;onText('');} lastLoud=Date.now(); }
+      if(spoke&&Date.now()-lastLoud>silenceMs)return finish(false);
+      if(!spoke&&t>10000)return finish(true);
+      if(t>60000)return finish(false);
+      requestAnimationFrame(tick); };
+    tick();
+  })();
+  return ctl;
+}
+function listenAny(onText,onDone,silenceMs,onBlocked){return useServerSTT()?startServerRec(onText,onDone,silenceMs,onBlocked):startRec(onText,onDone,silenceMs,onBlocked);}
 // dictation into the message box
-let dict=null; $('aiMic').hidden=!SR;
+let dict=null; $('aiMic').hidden=true; const micAvail=()=>!!SR||useServerSTT();
 $('aiMic').addEventListener('click',()=>{
   if(dict){dict.finish();return;}
   $('aiMic').classList.add('on'); $('aiIn').placeholder='Listening…';
-  dict=startRec(t=>{$('aiIn').value=t;$('aiIn').dispatchEvent(new Event('input'));},()=>{dict=null;$('aiMic').classList.remove('on');$('aiIn').placeholder='Message';$('aiIn').focus();},2500,
+  dict=listenAny(t=>{if(t)$('aiIn').value=t;$('aiIn').dispatchEvent(new Event('input'));},()=>{dict=null;$('aiMic').classList.remove('on');$('aiIn').placeholder='Message';$('aiIn').focus();},2500,
     err=>{dict=null;$('aiMic').classList.remove('on');$('aiIn').placeholder='Message';$('aiNote').textContent=micHelp(err);});
 });
 // voice mode
@@ -1419,15 +1463,16 @@ function vmSet(st,cap){if(!VM)return;VM.st=st;$('vm').dataset.s=st;$('vmStat').t
 function vmOpen(){
   if(!aiReady)return;
   unlockTTS(); VM={gen:0,muted:false,st:'',ctl:null}; $('vm').hidden=false; document.body.classList.add('vm-on');
-  if(!SR){vmSet('paused',micHelp('none'));return;}
+  if(!micAvail()){vmSet('paused',micHelp('none'));return;}
   vmListen();
 }
-function vmClose(){if(!VM)return; VM.gen++; if(VM.ctl)VM.ctl.abort(); if(TTS)TTS.cancel(); VM=null; $('vm').hidden=true; document.body.classList.remove('vm-on'); aiRender(); const l=$('aiLog').lastElementChild; if(l)l.scrollIntoView({block:'end'});}
+function vmClose(){if(!VM)return; VM.gen++; if(VM.ctl)VM.ctl.abort(); releaseMic(); if(TTS)TTS.cancel(); VM=null; $('vm').hidden=true; document.body.classList.remove('vm-on'); aiRender(); const l=$('aiLog').lastElementChild; if(l)l.scrollIntoView({block:'end'});}
 function vmListen(){
   if(!VM)return; if(VM.ctl){VM.ctl.abort();VM.ctl=null;}
-  if(VM.muted||!SR){vmSet('paused',SR?'Tap the mic to talk':null);return;}
+  if(VM.muted||!micAvail()){vmSet('paused',micAvail()?'Tap the mic to talk':null);return;}
   vmSet('listening','');
-  VM.ctl=startRec(t=>{if(VM)$('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening')return; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},1000,
+  VM.tx=false;
+  VM.ctl=listenAny(t=>{if(!VM)return; if(t==='…'){VM.tx=true;vmSet('thinking','');} else $('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening'&&!VM.tx)return; VM.tx=false; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},1000,
     err=>{if(!VM)return;VM.ctl=null;VM.muted=true;$('vmMute').setAttribute('aria-pressed','true');vmSet('paused',micHelp(err));});
 }
 async function vmAsk(q){
