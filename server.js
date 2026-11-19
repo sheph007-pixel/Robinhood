@@ -274,7 +274,10 @@ function summarizeRecurring(orders) {
   const recurring = [];
   for (const sym of [...new Set(filled.map(o => o.symbol))]) {
     const mine = filled.filter(o => o.symbol === sym), last = mine[0].date;
-    const amount = mine.filter(o => o.date === last).reduce((s, o) => s + o.amount, 0);
+    // Typical buy = median of the per-day totals in the last 14 days (one larger or doubled day doesn't skew it).
+    const byDay = {}; mine.filter(o => (Date.parse(last) - Date.parse(o.date)) <= 14 * 864e5).forEach(o => { byDay[o.date] = (byDay[o.date] || 0) + o.amount; });
+    const dayTotals = Object.values(byDay).sort((a, b) => a - b), mid = dayTotals.length >> 1;
+    const amount = dayTotals.length % 2 ? dayTotals[mid] : (dayTotals[mid - 1] + dayTotals[mid]) / 2;
     const days = new Set(mine.filter(o => (Date.parse(last) - Date.parse(o.date)) <= 14 * 864e5).map(o => o.date)).size;
     const freq = days >= 6 ? 'daily' : days >= 2 ? 'weekly' : 'monthly';
     const perMonth = amount * (freq === 'daily' ? 21 : freq === 'weekly' ? 4.33 : 1);
@@ -283,7 +286,11 @@ function summarizeRecurring(orders) {
   }
   const days30 = new Set(filled.filter(o => (Date.now() - Date.parse(o.date)) <= 30 * 864e5).map(o => o.date)).size;
   const invested30 = Math.round(filled.filter(o => (Date.now() - Date.parse(o.date)) <= 30 * 864e5).reduce((s, o) => s + o.amount, 0));
-  return { recurring, recent: filled.slice(0, 20), days30, invested30 };
+  // Streak: consecutive buy days back from the latest one; gaps of up to 4 calendar days (weekends, holidays) don't break it.
+  const dates = [...new Set(filled.map(o => o.date))].sort().reverse(); let streak = 0;
+  if (dates.length && (Date.now() - Date.parse(dates[0])) <= 5 * 864e5) { streak = 1; for (let i = 1; i < dates.length && (Date.parse(dates[i - 1]) - Date.parse(dates[i])) <= 4 * 864e5; i++) streak++; }
+  const streakAll = streak > 0 && streak === dates.length; // reaches the start of the synced history
+  return { recurring, recent: filled.slice(0, 20), days30, invested30, streak, streakAll };
 }
 function applySync(b) {
   const st = readState(), pos = Array.isArray(b.positions) ? b.positions : [];
@@ -293,7 +300,7 @@ function applySync(b) {
   st.avgCost = { VTI: ac('VTI'), VXUS: ac('VXUS') };
   if (b.cash != null && isFinite(+b.cash)) st.cash = Math.max(0, Math.round(+b.cash * 100) / 100);
   const r = summarizeRecurring(Array.isArray(b.orders) ? b.orders : []);
-  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30 };
+  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30, streak: r.streak, streakAll: r.streakAll };
   st.rhSync = st.rh.syncedAt;
   writeState(st);
   return { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring };
