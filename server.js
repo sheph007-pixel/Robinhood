@@ -132,6 +132,7 @@ async function runAiTool(name, input) {
   throw new Error('Unknown tool');
 }
 
+const VOICE_NOTE = '\n\nThis turn is a live spoken conversation (voice mode). Reply the way a person talks: 1 to 4 short sentences, plain words, no markdown, lists, headings, emoji or symbols. Say amounts naturally, e.g. "about 1.3 million dollars". Lead with the answer. Use a tool only when the question needs current data, and never more than one web search.';
 async function handleChat(req, res) {
   const client = aiClient();
   if (!client) return json(res, 503, { error: 'no_key' });
@@ -141,17 +142,17 @@ async function handleChat(req, res) {
   const messages = msgs.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
     .map(m => ({ role: m.role, content: m.content.slice(0, 8000) }));
   if (!messages.length || messages[messages.length - 1].role !== 'user') return json(res, 400, { error: 'bad data' });
-  const context = String(body.context || '').slice(0, 20000);
+  const context = String(body.context || '').slice(0, 20000), voice = !!body.voice;
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
   try {
     for (let round = 0; round < 8; round++) {
       const stream = client.messages.stream({
         model: AI_MODEL,
         max_tokens: 16000,
-        output_config: { effort: 'medium' },
+        output_config: { effort: voice ? 'low' : 'medium' },
         system: [
           { type: 'text', text: AI_SYSTEM, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot (synced from the Robinhood Core account):\n' + context },
+          { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot (synced from the Robinhood Core account):\n' + context + (voice ? VOICE_NOTE : '') },
         ],
         tools: [...AI_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages,
