@@ -530,6 +530,43 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
   #tip .r{display:inline-flex;gap:4px;margin-right:10px}
   .mtip{top:-4px!important;transform:translateY(-100%);font-size:12px}
 }
+@media (max-width:640px){
+  main{scrollbar-width:none;-ms-overflow-style:none}
+  main::-webkit-scrollbar{display:none;width:0;height:0}
+  h2{font-size:19px}
+  .card,.future{padding:16px 14px}
+  .upd{flex-direction:column;gap:4px!important;text-align:center;padding:14px 0 6px!important}
+  .upd .status{flex-wrap:wrap;justify-content:center;line-height:1.4}
+  .upd .status::after{display:none}
+  .chk{display:none}
+  .gns{display:block;margin-top:2px}
+  /* Ask AI: composer pinned just above the tab bar, note at the top */
+  .aipanel{min-height:calc(100dvh - 96px - env(safe-area-inset-bottom))}
+  .aitop{order:0} .ainote{order:1;margin:0 0 8px} .aiempty{order:2} .ailog{order:3} .aiform{order:4}
+  .aiform{bottom:calc(80px + env(safe-area-inset-bottom));box-shadow:0 10px 0 6px var(--page),0 -14px 18px var(--page)}
+}
+#rhs:not(:empty)::before{content:' · '}
+@media (max-width:640px){
+  #rhs{display:block} #rhs:not(:empty)::before{content:''}
+  .aiform{position:fixed!important;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom))!important;z-index:15;margin:0;box-shadow:0 -12px 18px 4px var(--page)}
+  .aipanel{padding-bottom:84px;min-height:0}
+  .aiempty{min-height:calc(100dvh - 300px)}
+}
+.aitop{gap:10px}
+.aitt{flex:1;text-align:center}
+.aihist{position:fixed;inset:0;z-index:40;background:var(--page);display:flex;flex-direction:column;padding:calc(14px + env(safe-area-inset-top)) 16px calc(90px + env(safe-area-inset-bottom));overflow-y:auto;gap:4px}
+.aihist[hidden]{display:none}
+@media (min-width:641px){.aihist{left:auto;width:360px;border-left:1px solid var(--cardline);box-shadow:-10px 0 30px rgba(0,0,0,.35);padding-bottom:20px}}
+.aihh{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px}
+.aihh b{font-size:18px}
+.ainew{display:flex;align-items:center;gap:8px;font:inherit;font-weight:600;font-size:15px;color:var(--ink);background:var(--soft);border:0;border-radius:12px;padding:12px 14px;cursor:pointer;margin-bottom:8px}
+.ainew svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.aihg{font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;padding:12px 4px 4px}
+.aihi{display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:10px;cursor:pointer;font-size:15px}
+.aihi span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aihi:hover,.aihi.on{background:var(--soft)}
+.aidel{font:inherit;font-size:20px;line-height:1;color:var(--ink2);background:none;border:0;cursor:pointer;padding:0 4px;opacity:.7}
+@media (max-width:640px){.aihist,.ailog,textarea{scrollbar-width:none}.aihist::-webkit-scrollbar,textarea::-webkit-scrollbar{display:none}}
 </style>
 </head>
 <body>
@@ -674,7 +711,8 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
   </div>
 
   <div id="tab-ai" class="panel aipanel">
-    <div class="aitop"><span class="aitt">Ask AI</span><button type="button" class="aiicon" id="aiClear" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <div class="aitop"><button type="button" class="aiicon" id="aiHist" aria-label="Chat history" title="Chat history"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button><span class="aitt" id="aiTitle">Ask AI</span><button type="button" class="aiicon" id="aiClear" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <div class="aihist" id="aiHistPanel" hidden><div class="aihh"><b>Chats</b><button type="button" class="aiicon" id="aiHistClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><button type="button" class="ainew" id="aiNew"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New chat</button><div id="aiHistList"></div></div>
     <div id="aiEmpty" class="aiempty"><div class="aimark"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg></div><p>Ask about your portfolio, your goal or the markets.</p></div>
     <div id="aiLog" class="ailog" aria-live="polite"></div>
     <div id="aiSug" hidden></div>
@@ -1067,8 +1105,20 @@ function mchart(el,sym,h){
 document.querySelectorAll('#mRange button').forEach(b=>b.addEventListener('click',()=>{S.mr=b.dataset.r;save();markets();}));
 window.addEventListener('resize',()=>{if(S.tab==='mkt')markets();});
 // ---------- AI assistant ----------
-let AIM=[]; try{AIM=JSON.parse(localStorage.getItem('portfolio-chat')||'[]');}catch(e){}
-const aiSave=()=>{try{localStorage.setItem('portfolio-chat',JSON.stringify(AIM.slice(-40)));}catch(e){}};
+let AIM=[], CID=null;
+const newId=()=>Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
+try{CID=localStorage.getItem('portfolio-chat-id');}catch(e){}
+const aiSave=async()=>{ if(!AIM.length)return; if(!CID)CID=newId(); try{localStorage.setItem('portfolio-chat-id',CID);}catch(e){}
+  try{await fetch('/api/chats/'+CID,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:AIM})});}catch(e){} };
+async function aiLoad(id){ try{const r=await fetch('/api/chats/'+id,{cache:'no-store'}); if(!r.ok)throw 0; const c=await r.json(); AIM=c.messages||[]; CID=id; try{localStorage.setItem('portfolio-chat-id',CID);}catch(e){} }catch(e){AIM=[];CID=null;} aiRender(); }
+function aiNewChat(){AIM=[];CID=null;try{localStorage.removeItem('portfolio-chat-id');}catch(e){} aiRender(); $('aiHistPanel').hidden=true; $('aiIn').focus();}
+async function aiHistory(){ $('aiHistPanel').hidden=false; $('aiHistList').innerHTML='<p class="muted small">Loading…</p>';
+  let list=[]; try{list=(await (await fetch('/api/chats',{cache:'no-store'})).json()).chats||[];}catch(e){}
+  const day=v=>{const d=new Date(v),n=new Date(),y=new Date(n-864e5); return d.toDateString()===n.toDateString()?'Today':d.toDateString()===y.toDateString()?'Yesterday':d.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
+  let last=''; $('aiHistList').innerHTML=list.length?list.map(c=>{const g=day(c.updated),h=g!==last?'<div class="aihg">'+g+'</div>':'';last=g;
+    return h+'<div class="aihi'+(c.id===CID?' on':'')+'" data-id="'+c.id+'"><span>'+esc(c.title)+'</span><button type="button" class="aidel" data-del="'+c.id+'" aria-label="Delete chat">×</button></div>';}).join(''):'<p class="muted small">No saved chats yet.</p>'; }
+// one-time: move an old on-device chat to the server
+(async()=>{try{const old=JSON.parse(localStorage.getItem('portfolio-chat')||'[]'); if(old.length&&!CID){AIM=old.filter(m=>m.content);await aiSave();} localStorage.removeItem('portfolio-chat');}catch(e){}})();
 let GOALPCT=null;
 function aiContext(){
   const h=holdings(), w=weights(), T=h.total, st=h.vti+h.vxus, f=v=>Math.round(v), lines=[];
@@ -1105,7 +1155,7 @@ function aiRender(){
   $('aiEmpty').hidden=AIM.length>0;
 }
 let aiReady=null;
-async function aiShow(){aiRender();
+async function aiShow(){ if(CID&&!AIM.length)await aiLoad(CID); aiRender();
   if(aiReady===null){try{const r=await fetch('/api/chat/status');const j=await r.json();aiReady=j.ready;}catch(e){aiReady=false;}}
   $('aiNote').textContent=aiReady?'':'The assistant isn\'t connected yet. In Railway, add your Anthropic key as a variable named ANTHROPIC_API_KEY.';
   $('aiSend').disabled=!aiReady;
@@ -1130,7 +1180,13 @@ async function aiAsk(text){
 $('aiForm').addEventListener('submit',e=>{e.preventDefault();aiAsk($('aiIn').value);});
 $('aiIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!('ontouchstart' in window)){e.preventDefault();aiAsk($('aiIn').value);}});
 $('aiIn').addEventListener('input',function(){$('aiForm').classList.toggle('has',!!this.value.trim());this.style.height='';this.style.height=Math.min(140,this.scrollHeight)+'px';});
-$('aiClear').addEventListener('click',()=>{AIM=[];aiSave();aiRender();});
+$('aiClear').addEventListener('click',aiNewChat);
+$('aiNew').addEventListener('click',aiNewChat);
+$('aiHist').addEventListener('click',aiHistory);
+$('aiHistClose').addEventListener('click',()=>$('aiHistPanel').hidden=true);
+$('aiHistList').addEventListener('click',async e=>{const del=e.target.closest('[data-del]');
+  if(del){e.stopPropagation(); if(!confirm('Delete this chat?'))return; await fetch('/api/chats/'+del.dataset.del,{method:'DELETE'}); if(del.dataset.del===CID){AIM=[];CID=null;aiRender();} aiHistory(); return;}
+  const it=e.target.closest('[data-id]'); if(it){await aiLoad(it.dataset.id); $('aiHistPanel').hidden=true;}});
 function dcaRender(){
   const R=REC(), rh=S.rh;
   if(!rh||!R.list.length){$('dcaBody').innerHTML='<p class="muted">No recurring investments synced yet. Ask Claude to sync Robinhood.</p>';$('dcaRecent').innerHTML='';return;}
@@ -1157,7 +1213,7 @@ setInterval(maybeRefresh,60000);
 // ---------- saved on the server, shared across devices ----------
 let lastSJ=null;
 function syncNote(){const el=$('rhs'); if(!el)return; if(!S.rhSync){el.textContent='';return;}
-  const d=new Date(S.rhSync); el.textContent=' · Synced from Robinhood '+d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
+  const d=new Date(S.rhSync); el.textContent='Synced from Robinhood '+d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
 async function pull(){
   let r; try{r=await fetch('/api/state',{headers:{'X-Pin':PINV},cache:'no-store'});}catch(e){$('sync').textContent='Offline, saved on this device';return;}
   if(r.status===401||r.status===429){const j=await r.json().catch(()=>({}));$('lock').hidden=false;$('pinErr').textContent=PINV?(j.error||'Wrong PIN'):'';$('pin').value='';$('pin').focus();return;}
