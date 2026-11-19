@@ -1125,6 +1125,7 @@ function aiContext(){
   lines.push('Age now: '+ageNow().toFixed(1)+' (birthday '+S.dob+')');
   ['VTI','VXUS'].forEach(k=>{const q=Q[k]||{}, sh=k==='VTI'?S.shVTI:S.shVXUS;
     lines.push(k+': '+sh+' shares @ $'+(price(k)||0).toFixed(2)+' = $'+f(sh*price(k))+(q.high52?' | 52-week high $'+q.high52+' ('+((1-q.price/q.high52)*100).toFixed(1)+'% below)':'')+(q.changePct!=null?' | today '+q.changePct.toFixed(2)+'%':''));});
+  if(S.avgCost)['VTI','VXUS'].forEach(k=>{const c=S.avgCost[k], sh=k==='VTI'?S.shVTI:S.shVXUS; if(c&&price(k))lines.push(k+' average cost $'+c+' → cost basis $'+f(c*sh)+', unrealized '+(price(k)>=c?'gain':'loss')+' $'+f(Math.abs((price(k)-c)*sh))+' ('+((price(k)/c-1)*100).toFixed(1)+'%)');});
   lines.push('Cash: $'+f(h.cash)+' at '+S.apy+'% APY');
   lines.push('Total: $'+f(T));
   lines.push('Actual split: US/Intl '+(st?(h.vti/st*100).toFixed(1):0)+'/'+(st?(h.vxus/st*100).toFixed(1):0)+'; Stocks/Cash '+(T?(st/T*100).toFixed(1):0)+'/'+(T?(h.cash/T*100).toFixed(1):0));
@@ -1170,8 +1171,9 @@ async function aiAsk(text){
     if(!r.ok){a.content=r.status===503?'The assistant is not set up yet (missing API key on the server).':'Sorry, something went wrong. Please try again.';}
     else{const rd=r.body.getReader(), dec=new TextDecoder(); let searching=false;
       for(;;){const {value,done}=await rd.read(); if(done)break; let chunk=dec.decode(value,{stream:true});
-        if(chunk.includes('\u0000S')){searching=true;chunk=chunk.split('\u0000S').join('');}
-        a.content+=chunk; el.innerHTML=a.content?md(a.content):'<span class="typing">'+(searching?'Searching the web…':'Thinking…')+'</span>';}
+        if(chunk.includes('\u0000S')){searching='Searching the web…';chunk=chunk.split('\u0000S').join('');}
+        if(chunk.includes('\u0000Q')){searching='Checking market data…';chunk=chunk.split('\u0000Q').join('');}
+        a.content+=chunk; el.innerHTML=a.content?md(a.content):'<span class="typing">'+(searching||'Thinking…')+'</span>';}
     }
   }catch(e){a.content=a.content||'Connection lost. Please try again.';}
   if(!a.content)a.content='No answer came back. Please try again.';
