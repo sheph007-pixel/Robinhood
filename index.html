@@ -298,6 +298,7 @@ td.exp{color:var(--gt)}
 .sbar div{border-radius:4px;min-width:0}
 .sbar i{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:1px;transform:translateX(-1px)}
 .ok{color:var(--gt);font-weight:600} .off{color:var(--ink);font-weight:600}
+html{scrollbar-gutter:stable;overflow-y:scroll}
 </style>
 </head>
 <body>
@@ -688,8 +689,8 @@ window.addEventListener('resize',draw);
 $('refresh').addEventListener('click',async function(){this.classList.add('spin');this.disabled=true;
   await Promise.all([loadQuotes(),synced?pull():null]);this.classList.remove('spin');this.disabled=false;});
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
-function showTab(t){S.tab=t;save();document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; if(t==='home')draw();}
+function showTab(t){const changed=S.tab!==t;S.tab=t;save();document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 showTab(['money','hold'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes(); setInterval(loadQuotes,60000);
