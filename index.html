@@ -1197,6 +1197,7 @@ async function aiAsk(text){
       for(;;){const {value,done}=await rd.read(); if(done)break; let chunk=dec.decode(value,{stream:true});
         if(chunk.includes('\u0000S')){searching='Searching the web…';chunk=chunk.split('\u0000S').join('');}
         if(chunk.includes('\u0000Q')){searching='Checking market data…';chunk=chunk.split('\u0000Q').join('');}
+        if(chunk.includes('\u0000R')){searching='Checking Robinhood…';chunk=chunk.split('\u0000R').join('');}
         a.content+=chunk; el.innerHTML=a.content?md(a.content):'<span class="typing">'+(searching||'Thinking…')+'</span>';}
     }
   }catch(e){a.content=a.content||'Connection lost. Please try again.';}
