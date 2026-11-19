@@ -120,11 +120,22 @@ td.exp{font-weight:700}
 details{font-size:14px;color:var(--ink2)}
 details summary{cursor:pointer;font-weight:600;color:var(--ink)}
 details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;gap:6px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{font:inherit;font-size:15px;font-weight:600;color:var(--ink2);background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;margin-bottom:-1px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.panel{display:flex;flex-direction:column;gap:18px}
+.panel[hidden]{display:none}
 </style>
 </head>
 <body>
 <main>
 
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="home">Home</button>
+    <button role="tab" data-tab="money">New money</button>
+  </nav>
+
+  <div id="tab-home" class="panel">
   <!-- 1. Balance -->
   <section class="card hero" aria-live="polite">
     <div class="head">
@@ -158,6 +169,29 @@ details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;
     </div>
   </section>
 
+  <!-- 5. Projection -->
+  <section class="card">
+    <div class="head"><h2>Projected value</h2>
+      <div class="seg" id="hz" role="group" aria-label="Years ahead"><button data-y="5">5 yrs</button><button data-y="10">10 yrs</button><button data-y="15">15 yrs</button><button data-y="20">20 yrs</button></div></div>
+    <div>
+      <div class="big num" id="pMid"></div>
+      <div class="muted small num" id="pRange"></div>
+    </div>
+    <div class="legend"><span><i style="background:var(--s1);height:3px;vertical-align:middle"></i>Expected (median)</span><span><i style="background:var(--s1);opacity:.25"></i>Poor to strong markets (80% of outcomes)</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0;border-radius:0;vertical-align:middle"></i>What you put in</span></div>
+    <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value with a range from poor to strong markets"></svg><div id="tip"></div></div>
+    <div class="grid2">
+      <div class="ctl"><div class="row"><label for="monthly">Adding each month</label><input type="text" inputmode="decimal" id="monthly"></div>
+        <small class="muted">Invested at your target mix.</small></div>
+      <div class="ctl"><div class="row"><label>Market outlook</label></div>
+        <div class="seg" id="outlook" role="group" aria-label="Market outlook"><button data-o="low">Cautious</button><button data-o="mid">Moderate</button><button data-o="hist">Historical</button></div>
+        <small class="muted" id="outNote"></small></div>
+    </div>
+    <label class="check"><input type="checkbox" id="real"> Show in today's dollars (2.5% inflation)</label>
+    <div class="scroll"><table id="tbl"></table></div>
+  </section>
+  </div>
+
+  <div id="tab-money" class="panel">
   <!-- 3. Target mix -->
   <section class="card">
     <div class="head"><h2>Your target mix</h2><span class="muted small" id="drift"></span></div>
@@ -182,27 +216,7 @@ details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;
     <div class="plan num" id="plan"></div>
     <p class="callout" id="planNote"></p>
   </section>
-
-  <!-- 5. Projection -->
-  <section class="card">
-    <div class="head"><h2>Projected value</h2>
-      <div class="seg" id="hz" role="group" aria-label="Years ahead"><button data-y="5">5 yrs</button><button data-y="10">10 yrs</button><button data-y="15">15 yrs</button><button data-y="20">20 yrs</button></div></div>
-    <div>
-      <div class="big num" id="pMid"></div>
-      <div class="muted small num" id="pRange"></div>
-    </div>
-    <div class="legend"><span><i style="background:var(--s1);height:3px;vertical-align:middle"></i>Expected (median)</span><span><i style="background:var(--s1);opacity:.25"></i>Poor to strong markets (80% of outcomes)</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0;border-radius:0;vertical-align:middle"></i>What you put in</span></div>
-    <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value with a range from poor to strong markets"></svg><div id="tip"></div></div>
-    <div class="grid2">
-      <div class="ctl"><div class="row"><label for="monthly">Adding each month</label><input type="text" inputmode="decimal" id="monthly"></div>
-        <small class="muted">Invested at your target mix.</small></div>
-      <div class="ctl"><div class="row"><label>Market outlook</label></div>
-        <div class="seg" id="outlook" role="group" aria-label="Market outlook"><button data-o="low">Cautious</button><button data-o="mid">Moderate</button><button data-o="hist">Historical</button></div>
-        <small class="muted" id="outNote"></small></div>
-    </div>
-    <label class="check"><input type="checkbox" id="real"> Show in today's dollars (2.5% inflation)</label>
-    <div class="scroll"><table id="tbl"></table></div>
-  </section>
+  </div>
 
 </main>
 <script>
@@ -218,9 +232,10 @@ const OUT={ low:{us:.05,intl:.055,label:'US 5% · International 5.5% a year'},
             hist:{us:.10,intl:.08,label:'US 10% · International 8% a year'} };
 const VOL={us:.16,intl:.17}, RHO=.85, FEE={us:.0003,intl:.0005}, INFL=.025;
 
-const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:60,monthly:0,outlook:'mid',real:false,hz:10,px:{}};
+const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,hz:10,px:{},tab:'home',v:2};
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
+if(S.v!==2){S.us=70;S.v=2;}
 const save=()=>{try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}};
 
 let Q={}, live=false;   // quotes
@@ -312,7 +327,8 @@ function render(reproject){
   $('barNow').setAttribute('aria-label','Now: VTI '+pc(now.vti)+', VXUS '+pc(now.vxus)+', cash '+pc(now.cash));
   $('barTgt').setAttribute('aria-label','Target: VTI '+pc(w.vti)+', VXUS '+pc(w.vxus)+', cash '+pc(w.cash));
   const drift=Math.max(Math.abs(now.vti-w.vti),Math.abs(now.vxus-w.vxus),Math.abs(now.cash-w.cash));
-  $('drift').textContent=T?('Now '+pc(now.vti)+' VTI · '+pc(now.vxus)+' VXUS · '+pc(now.cash)+' cash'+(drift<.02?' · On target':'')):'';
+  const ns=T?Math.round((now.vti+now.vxus)*100):0, nu=(h.vti+h.vxus)?Math.round(h.vti/(h.vti+h.vxus)*100):0;
+  $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On target':'')):'';
 
   // deposit plan
   const D=parse($('dep').value), b=planDeposit(h,D);
@@ -398,6 +414,10 @@ async function loadQuotes(){
 }
 window.addEventListener('resize',draw);
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
+function showTab(t){S.tab=t;save();document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  $('tab-home').hidden=t!=='home'; $('tab-money').hidden=t!=='money'; if(t==='home')draw();}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+showTab(S.tab==='money'?'money':'home');
 render(false); draw(); loadQuotes(); setInterval(loadQuotes,60000);
 })();
 </script>
