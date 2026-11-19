@@ -181,7 +181,8 @@ input[type=text]{font-size:16px}
 .lockbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 20px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
 .lockbox h2{text-align:center;margin:0 0 4px}
 #pinErr{text-align:center;margin:0}
-#pinErr:empty{display:none}
+#pinErr:empty,#rhErr:empty{display:none}
+.lockbox .small{margin:0}
 .lockbox input{max-width:none;text-align:center;font-size:24px;letter-spacing:.3em;padding:12px}
 tr.sel td{background:var(--soft)}
 input[type=date]{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
@@ -589,6 +590,18 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
     <button class="btn" type="submit">Unlock</button>
   </form>
 </div>
+<div id="rhSheet" class="lock" hidden>
+  <form id="rhForm" class="lockbox">
+    <h2>Connect Robinhood</h2>
+    <p class="small"><b>1.</b> Open Robinhood, log in and tap Allow.</p>
+    <a class="btn" href="/oauth/connect" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Open Robinhood</a>
+    <p class="small"><b>2.</b> Robinhood then opens a page that won't load (it starts with localhost). Copy that whole address and paste it here.</p>
+    <input type="text" id="rhUrl" placeholder="http://localhost:8765/callback?code=…" autocomplete="off" autocapitalize="off" spellcheck="false" style="font-size:15px;letter-spacing:0;text-align:left">
+    <p class="small" id="rhErr" style="color:var(--down)"></p>
+    <button class="btn" type="submit" id="rhGo">Connect</button>
+    <a href="#" id="rhCancel" class="rlink" style="text-align:center">Cancel</a>
+  </form>
+</div>
 <div hidden><input type="text" id="monthly"><input type="checkbox" id="real"><input type="date" id="dob"><table id="tbl"></table></div>
 <div id="ptr"><span id="ptrT">Pull to refresh</span></div>
 <main>
@@ -756,7 +769,7 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
   </div>
 
   <div class="upd">
-    <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="rhs"></span><a id="rhConnect" class="rlink" href="/oauth/connect" hidden>Connect Robinhood</a><span id="sync"></span></span>
+    <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span><span id="rhs"></span><a id="rhConnect" class="rlink" href="#" hidden>Connect Robinhood</a><span id="sync"></span></span>
     <button type="button" class="rlink" id="refresh">Refresh</button>
   </div>
 </main>
@@ -1241,6 +1254,13 @@ async function pull(){
   if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';migrate();fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
   synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent=''; syncNote();
 }
+$('rhConnect').addEventListener('click',e=>{e.preventDefault();$('rhErr').textContent='';$('rhUrl').value='';$('rhSheet').hidden=false;});
+$('rhCancel').addEventListener('click',e=>{e.preventDefault();$('rhSheet').hidden=true;});
+$('rhForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('rhGo');b.disabled=true;b.textContent='Connecting…';$('rhErr').textContent='';
+  try{const r=await fetch('/api/rh/finish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:$('rhUrl').value})});
+    const j=await r.json().catch(()=>({}));if(r.ok){location.reload();return;}$('rhErr').textContent=j.error||'Could not connect';}
+  catch(err){$('rhErr').textContent='Could not connect';}
+  b.disabled=false;b.textContent='Connect';});
 $('pinForm').addEventListener('submit',async e=>{e.preventDefault();
   const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:$('pin').value.trim()})});
   if(r.ok){location.reload();return;} const j=await r.json().catch(()=>({}));$('pinErr').textContent=j.error||'Wrong PIN';$('pin').value='';$('pin').focus();});
