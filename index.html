@@ -1355,9 +1355,9 @@ function aiRender(){
   $('aiLog').innerHTML=AIM.map(m=>'<div class="msg '+m.role+'">'+(m.role==='user'?esc(m.content).replace(/\n/g,'<br>'):md(m.content))+'</div>').join('');
   $('aiEmpty').hidden=AIM.length>0;
 }
-let aiReady=null, STT_OK=false;
+let aiReady=null, STT_OK=false, TTS_OK=false;
 async function aiShow(){ if(CID&&!AIM.length)await aiLoad(CID); aiRender();
-  if(aiReady===null){try{const r=await fetch('/api/chat/status');const j=await r.json();aiReady=j.ready;STT_OK=!!j.stt;}catch(e){aiReady=false;}}
+  if(aiReady===null){try{const r=await fetch('/api/chat/status');const j=await r.json();aiReady=j.ready;STT_OK=!!j.stt;TTS_OK=!!j.tts;}catch(e){aiReady=false;}}
   { const m=document.getElementById('aiMic'); if(m&&typeof micAvail==='function')m.hidden=!micAvail(); }
   $('aiNote').textContent=aiReady?'':'The assistant isn\'t connected yet. In Railway, add your Anthropic key as a variable named ANTHROPIC_API_KEY.';
   $('aiSend').disabled=!aiReady;
@@ -1389,6 +1389,14 @@ async function aiAsk(text,opts={}){
 // ---------- voice: dictation (mic) and a full-screen voice mode (browser speech, no extra cost) ----------
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition, TTS=window.speechSynthesis;
 function unlockTTS(){if(!TTS)return;try{TTS.cancel();const u=new SpeechSynthesisUtterance(' ');u.volume=0;TTS.speak(u);}catch(e){}}
+let VA=null; // one audio element, unlocked by a tap, reused for every reply (iPhone rule)
+function silentWav(){const n=800,b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
+  w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,16000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+  return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));}
+function unlockAudio(){ if(!VA){VA=new Audio();VA.setAttribute('playsinline','');VA.preload='auto';} try{VA.src=silentWav();const p=VA.play();if(p)p.catch(()=>{});}catch(e){} unlockTTS(); }
+function stopSpeech(){ if(TTS)TTS.cancel(); if(VA){try{VA.onended=VA.onerror=null;VA.pause();}catch(e){}} }
+function ttsUrl(t){ return fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})}).then(r=>r.ok?r.blob():null).then(b=>b?URL.createObjectURL(b):null).catch(()=>null); }
+function sayBrowser(t,v,done){ if(!TTS){done();return;} const u=new SpeechSynthesisUtterance(t); if(v)u.voice=v; u.rate=1.06; u.onend=u.onerror=()=>done(); TTS.speak(u); }
 let VOICEV=null; function pickVoice(){if(VOICEV)return VOICEV; const vs=(TTS?TTS.getVoices():[]).filter(v=>/^en(-|_)US/i.test(v.lang));
   return VOICEV=vs.find(v=>/premium/i.test(v.name))||vs.find(v=>/enhanced|natural|neural/i.test(v.name))||vs.find(v=>/samantha|ava|allison|google us/i.test(v.name))||vs[0]||null;}
 if(TTS)TTS.onvoiceschanged=()=>{VOICEV=null;};
@@ -1462,11 +1470,11 @@ const VMS={listening:'Listening',thinking:'Thinking',speaking:'Speaking',paused:
 function vmSet(st,cap){if(!VM)return;VM.st=st;$('vm').dataset.s=st;$('vmStat').textContent=VMS[st]||st;if(cap!=null)$('vmCap').textContent=cap;}
 function vmOpen(){
   if(!aiReady)return;
-  unlockTTS(); VM={gen:0,muted:false,st:'',ctl:null}; $('vm').hidden=false; document.body.classList.add('vm-on');
+  unlockAudio(); VM={gen:0,muted:false,st:'',ctl:null}; $('vm').hidden=false; document.body.classList.add('vm-on');
   if(!micAvail()){vmSet('paused',micHelp('none'));return;}
   vmListen();
 }
-function vmClose(){if(!VM)return; VM.gen++; if(VM.ctl)VM.ctl.abort(); releaseMic(); if(TTS)TTS.cancel(); VM=null; $('vm').hidden=true; document.body.classList.remove('vm-on'); aiRender(); const l=$('aiLog').lastElementChild; if(l)l.scrollIntoView({block:'end'});}
+function vmClose(){if(!VM)return; VM.gen++; if(VM.ctl)VM.ctl.abort(); releaseMic(); stopSpeech(); VM=null; $('vm').hidden=true; document.body.classList.remove('vm-on'); aiRender(); const l=$('aiLog').lastElementChild; if(l)l.scrollIntoView({block:'end'});}
 function vmListen(){
   if(!VM)return; if(VM.ctl){VM.ctl.abort();VM.ctl=null;}
   if(VM.muted||!micAvail()){vmSet('paused',micAvail()?'Tap the mic to talk':null);return;}
@@ -1478,13 +1486,17 @@ function vmListen(){
 async function vmAsk(q){
   const g=++VM.gen, v=pickVoice(), queue=[]; let used=0, busy=false, finished=false;
   vmSet('thinking','');
-  const pump=()=>{ if(!VM||VM.gen!==g||busy)return; const s=queue.shift();
-    if(s==null){ if(finished)vmListen(); return; }
-    busy=true; vmSet('speaking',s); const u=new SpeechSynthesisUtterance(s); if(v)u.voice=v; u.rate=1.06;
-    u.onend=u.onerror=()=>{busy=false;pump();}; TTS.speak(u); };
+  const pump=()=>{ if(!VM||VM.gen!==g||busy)return; const it=queue.shift();
+    if(it==null){ if(finished)vmListen(); return; }
+    busy=true; const next=()=>{busy=false;pump();};
+    if(!it.url){ vmSet('speaking',it.text); sayBrowser(it.text,v,next); return; }
+    it.url.then(u=>{ if(!VM||VM.gen!==g)return;
+      if(!u){ vmSet('speaking',it.text); sayBrowser(it.text,v,next); return; }
+      vmSet('speaking',it.text); VA.onended=()=>{URL.revokeObjectURL(u);next();}; VA.onerror=()=>{URL.revokeObjectURL(u);sayBrowser(it.text,v,next);};
+      VA.src=u; const p=VA.play(); if(p)p.catch(()=>{VA.onended=VA.onerror=null;sayBrowser(it.text,v,next);}); }); };
   const take=(full,final)=>{ let rest=full.slice(used), m;
-    while((m=/[.!?]["')\]]?\s+/.exec(rest))){const seg=rest.slice(0,m.index+m[0].length); used+=seg.length; rest=rest.slice(seg.length); const t=plain(seg); if(t)queue.push(t);}
-    if(final&&rest.trim()){used=full.length;const t=plain(rest);if(t)queue.push(t);} pump(); };
+    while((m=/[.!?]["')\]]?\s+/.exec(rest))){const seg=rest.slice(0,m.index+m[0].length); used+=seg.length; rest=rest.slice(seg.length); const t=plain(seg); if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});}
+    if(final&&rest.trim()){used=full.length;const t=plain(rest);if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});} pump(); };
   const ans=await aiAsk(q,{voice:true,onChunk:(full,status)=>{ if(!VM||VM.gen!==g)return; if(!full&&status)vmSet('thinking',status); take(full,false); }});
   if(!VM||VM.gen!==g)return;
   finished=true;
@@ -1494,7 +1506,7 @@ async function vmAsk(q){
 $('aiVm').addEventListener('click',vmOpen);
 $('vmX').addEventListener('click',vmClose); $('vmEnd').addEventListener('click',vmClose);
 $('vmOrb').addEventListener('click',()=>{ if(!VM)return;
-  if(VM.st==='speaking'||VM.st==='thinking'){VM.gen++; if(TTS)TTS.cancel(); vmListen();}   // interrupt
+  if(VM.st==='speaking'||VM.st==='thinking'){VM.gen++; stopSpeech(); vmListen();}   // interrupt
   else if(VM.st==='listening'&&VM.ctl)VM.ctl.finish();                                      // done talking
   else if(VM.st==='paused'){VM.muted=false;$('vmMute').setAttribute('aria-pressed','false');vmListen();}});
 $('vmMute').addEventListener('click',()=>{ if(!VM)return; VM.muted=!VM.muted; $('vmMute').setAttribute('aria-pressed',String(VM.muted));
