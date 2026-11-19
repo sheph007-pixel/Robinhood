@@ -370,11 +370,18 @@ setInterval(() => {
   if (['Sat', 'Sun'].includes(g('weekday')) || min < 16 * 60 + 20 || lastAutoSync === day) return;
   lastAutoSync = day; serverSync().catch(e => console.error('Robinhood auto sync failed', e.message));
 }, 60e3);
+// Version = 1.<number of the PR that was deployed>, from Railway's build metadata.
+const VERSION = (() => {
+  const msg = process.env.RAILWAY_GIT_COMMIT_MESSAGE || '', sha = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7);
+  const pr = (msg.split('\n')[0].match(/\(#(\d+)\)/) || [])[1];
+  return { version: pr ? 'v1.' + pr : (sha ? 'dev' : 'local'), sha };
+})();
 const RH_LOCAL_REDIRECT = 'http://localhost:8765/callback';
 const baseUrl = req => (req.headers['x-forwarded-proto'] || 'https') + '://' + req.headers.host;
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (url.pathname === '/api/version') return json(res, 200, VERSION);
   if (url.pathname === '/api/login' && req.method === 'POST') return handleLogin(req, res);
   if (url.pathname === '/api/me') return authed(req) ? json(res, 200, { ok: true }) : json(res, 401, { error: 'login' });
   const open = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/health' || STATIC[url.pathname];
