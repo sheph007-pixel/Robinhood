@@ -523,7 +523,7 @@ bindNum('monthly','monthly',v=>usd(v),true);
 bindNum('dcaVTI','dcaVTI',v=>usd(v),true); bindNum('dcaVXUS','dcaVXUS',v=>usd(v),true); bindNum('lump','lump',v=>usd(v),true);
 let tm; ['eq','us'].forEach(id=>$(id).addEventListener('input',function(){S[id]=+this.value;save();render(false);clearTimeout(tm);tm=setTimeout(()=>render(true),150);}));
 $('dep').addEventListener('input',()=>render(false));
-$('dep').addEventListener('change',function(){const v=parse(this.value);this.value=v?usd(v,true):'';});
+$('dep').addEventListener('change',function(){const v=Math.round(parse(this.value));this.value=v?usd(v):'';});
 $('real').addEventListener('change',function(){S.real=this.checked;save();draw();});
 $('gAmt').addEventListener('change',function(){S.goal=Math.max(0,parse(this.value));this.value=usd(S.goal);save();draw();});
 $('gAge').addEventListener('change',function(){const a=Math.round(parse(this.value));S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a||60));this.value=S.goalAge;save();draw();});
@@ -538,6 +538,7 @@ function holdings(){
 function weights(){const e=S.eq/100,u=S.us/100;return {vti:e*u,vxus:e*(1-u),cash:1-e};}
 
 // Put new money where it is most underweight, never selling. Ends exactly on target when the deposit is big enough.
+function roundPlan(b,D){if(!(D>0))return b;const v=Math.round(b.vti),x=Math.round(b.vxus);return {vti:v,vxus:x,cash:Math.round(D)-v-x};}
 function planDeposit(h,D){
   const w=weights(), keys=['vti','vxus','cash'], buy={vti:0,vxus:0,cash:0};
   if(D<=0) return buy;
@@ -629,10 +630,10 @@ function render(reproject){
   $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On target':'')):'';
 
   // deposit plan
-  const D=parse($('dep').value), b=planDeposit(h,D);
-  const sh=k=>price(k)?' <span class="small muted">≈ '+(b[k.toLowerCase()]/price(k)).toFixed(3)+' shares</span>':'';
+  const D=Math.round(parse($('dep').value)), b=roundPlan(planDeposit(h,D),D);
+  const sh=k=>'';
   $('plan').innerHTML=[['Buy VTI','vti','--s1','VTI'],['Buy VXUS','vxus','--s2','VXUS'],['Add to cash','cash','--s3','']].map(p=>
-    '<div style="border-top-color:var('+p[2]+')"><span class="k">'+p[0]+'</span><span class="v">'+usd(b[p[1]],true)+'</span>'+(p[3]?sh(p[3]):'<span class="small muted">at '+S.apy.toFixed(2)+'% APY</span>')+'</div>').join('');
+    '<div style="border-top-color:var('+p[2]+')"><span class="k">'+p[0]+'</span><span class="v">'+usd(b[p[1]])+'</span>'+(p[3]?sh(p[3]):'<span class="small muted">at '+S.apy.toFixed(2)+'% APY</span>')+'</div>').join('');
   $('apply').disabled=!(D>0);
   const yrs65=Math.max(0,monthsTo(S.age)/12), o=OUT[S.outlook], g=w.vti*(o.us-FEE.us)+w.vxus*(o.intl-FEE.intl)+w.cash*S.apy/100;
   const fut=D>0?' <br>This '+usd(D)+' could grow to about <b>'+big(D*Math.pow(1+g,yrs65))+'</b> by age '+S.age+'.':'';
@@ -646,7 +647,7 @@ function render(reproject){
 
 $('apply').addEventListener('click',()=>{
   const h=holdings(), D=parse($('dep').value); if(!(D>0))return;
-  const b=planDeposit(h,D);
+  const b=roundPlan(planDeposit(h,Math.round(D)),Math.round(D));
   if(price('VTI'))S.shVTI=+(S.shVTI+b.vti/price('VTI')).toFixed(6);
   if(price('VXUS'))S.shVXUS=+(S.shVXUS+b.vxus/price('VXUS')).toFixed(6);
   S.cash=+(S.cash+b.cash).toFixed(2);
