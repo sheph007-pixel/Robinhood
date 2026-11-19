@@ -132,11 +132,6 @@ details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;
       <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span></span>
     </div>
     <div class="total num" id="total">$0</div>
-    <div class="split3 num">
-      <div><span class="k">Invested in stocks</span><span class="v" id="invested"></span></div>
-      <div><span class="k">Cash</span><span class="v" id="cashTot"></span></div>
-      <div><span class="k">Cash interest per year</span><span class="v" id="interest"></span></div>
-    </div>
   </section>
 
   <!-- 2. Holdings -->
@@ -311,8 +306,6 @@ function render(reproject){
   const h=holdings(), w=weights(), T=h.total;
   $('total').textContent=usd(T,true);
   const stocks=h.vti+h.vxus;
-  $('invested').textContent=usd(stocks,true); $('cashTot').textContent=usd(h.cash,true);
-  $('interest').textContent=usd(h.cash*S.apy/100)+' at '+S.apy.toFixed(2)+'%';
 
   ['VTI','VXUS'].forEach(k=>{
     const el=$('px'+k), q=Q[k];
