@@ -393,7 +393,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
     </div>
     <div class="wres num" id="wres"></div>
   </section>
-  <div hidden><span id="mileT"></span><span id="mileR"></span><div id="mileB"></div><div id="saleHome"></div></div>
+  <div hidden><span id="mileT"></span><span id="mileR"></span><div id="mileB"></div><div id="saleHome"></div><div id="saleMoney"></div></div>
 
 
   <!-- Goal -->
@@ -465,7 +465,6 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
   </div>
 
   <div id="tab-money" class="panel">
-  <div class="sale" id="saleMoney" hidden></div>
   <!-- 4. New money -->
   <section class="card">
     <div class="head"><h2>Got new money?</h2><span class="muted small">Where to put it so you move toward your target, without selling anything.</span></div>
@@ -728,7 +727,7 @@ function sale(){
   if(Math.max(a,b)>=3){const k=a>=b?'VTI':'VXUS', o=Math.max(a,b);
     msg='<b>'+k+' is on sale: '+o.toFixed(1)+'% below its 52-week high.</b> New money buys about '+(100/(100-o)*100-100).toFixed(1)+'% more shares than at the peak. Drops are when long-term investors get the best prices.';}
   else msg='<b>Markets are near their highs.</b> Keep adding on schedule. Time in the market beats timing the market.';
-  ['saleHome','saleMoney'].forEach(id=>{$(id).innerHTML=msg;$(id).hidden=false;});
+  
 }
 async function loadQuotes(){
   try{
