@@ -323,6 +323,13 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 @media (max-width:640px){.chk{display:none}}
 .clegend{margin:6px 0 10px}
 .clegend i{vertical-align:middle}
+.wgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.wf{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:600}
+.wf input{max-width:none;text-align:left}
+.wres{display:flex;flex-direction:column;gap:4px;font-size:15px}
+.wres .wbig{font-size:34px;font-weight:700;color:var(--gt);letter-spacing:-.02em}
+.wres b.g{color:var(--gt)}
+@media (max-width:640px){.wgrid{grid-template-columns:1fr 1fr}.wgrid .wf:last-child{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -335,7 +342,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
     <button class="btn" type="submit">Unlock</button>
   </form>
 </div>
-<div hidden><input type="checkbox" id="real"><input type="date" id="dob"><table id="tbl"></table></div>
+<div hidden><input type="text" id="monthly"><input type="checkbox" id="real"><input type="date" id="dob"><table id="tbl"></table></div>
 <div id="ptr"><span id="ptrT">Pull to refresh</span></div>
 <main>
 
@@ -377,14 +384,17 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
     </div>
   </section>
 
-  <section class="card hero">
-    <div class="mile">
-      <div class="mrow num"><span id="mileT"></span><span class="muted" id="mileR"></span></div>
-      <div class="pbar"><div id="mileB"></div></div>
+  <section class="card whatif">
+    <div class="head"><h2>What if you add more?</h2></div>
+    <div class="wgrid">
+      <label class="wf"><span>Monthly to VTI</span><input type="text" inputmode="decimal" id="dcaVTI"></label>
+      <label class="wf"><span>Monthly to VXUS</span><input type="text" inputmode="decimal" id="dcaVXUS"></label>
+      <label class="wf"><span>One-time deposit</span><input type="text" inputmode="decimal" id="lump"></label>
     </div>
+    <div class="wres num" id="wres"></div>
   </section>
+  <div hidden><span id="mileT"></span><span id="mileR"></span><div id="mileB"></div><div id="saleHome"></div></div>
 
-  <div class="sale" id="saleHome" hidden></div>
 
   <!-- Goal -->
   <section class="card goal">
@@ -465,10 +475,6 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
     <p class="callout" id="planNote"></p>
   </section>
 
-  <section class="card">
-    <div class="ctl"><div class="row"><label for="monthly">Planning to add each month</label><input type="text" inputmode="decimal" id="monthly"></div>
-      <small class="muted">Used in your projections on Home.</small></div>
-  </section>
 
 
   </div>
@@ -487,11 +493,13 @@ const OUT={ low:{us:.05,intl:.055,label:'Cautious: US 5%, international 5.5% a y
             hist:{us:.10,intl:.08,label:'Historical: US 10%, international 8% a year'} };
 const VOL={us:.16,intl:.17}, RHO=.85, FEE={us:.0003,intl:.0005}, INFL=.025;
 
-const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',goal:3000000,goalAge:60,px:{},tab:'home',v:2};
+const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',goal:3000000,goalAge:60,dcaVTI:null,dcaVXUS:null,lump:0,px:{},tab:'home',v:2};
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
 if(S.v!==2){S.us=70;S.v=2;}
 S.outlook='mid';S.real=false;
+function migrate(){if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
+migrate();
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
 let synced=false, pushT;
 function push(){clearTimeout(pushT);pushT=setTimeout(async()=>{
@@ -506,12 +514,13 @@ const price=sym=>(Q[sym]&&Q[sym].price)||S.px[sym]||0;
 function fill(){
 $('shVTI').value=fmtSh(S.shVTI); $('shVXUS').value=fmtSh(S.shVXUS);
 $('cash').value=usd(S.cash,true); $('apy').value=S.apy.toFixed(2); $('monthly').value=usd(S.monthly);
-$('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real; $('dob').value=S.dob; $('gAmt').value=usd(S.goal); $('gAge').value=S.goalAge;}
+$('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real; $('dob').value=S.dob; $('gAmt').value=usd(S.goal); $('dcaVTI').value=usd(S.dcaVTI); $('dcaVXUS').value=usd(S.dcaVXUS); $('lump').value=usd(S.lump); $('gAge').value=S.goalAge;}
 fill();
 const bindNum=(id,key,fmt,proj)=>$(id).addEventListener('change',function(){S[key]=Math.max(0,parse(this.value));this.value=fmt(S[key]);save();render(proj);});
 bindNum('shVTI','shVTI',fmtSh,true); bindNum('shVXUS','shVXUS',fmtSh,true);
 bindNum('cash','cash',v=>usd(v,true),true); bindNum('apy','apy',v=>v.toFixed(2),true);
 bindNum('monthly','monthly',v=>usd(v),true);
+bindNum('dcaVTI','dcaVTI',v=>usd(v),true); bindNum('dcaVXUS','dcaVXUS',v=>usd(v),true); bindNum('lump','lump',v=>usd(v),true);
 let tm; ['eq','us'].forEach(id=>$(id).addEventListener('input',function(){S[id]=+this.value;save();render(false);clearTimeout(tm);tm=setTimeout(()=>render(true),150);}));
 $('dep').addEventListener('input',()=>render(false));
 $('dep').addEventListener('change',function(){const v=parse(this.value);this.value=v?usd(v,true):'';});
@@ -552,26 +561,31 @@ function monthsTo(age){const b=new Date(S.dob+'T00:00:00'),n=new Date();if(isNaN
   const tgt=new Date(b.getFullYear()+age,b.getMonth(),b.getDate());return Math.round((tgt-n)/(1000*60*60*24*30.4375));}
 function ageNow(){return 75-monthsTo(75)/12;}
 function ages(){return AGES.filter(a=>monthsTo(a)>0);}
-function project(){
+let base=null;
+function sim(a1,a2,L,full){
   const h=holdings(), w=weights(), o=OUT[S.outlook], N=4000, M=Math.max(12,monthsTo(Math.max(...AGES))), r=rng(42);
   const mu1=Math.log(1+o.us-FEE.us)/12, mu2=Math.log(1+o.intl-FEE.intl)/12;
-  const s1=VOL.us/Math.sqrt(12), s2=VOL.intl/Math.sqrt(12), cm=Math.pow(1+S.apy/100,1/12)-1, add=S.monthly, k2=Math.sqrt(1-RHO*RHO);
+  const s1=VOL.us/Math.sqrt(12), s2=VOL.intl/Math.sqrt(12), cm=Math.pow(1+S.apy/100,1/12)-1, k2=Math.sqrt(1-RHO*RHO);
   const cols=[]; for(let t=0;t<=M;t++)cols.push(new Float64Array(N));
   const gauss=()=>{let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());};
   for(let i=0;i<N;i++){
-    let a=h.vti,b=h.vxus,c=h.cash; cols[0][i]=a+b+c;
+    let a=h.vti+L*w.vti,b=h.vxus+L*w.vxus,c=h.cash+L*w.cash; cols[0][i]=a+b+c;
     for(let t=1;t<=M;t++){
       const z1=gauss(), z2=RHO*z1+k2*gauss();
       a*=Math.exp(mu1+s1*z1); b*=Math.exp(mu2+s2*z2); c*=1+cm;
-      a+=add*w.vti; b+=add*w.vxus; c+=add*w.cash;
+      a+=a1; b+=a2;
       if(t%12===0){const T=a+b+c;a=T*w.vti;b=T*w.vxus;c=T*w.cash;}
       cols[t][i]=a+b+c;
     }
   }
   const q=(s,p)=>{const x=(s.length-1)*p,l=Math.floor(x);return s[l]+(s[Math.min(l+1,s.length-1)]-s[l])*(x-l);};
   const lo=[],lq=[],md=[],hq=[],hi=[],put=[];
-  for(let t=0;t<=M;t++){const s=cols[t].sort();lo.push(q(s,.1));lq.push(q(s,.25));md.push(q(s,.5));hq.push(q(s,.75));hi.push(q(s,.9));put.push(h.total+add*t);}
-  proj={lo,lq,md,hq,hi,put,M,cols};
+  for(let t=0;t<=M;t++){const s=cols[t].sort();lo.push(q(s,.1));md.push(q(s,.5));hi.push(q(s,.9));if(full){lq.push(q(s,.25));hq.push(q(s,.75));}put.push(h.total+L+(a1+a2)*t);}
+  return {lo,lq,md,hq,hi,put,M,cols};
+}
+function project(){
+  proj=sim(S.dcaVTI||0,S.dcaVXUS||0,S.lump||0,true);
+  base=(S.dcaVTI||S.dcaVXUS||S.lump)?sim(0,0,0,false):proj;
 }
 
 // ---------- render ----------
@@ -652,6 +666,11 @@ function draw(){
   $('fHead').textContent='At age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
   $('fMd2').textContent=big(md[Ma]);
+  { const bm=base.md[Ma]/d(Ma), gain=md[Ma]-bm, mo=(S.dcaVTI||0)+(S.dcaVXUS||0), own=(S.lump||0)+mo*Ma;
+    $('wres').innerHTML=(mo||S.lump)?
+      '<div class="wbig">+'+big(gain)+'</div><div>more at age '+S.age+': <b>'+big(bm)+'</b> → <b class="g">'+big(md[Ma])+'</b> (average market)</div>'+
+      '<div class="muted">You\'d put in '+big(own)+(mo?' ('+usd(mo)+'/mo'+(S.lump?' + '+usd(S.lump)+' once':'')+')':' once')+'. Growth adds the other '+big(Math.max(0,gain-own))+'.</div>'
+      :'<div class="muted">Enter a monthly amount or a one-time deposit to see how much more you\'d have at age '+S.age+'.</div>'; }
 
   const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(Math.min(380,Math.max(250,W*.5))), m={l:4,r:58,t:12,b:28}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const Mx=Mh, top=Math.max(1,...hi);
@@ -740,7 +759,7 @@ async function pull(){
   if(!r.ok){$('sync').textContent='Saved on this device';return;}
   const j=await r.json(); $('lock').hidden=true;
   try{localStorage.setItem('portfolio-pin',PINV);}catch(e){}
-  if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
+  if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';migrate();fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
   synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent='';
 }
 $('pinForm').addEventListener('submit',e=>{e.preventDefault();PINV=$('pin').value.trim();pull();});
