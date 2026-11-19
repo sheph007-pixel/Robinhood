@@ -54,6 +54,63 @@ async function quotes() {
 }
 
 const crypto = require('crypto');
+const Anthropic = require('@anthropic-ai/sdk');
+const AI_MODEL = 'claude-opus-5-5';
+const AI_SYSTEM = `You are the built-in assistant in a personal long-term investing app. The owner holds three things: VTI (Vanguard Total Stock Market ETF), VXUS (Vanguard Total International Stock ETF) and a high-yield cash bucket. Their goal is building wealth for the long run; the app is deliberately designed to counter the day-to-day noise of trading apps.
+
+Every request includes a snapshot of their live portfolio data (holdings, prices, targets, projections). Use those exact numbers. Do math carefully and show the key figures.
+
+How to help:
+- Answer questions about their portfolio, where they stand against their targets and goal, how much to put where, and what the projections mean.
+- For market news, today's moves or anything that happened recently, use web search and say when the information is from.
+- Keep a calm, long-term perspective. Explain short-term drops in context; don't encourage timing the market or trading on headlines.
+- Give clear, practical suggestions when asked (e.g. how to split a deposit to reach their targets, whether their cash level fits their stated targets), and explain the reasoning. Mention big trade-offs or risks briefly. You are not a licensed advisor; say so only when the question is about taxes, legal matters or a major life decision, not on every answer.
+- Be concise: short paragraphs or a few bullets, plain language, no tables unless asked. Use dollar amounts rounded sensibly (e.g. $1.28M, $54,180).`;
+let ai = null;
+function aiClient() { if (!process.env.ANTHROPIC_API_KEY) return null; if (!ai) ai = new Anthropic(); return ai; }
+
+async function handleChat(req, res) {
+  const client = aiClient();
+  if (!client) return json(res, 503, { error: 'no_key' });
+  let body;
+  try { body = JSON.parse(await readBody(req, 400 * 1024)); } catch (e) { return json(res, 400, { error: 'bad data' }); }
+  const msgs = Array.isArray(body.messages) ? body.messages.slice(-30) : [];
+  const messages = msgs.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map(m => ({ role: m.role, content: m.content.slice(0, 8000) }));
+  if (!messages.length || messages[messages.length - 1].role !== 'user') return json(res, 400, { error: 'bad data' });
+  const context = String(body.context || '').slice(0, 20000);
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
+  try {
+    for (let round = 0; round < 4; round++) {
+      const stream = client.beta.messages.stream({
+        model: AI_MODEL,
+        max_tokens: 16000,
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        output_config: { effort: 'medium' },
+        system: [
+          { type: 'text', text: AI_SYSTEM, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot:\n' + context },
+        ],
+        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
+        messages,
+      });
+      stream.on('text', (t) => res.write(t));
+      stream.on('streamEvent', (ev) => {
+        if (ev.type === 'content_block_start' && ev.content_block && ev.content_block.type === 'server_tool_use') res.write('\u0000S');
+      });
+      const msg = await stream.finalMessage();
+      if (msg.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: msg.content }); continue; }
+      if (msg.stop_reason === 'refusal') res.write('\n\nSorry, I can\'t help with that one.');
+      if (msg.stop_reason === 'max_tokens') res.write('\n\n(Answer cut short.)');
+      break;
+    }
+  } catch (e) {
+    console.error('chat error', e && e.status, e && e.message);
+    res.write('\n\nSorry, the assistant ran into a problem' + (e && e.status === 401 ? ' (API key not accepted).' : '. Please try again.'));
+  }
+  res.end();
+}
 const HIST_RANGES = { '1y': '1d', '5y': '1wk', '10y': '1wk', 'max': '1mo' };
 const histCache = new Map();
 async function history(sym, rng) {
@@ -155,6 +212,8 @@ http.createServer(async (req, res) => {
     return;
   }
   if (url.pathname === '/api/state') return handleState(req, res);
+  if (url.pathname === '/api/chat' && req.method === 'POST') return handleChat(req, res);
+  if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!process.env.ANTHROPIC_API_KEY, model: AI_MODEL });
   if (url.pathname === '/api/history') {
     const sym = String(url.searchParams.get('s') || '').toUpperCase();
     const rng = String(url.searchParams.get('r') || 'max');

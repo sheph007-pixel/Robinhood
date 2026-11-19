@@ -341,6 +341,37 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 .mtip{position:absolute;top:0;display:none;pointer-events:none;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap}
 #mRange button{padding:6px 10px}
 @media (max-width:640px){.tabs button{font-size:11px}}
+.ailog{display:flex;flex-direction:column;gap:12px}
+.ailog:empty{display:none}
+.msg{max-width:88%;padding:10px 14px;border-radius:16px;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--g);color:#000;border-bottom-right-radius:4px}
+.msg.assistant{align-self:flex-start;background:var(--soft);border-bottom-left-radius:4px}
+.msg p{margin:0 0 8px} .msg p:last-child{margin:0}
+.msg ul{margin:4px 0 8px;padding-left:20px} .msg li{margin:2px 0}
+.msg a{color:var(--gt)}
+.typing{color:var(--ink2)}
+.aisug{display:flex;flex-wrap:wrap;gap:8px}
+.aisug[hidden]{display:none}
+.aisug button{font:inherit;font-size:14px;font-weight:600;color:var(--gt);background:var(--soft);border:0;border-radius:99px;padding:8px 14px;cursor:pointer}
+.aiform{display:flex;gap:8px;align-items:flex-end}
+.aiform textarea{flex:1;font:inherit;font-size:16px;color:var(--ink);background:var(--soft);border:1px solid transparent;border-radius:20px;padding:10px 14px;resize:none;max-height:140px}
+.aiform textarea:focus{outline:none;border-color:var(--g)}
+.aiform .btn{width:auto;padding:10px 18px}
+.btn:disabled{opacity:.4}
+@media (max-width:640px){
+  .aiform{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));background:var(--bg);padding:8px 0}
+  .msg{max-width:92%}
+}
+@media (max-width:640px){
+  .tabs button span{white-space:nowrap}
+  .tabs{padding-left:2px;padding-right:2px}
+  .goalin input{width:130px} .goalin #gAge{width:56px}
+}
+@media (max-width:380px){
+  .tabs button{font-size:10px} .tabs svg{width:22px;height:22px}
+  .range .k{font-size:12px} .range .v{font-size:15px}
+  .duo .dv{font-size:38px}
+}
 </style>
 </head>
 <body>
@@ -362,7 +393,8 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
     <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
     <button role="tab" data-tab="hold"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Holdings</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
-    <button role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>New money</span></button>
+    <button role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>New Money</span></button>
+    <button role="tab" data-tab="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
   </nav>
 
   <div class="upd">
@@ -375,7 +407,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
   <section class="future" aria-live="polite">
     <div class="duo num">
       <div class="side">
-        <span class="k">You have today</span>
+        <span class="k">You Have Today</span>
         <span class="dv" id="total">$0</span>
         
       </div>
@@ -387,21 +419,21 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
       </div>
     </div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
-    <div class="legend clegend"><span><i style="background:var(--g);height:3px"></i>Average market</span><span><i style="background:var(--ink2);height:2px"></i>Poor market</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0;border-radius:0"></i>What you put in</span><span><i style="background:var(--g);opacity:.35"></i>Likely range</span></div>
+    <div class="legend clegend"><span><i style="background:var(--g);height:3px"></i>Average Market</span><span><i style="background:var(--ink2);height:2px"></i>Poor Market</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0;border-radius:0"></i>What You Put In</span><span><i style="background:var(--g);opacity:.35"></i>Likely Range</span></div>
     <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
     <div class="range num">
-      <div><span class="k">Poor market</span><span class="v" id="fLo"></span></div>
+      <div><span class="k">Poor Market</span><span class="v" id="fLo"></span></div>
       <div><span class="k">Average</span><span class="v" id="fMd2"></span></div>
-      <div><span class="k">Strong market</span><span class="v" id="fHi"></span></div>
+      <div><span class="k">Strong Market</span><span class="v" id="fHi"></span></div>
     </div>
   </section>
 
   <section class="card whatif">
-    <div class="head"><h2>What if you add more?</h2></div>
+    <div class="head"><h2>What If You Add More?</h2></div>
     <div class="wgrid">
       <label class="wf"><span>Monthly to VTI</span><input type="text" inputmode="decimal" id="dcaVTI"></label>
       <label class="wf"><span>Monthly to VXUS</span><input type="text" inputmode="decimal" id="dcaVXUS"></label>
-      <label class="wf"><span>One-time deposit</span><input type="text" inputmode="decimal" id="lump"></label>
+      <label class="wf"><span>One-Time Deposit</span><input type="text" inputmode="decimal" id="lump"></label>
     </div>
     <div class="wres num" id="wres"></div>
   </section>
@@ -410,7 +442,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 
   <!-- Goal -->
   <section class="card goal">
-    <div class="head"><h2>Your goal</h2></div>
+    <div class="head"><h2>Your Goal</h2></div>
     <div class="goalin"><span>Reach</span><input type="text" inputmode="decimal" id="gAmt" aria-label="Goal amount"><span>by age</span><input type="text" inputmode="numeric" id="gAge" aria-label="Goal age"></div>
     <div class="gchance num"><span class="big" id="gPct"></span><span id="gTxt"></span></div>
     <div class="pbar"><div id="gBar"></div></div>
@@ -425,14 +457,14 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
   <section class="card">
     <div class="head"><h2>Holdings</h2></div>
     <div class="hold num" id="hold">
-      <div class="hrow hh"><div class="h">Holding</div><div class="h r">Shares / Balance</div><div class="h r">Price / APY</div><div class="h r">Value</div><div class="h r">% of total</div></div>
+      <div class="hrow hh"><div class="h">Holding</div><div class="h r">Shares / Balance</div><div class="h r">Price / APY</div><div class="h r">Value</div><div class="h r">% of Total</div></div>
 
       <div class="hrow">
       <div class="nm"><i style="background:var(--s1)"></i><div><b>VTI</b><span>US Total Stock Market</span></div></div>
       <div class="cell r" data-k="Shares"><input type="text" inputmode="decimal" id="shVTI" aria-label="VTI shares"></div>
       <div class="cell r" data-k="Price" id="pxVTI"></div>
       <div class="cell r val" data-k="Value" id="vVTI"></div>
-      <div class="cell r pct" data-k="% of total" id="pVTI"></div>
+      <div class="cell r pct" data-k="% of Total" id="pVTI"></div>
       </div>
 
       <div class="hrow">
@@ -440,7 +472,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
       <div class="cell r" data-k="Shares"><input type="text" inputmode="decimal" id="shVXUS" aria-label="VXUS shares"></div>
       <div class="cell r" data-k="Price" id="pxVXUS"></div>
       <div class="cell r val" data-k="Value" id="vVXUS"></div>
-      <div class="cell r pct" data-k="% of total" id="pVXUS"></div>
+      <div class="cell r pct" data-k="% of Total" id="pVXUS"></div>
       </div>
 
       <div class="hrow">
@@ -448,19 +480,19 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
       <div class="cell r" data-k="Balance"><input type="text" inputmode="decimal" id="cash" aria-label="Cash balance"></div>
       <div class="cell r" data-k="APY %"><input type="text" inputmode="decimal" id="apy" aria-label="Cash APY percent"></div>
       <div class="cell r val" data-k="Value" id="vCash"></div>
-      <div class="cell r pct" data-k="% of total" id="pCash"></div>
+      <div class="cell r pct" data-k="% of Total" id="pCash"></div>
       </div>
 
       <div class="hrow tot">
       <div class="nm"><i style="background:transparent"></i><div><b>Total</b></div></div>
       <div class="cell r blank"></div><div class="cell r blank"></div>
       <div class="cell r val" data-k="Value" id="vTot"></div>
-      <div class="cell r pct" data-k="% of total">100%</div>
+      <div class="cell r pct" data-k="% of Total">100%</div>
       </div>
   </section>
 
   <section class="card">
-    <div class="head"><h2>Your split</h2></div>
+    <div class="head"><h2>Your Split</h2></div>
     <div class="splits" id="splits"></div>
   </section>
 
@@ -484,12 +516,24 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
   </section>
   </div>
 
+  <div id="tab-ai" class="panel">
+  <section class="card chat">
+    <div class="head"><h2>Ask AI</h2><button type="button" class="rbtn" id="aiClear">New Chat</button></div>
+    <div id="aiLog" class="ailog" aria-live="polite"></div>
+    <div class="aisug" id="aiSug">
+      <button>How am I doing?</button><button>Where should my next $10,000 go?</button><button>What's happening in the markets today?</button><button>Am I on track for my goal?</button><button>Is my cash level right?</button>
+    </div>
+    <form id="aiForm" class="aiform"><textarea id="aiIn" rows="1" placeholder="Ask anything…" aria-label="Message"></textarea><button class="btn" id="aiSend" type="submit" aria-label="Send">Send</button></form>
+    <p class="muted small" id="aiNote"></p>
+  </section>
+  </div>
+
   <div id="tab-money" class="panel">
   <!-- 4. New money -->
   <section class="card">
-    <div class="head"><h2>Got new money?</h2><span class="muted small">Where to put it so you move toward your target, without selling anything.</span></div>
+    <div class="head"><h2>Got New Money?</h2><span class="muted small">Where to put it so you move toward your target, without selling anything.</span></div>
     <div class="dep-in"><input type="text" inputmode="decimal" id="dep" placeholder="$0" aria-label="New money amount">
-      <button class="btn" id="apply" disabled>I did it, update my holdings</button></div>
+      <button class="btn" id="apply" disabled>I Did It, Update My Holdings</button></div>
     <div class="plan num" id="plan"></div>
     <p class="callout" id="planNote"></p>
   </section>
@@ -651,7 +695,7 @@ function render(reproject){
   // deposit plan
   const D=Math.round(parse($('dep').value)), b=roundPlan(planDeposit(h,D),D);
   const sh=k=>'';
-  $('plan').innerHTML=[['Buy VTI','vti','--s1','VTI'],['Buy VXUS','vxus','--s2','VXUS'],['Add to cash','cash','--s3','']].map(p=>
+  $('plan').innerHTML=[['Buy VTI','vti','--s1','VTI'],['Buy VXUS','vxus','--s2','VXUS'],['Add to Cash','cash','--s3','']].map(p=>
     '<div style="border-top-color:var('+p[2]+')"><span class="k">'+p[0]+'</span><span class="v">'+usd(b[p[1]])+'</span>'+(p[3]?sh(p[3]):'<span class="small muted">at '+S.apy.toFixed(2)+'% APY</span>')+'</div>').join('');
   $('apply').disabled=!(D>0);
   const yrs65=Math.max(0,monthsTo(S.age)/12), o=OUT[S.outlook], g=w.vti*(o.us-FEE.us)+w.vxus*(o.intl-FEE.intl)+w.cash*S.apy/100;
@@ -683,7 +727,7 @@ function draw(){
   const lo=proj.lo.map((v,t)=>v/d(t)), md=proj.md.map((v,t)=>v/d(t)), hi=proj.hi.map((v,t)=>v/d(t)), put=proj.put.map((v,t)=>v/d(t)), lq=proj.lq.map((v,t)=>v/d(t)), hq=proj.hq.map((v,t)=>v/d(t));
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
   const mo=v=>usd(v*.04/12)+'/mo';
-  $('fHead').textContent='At age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
+  $('fHead').textContent='At Age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
   $('fMd2').textContent=big(md[Ma]);
   { const bm=base.md[Ma]/d(Ma), gain=md[Ma]-bm, mo=(S.dcaVTI||0)+(S.dcaVXUS||0), own=(S.lump||0)+mo*Ma;
@@ -717,13 +761,13 @@ function draw(){
   g+='<line id="xh" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle id="xd" r="5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2" visibility="hidden"/>';
   svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
 
-  let tb='<thead><tr><th>Age</th><th>What you put in</th><th>Poor market</th><th>Average</th><th>Strong market</th></tr></thead><tbody>';
+  let tb='<thead><tr><th>Age</th><th>What You Put In</th><th>Poor Market</th><th>Average</th><th>Strong Market</th></tr></thead><tbody>';
   AG.forEach(a=>{const t=monthsTo(a);tb+='<tr'+(a===S.age?' class="sel"':'')+'><td>'+a+' <span class="muted small">in '+Math.round(t/12)+' yrs</span></td><td>'+big(put[t])+'</td><td>'+big(lo[t])+'</td><td class="exp">'+big(md[t])+'</td><td>'+big(hi[t])+'</td></tr>';});
   $('tbl').innerHTML=tb+'</tbody>';
   { const gm=Math.min(Mh,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], need=S.goal*d(gm);
     let lo2=0,hi2=col.length; while(lo2<hi2){const mid=(lo2+hi2)>>1; if(col[mid]<need)lo2=mid+1; else hi2=mid;}
     const pct=Math.round((col.length-lo2)/col.length*100), when=md.findIndex(v=>v>=S.goal);
-    $('gPct').textContent=pct+'%';
+    $('gPct').textContent=pct+'%'; GOALPCT=pct;
     $('gTxt').textContent=' chance of '+big(S.goal)+' by age '+S.goalAge+(S.real?' (today\'s dollars)':'');
     $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
     const T0=md[0]; $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
@@ -735,7 +779,7 @@ function draw(){
     xh.setAttribute('x1',X(t));xh.setAttribute('x2',X(t));xh.setAttribute('visibility','visible');
     xd.setAttribute('cx',X(t));xd.setAttribute('cy',Y(md[t]));xd.setAttribute('visibility','visible');
     const ag=Math.floor(ageNow()+t/12+1e-6);
-    tip.innerHTML='<div class="t">'+(t===0?'Today':'Age '+ag+' · '+(new Date().getFullYear()+Math.round(t/12)))+'</div><div class="r"><span>Strong market</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Average</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor market</span><b>'+big(lo[t])+'</b></div><div class="r"><span>What you put in</span><b>'+big(put[t])+'</b></div>';
+    tip.innerHTML='<div class="t">'+(t===0?'Today':'Age '+ag+' · '+(new Date().getFullYear()+Math.round(t/12)))+'</div><div class="r"><span>Strong Market</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Average</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor Market</span><b>'+big(lo[t])+'</b></div><div class="r"><span>What You Put In</span><b>'+big(put[t])+'</b></div>';
     tip.style.display='block'; const tw=tip.offsetWidth; let x=X(t)+12; if(x+tw>W)x=X(t)-tw-12; tip.style.left=Math.max(0,x)+'px'; tip.style.top=(m.t+4)+'px';};
   wrap.onpointerleave=function(){tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
 }
@@ -767,7 +811,7 @@ $('refresh').addEventListener('click',async function(){this.classList.add('spin'
   await Promise.all([loadQuotes(),synced?pull():null]);this.classList.remove('spin');this.disabled=false;});
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
 function showTab(t){const changed=S.tab!==t;S.tab=t;save();document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; if(t==='mkt')markets(); if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 async function markets(){
@@ -804,7 +848,70 @@ function mchart(el,sym,h){
 }
 document.querySelectorAll('#mRange button').forEach(b=>b.addEventListener('click',()=>{S.mr=b.dataset.r;save();markets();}));
 window.addEventListener('resize',()=>{if(S.tab==='mkt')markets();});
-showTab(['money','hold','mkt'].includes(S.tab)?S.tab:'home');
+// ---------- AI assistant ----------
+let AIM=[]; try{AIM=JSON.parse(localStorage.getItem('portfolio-chat')||'[]');}catch(e){}
+const aiSave=()=>{try{localStorage.setItem('portfolio-chat',JSON.stringify(AIM.slice(-40)));}catch(e){}};
+let GOALPCT=null;
+function aiContext(){
+  const h=holdings(), w=weights(), T=h.total, st=h.vti+h.vxus, f=v=>Math.round(v), lines=[];
+  lines.push('Age now: '+ageNow().toFixed(1)+' (birthday '+S.dob+')');
+  ['VTI','VXUS'].forEach(k=>{const q=Q[k]||{}, sh=k==='VTI'?S.shVTI:S.shVXUS;
+    lines.push(k+': '+sh+' shares @ $'+(price(k)||0).toFixed(2)+' = $'+f(sh*price(k))+(q.high52?' | 52-week high $'+q.high52+' ('+((1-q.price/q.high52)*100).toFixed(1)+'% below)':'')+(q.changePct!=null?' | today '+q.changePct.toFixed(2)+'%':''));});
+  lines.push('Cash: $'+f(h.cash)+' at '+S.apy+'% APY');
+  lines.push('Total: $'+f(T));
+  lines.push('Actual split: US/Intl '+(st?(h.vti/st*100).toFixed(1):0)+'/'+(st?(h.vxus/st*100).toFixed(1):0)+'; Stocks/Cash '+(T?(st/T*100).toFixed(1):0)+'/'+(T?(h.cash/T*100).toFixed(1):0));
+  lines.push('Target split: US/Intl '+S.us+'/'+(100-S.us)+'; Stocks/Cash '+S.eq+'/'+(100-S.eq));
+  lines.push('Monthly auto-deposits: VTI $'+(S.dcaVTI||0)+', VXUS $'+(S.dcaVXUS||0)+'; planned one-time deposit $'+(S.lump||0));
+  lines.push('Goal: $'+f(S.goal)+' by age '+S.goalAge+(GOALPCT!=null?' ('+GOALPCT+'% chance per simulation)':''));
+  if(proj){lines.push('Projection (Monte Carlo, 4,000 paths, stocks ~7%/yr avg, 16-17% volatility, yearly rebalance to target, includes deposits): age -> poor (10th pct) / average (median) / strong (90th pct)');
+    AGES.forEach(a=>{const t=Math.min(proj.M,monthsTo(a));if(t>0)lines.push('  '+a+': $'+f(proj.lo[t])+' / $'+f(proj.md[t])+' / $'+f(proj.hi[t]));});}
+  lines.push('Prices as of: '+($('qstat').textContent||'unknown'));
+  return lines.join('\n');
+}
+function esc(t){return t.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function md(t){
+  const lines=esc(t).split('\n'); let out='', list=false;
+  const inl=x=>x.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[(.+?)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  lines.forEach(l=>{const m=l.match(/^\s*[-*•]\s+(.*)/)||l.match(/^\s*\d+[.)]\s+(.*)/);
+    if(m){if(!list){out+='<ul>';list=true;}out+='<li>'+inl(m[1])+'</li>';return;}
+    if(list){out+='</ul>';list=false;}
+    const hd=l.match(/^#{1,4}\s+(.*)/); if(hd){out+='<p><b>'+inl(hd[1])+'</b></p>';return;}
+    if(l.trim())out+='<p>'+inl(l)+'</p>';});
+  if(list)out+='</ul>'; return out;
+}
+function aiRender(){
+  $('aiLog').innerHTML=AIM.map(m=>'<div class="msg '+m.role+'">'+(m.role==='user'?esc(m.content).replace(/\n/g,'<br>'):md(m.content))+'</div>').join('');
+  $('aiSug').hidden=AIM.length>0;
+}
+let aiReady=null;
+async function aiShow(){aiRender();
+  if(aiReady===null){try{const r=await fetch('/api/chat/status');const j=await r.json();aiReady=j.ready;}catch(e){aiReady=false;}}
+  $('aiNote').textContent=aiReady?'Uses your live numbers. Answers can be wrong; double-check before acting.':'The assistant is not set up yet: add an ANTHROPIC_API_KEY variable to the Railway service.';
+  $('aiSend').disabled=!aiReady;
+}
+async function aiAsk(text){
+  text=text.trim(); if(!text||$('aiSend').disabled)return;
+  AIM.push({role:'user',content:text}); const a={role:'assistant',content:''}; AIM.push(a); aiRender();
+  $('aiIn').value=''; $('aiIn').style.height=''; $('aiSend').disabled=true;
+  const log=$('aiLog'), el=log.lastElementChild; el.innerHTML='<span class="typing">Thinking…</span>'; el.scrollIntoView({block:'end',behavior:'smooth'});
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:AIM.slice(0,-1).filter(m=>m.content),context:aiContext()})});
+    if(!r.ok){a.content=r.status===503?'The assistant is not set up yet (missing API key on the server).':'Sorry, something went wrong. Please try again.';}
+    else{const rd=r.body.getReader(), dec=new TextDecoder(); let searching=false;
+      for(;;){const {value,done}=await rd.read(); if(done)break; let chunk=dec.decode(value,{stream:true});
+        if(chunk.includes('\u0000S')){searching=true;chunk=chunk.split('\u0000S').join('');}
+        a.content+=chunk; el.innerHTML=a.content?md(a.content):'<span class="typing">'+(searching?'Searching the web…':'Thinking…')+'</span>';}
+    }
+  }catch(e){a.content=a.content||'Connection lost. Please try again.';}
+  if(!a.content)a.content='No answer came back. Please try again.';
+  aiRender(); aiSave(); $('aiSend').disabled=!aiReady; $('aiLog').lastElementChild.scrollIntoView({block:'nearest'});
+}
+$('aiForm').addEventListener('submit',e=>{e.preventDefault();aiAsk($('aiIn').value);});
+$('aiIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!('ontouchstart' in window)){e.preventDefault();aiAsk($('aiIn').value);}});
+$('aiIn').addEventListener('input',function(){this.style.height='';this.style.height=Math.min(140,this.scrollHeight)+'px';});
+$('aiSug').addEventListener('click',e=>{if(e.target.tagName==='BUTTON')aiAsk(e.target.textContent);});
+$('aiClear').addEventListener('click',()=>{AIM=[];aiSave();aiRender();});
+showTab(['money','hold','mkt','ai'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes(); setInterval(loadQuotes,60000);
 
 // ---------- saved on the server, shared across devices ----------
