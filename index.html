@@ -517,6 +517,12 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .dcalist > div{display:grid;grid-template-columns:70px 60px 1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
 .dcalist > div:last-child{border-bottom:0}
 @media (max-width:640px){.dcasum .v{font-size:17px}.dcasum{gap:8px}.dcasum > div{padding:10px}}
+@media (max-width:640px){
+  /* App-style scrolling: the page scrolls inside main, the window never does, so Safari's toolbar and the tab bar stay put. */
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  html{scrollbar-gutter:auto}
+  main{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+}
 </style>
 </head>
 <body>
@@ -1003,8 +1009,12 @@ window.addEventListener('resize',draw);
 $('refresh').addEventListener('click',async function(){this.textContent='Refreshing…';this.disabled=true;lastQ=Date.now();
   await Promise.all([loadQuotes(),synced?pull():null]);this.textContent='Refresh';this.disabled=false;});
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
+const phoneScroll=()=>window.matchMedia('(max-width:640px)').matches;
+function scroller(){return phoneScroll()?document.querySelector('main'):null;}
+function scrollTop0(){const m=scroller(); if(m)m.scrollTop=0; else window.scrollTo(0,0);}
+function scrollPos(){const m=scroller(); return m?m.scrollTop:window.scrollY;}
 function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-dca').hidden=t!=='dca'; if(t==='dca')dcaRender(); document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-dca').hidden=t!=='dca'; if(t==='dca')dcaRender(); document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)scrollTop0();}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 async function markets(){
@@ -1156,7 +1166,7 @@ pull();
 setInterval(()=>{if(synced&&document.visibilityState==='visible')pull();},60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){maybeRefresh();if(synced)pull();}});
 (function(){let y0=null,dy=0;const ptr=$('ptr'),T=$('ptrT');
-  window.addEventListener('touchstart',e=>{if(window.scrollY<=0&&!$('lock').offsetParent&&e.touches.length===1){y0=e.touches[0].clientY;dy=0;}else y0=null;},{passive:true});
+  window.addEventListener('touchstart',e=>{if(scrollPos()<=0&&!$('lock').offsetParent&&e.touches.length===1){y0=e.touches[0].clientY;dy=0;}else y0=null;},{passive:true});
   window.addEventListener('touchmove',e=>{if(y0==null)return;dy=e.touches[0].clientY-y0;if(dy>0){ptr.style.transition='none';ptr.style.transform='translateY('+(Math.min(dy,120)*.6-60)+'px)';T.textContent=dy>80?'Release to refresh':'Pull to refresh';}},{passive:true});
   window.addEventListener('touchend',async()=>{if(y0==null)return;y0=null;ptr.style.transition='';
     if(dy>80){ptr.style.transform='translateY(0)';T.textContent='Refreshing…';await Promise.all([loadQuotes(),synced?pull():null]);T.textContent='Updated';setTimeout(()=>ptr.style.transform='translateY(-60px)',700);}
