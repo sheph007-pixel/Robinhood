@@ -369,6 +369,7 @@ setInterval(() => {
   if (['Sat', 'Sun'].includes(g('weekday')) || min < 16 * 60 + 20 || lastAutoSync === day) return;
   lastAutoSync = day; serverSync().catch(e => console.error('Robinhood auto sync failed', e.message));
 }, 60e3);
+const RH_LOCAL_REDIRECT = 'http://localhost:8765/callback';
 const baseUrl = req => (req.headers['x-forwarded-proto'] || 'https') + '://' + req.headers.host;
 
 http.createServer(async (req, res) => {
@@ -381,7 +382,9 @@ http.createServer(async (req, res) => {
     res.writeHead(302, { Location: '/' }); return res.end();
   }
   if (url.pathname === '/oauth/connect') {
-    try { const to = await rh.startAuth(baseUrl(req) + '/oauth/callback'); res.writeHead(302, { Location: to }); return res.end(); }
+    // Robinhood only accepts approved partner and localhost callbacks, so the login lands on a
+    // localhost address and the user pastes that address back into the site (/api/rh/finish).
+    try { const to = await rh.startAuth(process.env.RH_REDIRECT || RH_LOCAL_REDIRECT); res.writeHead(302, { Location: to }); return res.end(); }
     catch (e) { res.writeHead(502, { 'Content-Type': 'text/plain' }); return res.end('Could not start Robinhood login: ' + e.message); }
   }
   if (url.pathname === '/oauth/callback') {
@@ -392,6 +395,18 @@ http.createServer(async (req, res) => {
       try { await serverSync(); } catch (e) { console.error('first sync failed', e.message); }
       res.writeHead(302, { Location: '/?rh=connected' }); return res.end();
     } catch (e) { res.writeHead(400, { 'Content-Type': 'text/html' }); return res.end('<p style="font-family:sans-serif">Robinhood connection failed: ' + String(e.message).replace(/[<>&]/g, '') + '</p><p><a href="/">Back to Hood Investing</a></p>'); }
+  }
+  if (url.pathname === '/api/rh/finish' && req.method === 'POST') {
+    try {
+      const b = JSON.parse((await readBody(req)) || '{}');
+      const raw = String(b.url || '').trim();
+      const q = new URLSearchParams(raw.includes('?') ? raw.slice(raw.indexOf('?') + 1).split('#')[0] : raw);
+      const code = q.get('code'), state = q.get('state');
+      if (!code || !state) throw new Error(q.get('error_description') || q.get('error') || 'That link has no login code. Copy the whole address after approving on Robinhood.');
+      await rh.finishAuth(code, state);
+      try { await serverSync(); } catch (e) { console.error('first sync failed', e.message); }
+      return json(res, 200, { ok: true });
+    } catch (e) { return json(res, 400, { error: e.message }); }
   }
   if (url.pathname === '/api/rh/status') return json(res, 200, { connected: rh.connected(), connectedAt: rh.connectedAt(), syncedAt: (readState().rh || {}).syncedAt || null });
   if (url.pathname === '/api/rh/sync' && req.method === 'POST') {
