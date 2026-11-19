@@ -536,7 +536,7 @@ async function pull(){
   const j=await r.json(); $('lock').hidden=true;
   try{localStorage.setItem('portfolio-pin',PINV);}catch(e){}
   if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
-  synced=true; if(!j.state)push(); $('sync').textContent='Synced';
+  synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent='Synced';
 }
 $('pinForm').addEventListener('submit',e=>{e.preventDefault();PINV=$('pin').value.trim();pull();});
 pull();
