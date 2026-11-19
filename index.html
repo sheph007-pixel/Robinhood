@@ -330,6 +330,17 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 .wres .wbig{font-size:34px;font-weight:700;color:var(--gt);letter-spacing:-.02em}
 .wres b.g{color:var(--gt)}
 @media (max-width:640px){.wgrid{grid-template-columns:1fr 1fr}.wgrid .wf:last-child{grid-column:1/-1}}
+.mk{padding:14px 0;border-bottom:1px solid var(--line)}
+.mk:last-child{border-bottom:0}
+.mkh{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}
+.mks{font-size:18px;font-weight:700}
+.mkp{font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.mkc{font-size:15px;font-weight:600;color:var(--ink2)} .mkc.pos{color:var(--gt)}
+.mkw{position:relative;touch-action:pan-y}
+.mkw svg{display:block;width:100%;height:auto}
+.mtip{position:absolute;top:0;display:none;pointer-events:none;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap}
+#mRange button{padding:6px 10px}
+@media (max-width:640px){.tabs button{font-size:11px}}
 </style>
 </head>
 <body>
@@ -350,6 +361,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
     <span class="brand">Portfolio</span>
     <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
     <button role="tab" data-tab="hold"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Holdings</span></button>
+    <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
     <button role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>New money</span></button>
   </nav>
 
@@ -461,6 +473,14 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
         <input type="range" id="eq" min="0" max="100" step="5"></div>
     </div>
     <div hidden><div id="barNow"></div><div id="barTgt"></div></div>
+  </section>
+  </div>
+
+  <div id="tab-mkt" class="panel">
+  <section class="card">
+    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="max">All</button></div></div>
+    <div class="mk" id="mkVTI"></div>
+    <div class="mk" id="mkVXUS"></div>
   </section>
   </div>
 
@@ -747,9 +767,44 @@ $('refresh').addEventListener('click',async function(){this.classList.add('spin'
   await Promise.all([loadQuotes(),synced?pull():null]);this.classList.remove('spin');this.disabled=false;});
 try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
 function showTab(t){const changed=S.tab!==t;S.tab=t;save();document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; if(t==='mkt')markets(); if(t==='home')draw(); if(changed)window.scrollTo(0,0);}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
-showTab(['money','hold'].includes(S.tab)?S.tab:'home');
+const HC={};
+async function markets(){
+  const r=S.mr||'max'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
+  for(const sym of ['VTI','VXUS']){const el=$('mk'+sym), k=sym+r;
+    if(!HC[k]){el.innerHTML='<div class="muted small">Loading '+sym+'…</div>';try{const x=await fetch('/api/history?s='+sym+'&r='+r);if(!x.ok)throw 0;HC[k]=await x.json();}catch(e){el.innerHTML='<div class="muted small">'+sym+' history unavailable</div>';continue;}}
+    mchart(el,sym,HC[k]);}
+}
+function mchart(el,sym,h){
+  const c=h.c.slice(), t=h.t.slice(); if(Q[sym]&&Q[sym].price){c.push(Q[sym].price);t.push(Date.now());}
+  const n=c.length, first=c[0], last=c[n-1], chg=(last/first-1)*100, since=new Date(t[0]);
+  const names={VTI:'US Total Stock Market',VXUS:'Total International Stock'};
+  const lbl=(S.mr||'max')==='max'?'since '+since.getFullYear():'in '+({'1y':'1 year','5y':'5 years','10y':'10 years'})[S.mr];
+  el.innerHTML='<div class="mkh"><div><div class="mks">'+sym+' <span class="muted small">'+names[sym]+'</span></div><div class="mkp num">'+usd(last,true)+'</div>'+
+    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
+  const svg=el.querySelector('svg'), W=Math.max(300,el.clientWidth), H=Math.round(Math.min(260,Math.max(180,W*.32))), m={l:4,r:52,t:10,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  let lo=Math.min(...c), hi=Math.max(...c); const pad=(hi-lo)*.06; lo=Math.max(0,lo-pad); hi+=pad;
+  const X=i=>m.l+i/(n-1)*iw, Y=v=>m.t+(1-(v-lo)/(hi-lo))*ih, g1=css('--g'), ink2=css('--ink2'), line=css('--line'), sf=css('--surface');
+  let g=''; const st=[1,2,5,10,20,25,50,100].find(x=>(hi-lo)/x<=4)||200;
+  for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">$'+v+'</text>';
+  const yrs=(t[n-1]-t[0])/3.156e10, every=yrs>12?5:yrs>6?2:yrs>2?1:0;
+  if(every){let last=-1;t.forEach((ts,i)=>{const y=new Date(ts).getFullYear();if(y!==last&&y%every===0&&i>0&&X(i)<W-m.r-20){last=y;g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">'+y+'</text>';}else if(y!==last&&y%every!==0)last=-1;});}
+  else{[0,Math.floor(n/2),n-1].forEach((i,k)=>{g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="'+(k===0?'start':k===2?'end':'middle')+'" font-size="11" fill="'+ink2+'">'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',year:'2-digit'})+'</text>';});}
+  let p='';for(let i=0;i<n;i++)p+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(c[i]).toFixed(1);
+  g+='<path d="'+p+'L'+X(n-1)+' '+(m.t+ih)+'L'+X(0)+' '+(m.t+ih)+'Z" fill="'+g1+'" opacity=".08"/><path d="'+p+'" fill="none" stroke="'+g1+'" stroke-width="2" stroke-linejoin="round"/>';
+  g+='<circle cx="'+X(n-1)+'" cy="'+Y(last)+'" r="4" fill="'+g1+'" stroke="'+sf+'" stroke-width="2"/><line class="xh" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle class="xd" r="4.5" fill="'+g1+'" stroke="'+sf+'" stroke-width="2" visibility="hidden"/>';
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
+  const wrap=el.querySelector('.mkw'), tip=el.querySelector('.mtip'), xh=svg.querySelector('.xh'), xd=svg.querySelector('.xd');
+  wrap.onpointermove=wrap.onpointerdown=ev=>{const rc=svg.getBoundingClientRect(), i=Math.max(0,Math.min(n-1,Math.round((ev.clientX-rc.left-m.l)/iw*(n-1))));
+    xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.setAttribute('visibility','visible');xd.setAttribute('cx',X(i));xd.setAttribute('cy',Y(c[i]));xd.setAttribute('visibility','visible');
+    tip.innerHTML='<b>'+usd(c[i],true)+'</b><br>'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'});tip.style.display='block';
+    const tw=tip.offsetWidth;let x=X(i)+10;if(x+tw>W)x=X(i)-tw-10;tip.style.left=Math.max(0,x)+'px';};
+  wrap.onpointerleave=()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
+}
+document.querySelectorAll('#mRange button').forEach(b=>b.addEventListener('click',()=>{S.mr=b.dataset.r;save();markets();}));
+window.addEventListener('resize',()=>{if(S.tab==='mkt')markets();});
+showTab(['money','hold','mkt'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes(); setInterval(loadQuotes,60000);
 
 // ---------- saved on the server, shared across devices ----------

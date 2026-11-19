@@ -54,6 +54,19 @@ async function quotes() {
 }
 
 const crypto = require('crypto');
+const HIST_RANGES = { '1y': '1d', '5y': '1wk', '10y': '1wk', 'max': '1mo' };
+const histCache = new Map();
+async function history(sym, rng) {
+  const key = sym + rng, hit = histCache.get(key);
+  if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.data;
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${rng}&interval=${HIST_RANGES[rng]}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const j = (await r.json()).chart.result[0], t = [], c = [];
+  j.timestamp.forEach((ts, i) => { const v = j.indicators.quote[0].close[i]; if (v != null) { t.push(ts * 1000); c.push(Math.round(v * 100) / 100); } });
+  const data = { symbol: sym, range: rng, t, c };
+  histCache.set(key, { at: Date.now(), data });
+  return data;
+}
 const page = path.join(__dirname, 'index.html');
 const STATIC = {
   '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json'],
@@ -142,6 +155,13 @@ http.createServer(async (req, res) => {
     return;
   }
   if (url.pathname === '/api/state') return handleState(req, res);
+  if (url.pathname === '/api/history') {
+    const sym = String(url.searchParams.get('s') || '').toUpperCase();
+    const rng = String(url.searchParams.get('r') || 'max');
+    if (!SYMBOLS.includes(sym) || !HIST_RANGES[rng]) return json(res, 400, { error: 'bad request' });
+    try { return json(res, 200, await history(sym, rng)); }
+    catch (e) { return json(res, 502, { error: 'history unavailable' }); }
+  }
   if (STATIC[url.pathname]) {
     const [file, type] = STATIC[url.pathname];
     fs.readFile(path.join(__dirname, file), (err, buf) => {
