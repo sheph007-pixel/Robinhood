@@ -166,6 +166,39 @@ function readBody(req, limit = 100 * 1024) {
     req.on('error', reject);
   });
 }
+// ---- Robinhood sync: raw positions/cash/recurring orders in, saved state updated ----
+function readState() { try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch (e) { return {}; } }
+function writeState(obj) { fs.mkdirSync(DATA_DIR, { recursive: true }); const tmp = STATE_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(obj)); fs.renameSync(tmp, STATE_FILE); }
+function summarizeRecurring(orders) {
+  const filled = orders.filter(o => o && o.side === 'buy' && (o.state === 'filled' || !o.state) && +o.amount > 0 && o.date)
+    .map(o => ({ symbol: String(o.symbol).toUpperCase(), amount: +o.amount, date: String(o.date).slice(0, 10), price: +o.price || null, shares: +o.shares || null }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const recurring = [];
+  for (const sym of [...new Set(filled.map(o => o.symbol))]) {
+    const mine = filled.filter(o => o.symbol === sym), last = mine[0].date;
+    const amount = mine.filter(o => o.date === last).reduce((s, o) => s + o.amount, 0);
+    const days = new Set(mine.filter(o => (Date.parse(last) - Date.parse(o.date)) <= 14 * 864e5).map(o => o.date)).size;
+    const freq = days >= 6 ? 'daily' : days >= 2 ? 'weekly' : 'monthly';
+    const perMonth = amount * (freq === 'daily' ? 21 : freq === 'weekly' ? 4.33 : 1);
+    const last30 = mine.filter(o => (Date.now() - Date.parse(o.date)) <= 30 * 864e5).reduce((s, o) => s + o.amount, 0);
+    recurring.push({ symbol: sym, amount: Math.round(amount * 100) / 100, freq, perMonth: Math.round(perMonth), lastDate: last, last30: Math.round(last30) });
+  }
+  return { recurring, recent: filled.slice(0, 20) };
+}
+async function handleRhSync(req, res) {
+  if (req.method !== 'POST') return json(res, 405, { error: 'method' });
+  let b; try { b = JSON.parse(await readBody(req, 300 * 1024)); } catch (e) { return json(res, 400, { error: 'bad data' }); }
+  const st = readState(), pos = Array.isArray(b.positions) ? b.positions : [];
+  const q = sym => { const p = pos.find(x => String(x.symbol).toUpperCase() === sym); return p ? +p.quantity : 0; };
+  st.shVTI = q('VTI'); st.shVXUS = q('VXUS');
+  if (b.cash != null && isFinite(+b.cash)) st.cash = Math.max(0, Math.round(+b.cash * 100) / 100);
+  const r = summarizeRecurring(Array.isArray(b.orders) ? b.orders : []);
+  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent };
+  st.rhSync = st.rh.syncedAt;
+  writeState(st);
+  json(res, 200, { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring });
+}
+
 async function handleState(req, res) {
   const ip = clientIp(req), f = fails.get(ip);
   if (f && f.until > Date.now()) return json(res, 429, { error: 'Too many tries. Wait 15 minutes.' });
@@ -219,6 +252,7 @@ http.createServer(async (req, res) => {
     return;
   }
   if (url.pathname === '/api/state') return handleState(req, res);
+  if (url.pathname === '/api/rh-sync') return handleRhSync(req, res);
   if (url.pathname === '/api/chat' && req.method === 'POST') return handleChat(req, res);
   if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL });
   if (url.pathname === '/api/history') {
