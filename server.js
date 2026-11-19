@@ -62,7 +62,8 @@ Every request includes a snapshot of their live portfolio data (holdings, prices
 
 How to help:
 - Answer questions about their portfolio, where they stand against their targets and goal, how much to put where, and what the projections mean.
-- For prices, today's moves and performance of any ticker or index (VTI, VXUS, S&P 500 ^GSPC, Nasdaq ^IXIC, Dow ^DJI, VIX ^VIX, 10-year yield ^TNX, etc.), use get_quotes and get_price_history first. Use web search only for news and explanations (why something moved), and say when that information is from.
+- Data first, always. For any question about prices, today's market, a move, or performance, start by pulling the real numbers: when the robinhood tool is available use it first (get_index_quotes for the S&P 500, Nasdaq and Dow; get_equity_quotes for VTI, VXUS and other tickers; get_index_historicals / get_equity_historicals for trends), and use get_quotes / get_price_history for anything Robinhood doesn't cover (VIX ^VIX, 10-year yield ^TNX, 200-day average). Only after that, use web search for the news behind a move (the "why"), and say when that news is from.
+- For "why is the market down/up" questions: lead with how much the major indexes and VTI/VXUS actually moved today (from the data), then the main reasons from the news, then what it means for a long-term holder like the owner.
 - When the robinhood tool is available, use it for account questions that need fresher or more detailed data than the snapshot (positions, cost basis, orders, recurring buys, realized gains, fundamentals, analyst ratings, earnings). Only the Core account is used.\n- The portfolio snapshot comes from the owner's Robinhood Core account (synced daily and on request): shares, average cost, cash, recurring buys and recent recurring orders. Margin is intentionally ignored.
 - Keep a calm, long-term perspective. Explain short-term drops in context; don't encourage timing the market or trading on headlines.
 - Give clear, practical suggestions when asked (e.g. how to split a deposit to reach their targets, whether their cash level fits their stated targets), and explain the reasoning. Mention big trade-offs or risks briefly. You are not a licensed advisor; say so only when the question is about taxes, legal matters or a major life decision, not on every answer.
@@ -82,7 +83,7 @@ const AI_TOOLS = [
   { name: 'get_price_history', description: 'Price history summary for one ticker over a period: start and end price, total % change, annualized return, high, low, maximum drawdown, current 200-day moving average (for 1y or longer), and ~24 sampled points. Prices are not dividend-adjusted. Use for performance and trend questions.', strict: true,
     input_schema: { type: 'object', properties: { symbol: { type: 'string' }, range: { type: 'string', enum: ['5d', '1mo', '3mo', '6mo', 'ytd', '1y', '2y', '5y', '10y', 'max'] } }, required: ['symbol', 'range'], additionalProperties: false } },
 ];
-const RH_TOOL = { name: 'robinhood', description: 'Read-only access to the owner\'s Robinhood Core account and Robinhood market data. Call with the name of one allowed Robinhood tool and its arguments; the account number is filled in automatically (Core account only). Allowed tools: get_equity_positions, get_portfolio (account value, cash; ignore negative cash, which is margin), get_equity_orders (e.g. placed_agent "recurring", created_at_gte "YYYY-MM-DD", symbol, state), get_equity_quotes (symbols), get_equity_historicals, get_equity_fundamentals, get_equity_analyst_ratings, get_index_quotes, get_index_historicals, get_indexes, get_earnings_calendar, get_equity_tax_lots, get_realized_pnl, search. If unsure of a tool\'s arguments, call it with {} and read the error.',
+const RH_TOOL = { name: 'robinhood', description: 'Read-only access to the owner\'s Robinhood Core account and Robinhood market data. Call with the name of one allowed Robinhood tool and its arguments; the account number is filled in automatically (Core account only). Allowed tools: get_equity_positions, get_portfolio (account value, cash; ignore negative cash, which is margin), get_equity_orders (e.g. placed_agent "recurring", created_at_gte "YYYY-MM-DD", symbol, state), get_equity_quotes ({symbols:["VTI","VXUS"]}; includes the last session close), get_equity_historicals, get_equity_fundamentals, get_equity_analyst_ratings, get_index_quotes ({symbols:["SPX","NDX"]}; level only, so compare with get_quotes ^GSPC/^IXIC for the day change), get_index_historicals, get_indexes, get_earnings_calendar, get_equity_tax_lots, get_realized_pnl, search. If unsure of a tool\'s arguments, call it with {} and read the error.',
   input_schema: { type: 'object', properties: { tool: { type: 'string', enum: ['get_equity_positions', 'get_portfolio', 'get_equity_orders', 'get_equity_quotes', 'get_equity_historicals', 'get_equity_fundamentals', 'get_equity_analyst_ratings', 'get_index_quotes', 'get_index_historicals', 'get_indexes', 'get_earnings_calendar', 'get_equity_tax_lots', 'get_realized_pnl', 'search'] }, arguments: { type: 'object', description: 'Arguments for that tool (omit account_number).' } }, required: ['tool'] } };
 const SYM_RE = /^[A-Za-z0-9.^=\-]{1,15}$/;
 async function yChart(sym, range, interval) {
@@ -94,6 +95,7 @@ async function yChart(sym, range, interval) {
 async function runAiTool(name, input) {
   if (name === 'robinhood') {
     if (!rh.connected()) throw new Error('Robinhood is not connected to this site yet.');
+    console.log('ai robinhood tool', input.tool);
     const out = await rh.call(String(input.tool || ''), input.arguments || {});
     const txt = JSON.stringify(out); return txt.length > 60000 ? txt.slice(0, 60000) + '…(truncated)' : out;
   }
@@ -159,7 +161,7 @@ async function handleChat(req, res) {
       stream.on('streamEvent', (ev) => {
         if (ev.type === 'content_block_start' && ev.content_block) {
           if (ev.content_block.type === 'server_tool_use') res.write('\u0000S');
-          if (ev.content_block.type === 'tool_use') res.write('\u0000Q');
+          if (ev.content_block.type === 'tool_use') res.write(ev.content_block.name === 'robinhood' ? '\u0000R' : '\u0000Q');
         }
       });
       const msg = await stream.finalMessage();
