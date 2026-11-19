@@ -67,7 +67,13 @@ How to help:
 - Give clear, practical suggestions when asked (e.g. how to split a deposit to reach their targets, whether their cash level fits their stated targets), and explain the reasoning. Mention big trade-offs or risks briefly. You are not a licensed advisor; say so only when the question is about taxes, legal matters or a major life decision, not on every answer.
 - Be concise: short paragraphs or a few bullets, plain language, no tables unless asked. Use dollar amounts rounded sensibly (e.g. $1.28M, $54,180).`;
 let ai = null;
-function aiClient() { if (!process.env.ANTHROPIC_API_KEY) return null; if (!ai) ai = new Anthropic(); return ai; }
+function aiKey() {
+  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY.trim();
+  // Accept a key saved under another variable name (e.g. "AI Key").
+  for (const v of Object.values(process.env)) if (typeof v === 'string' && /^\s*sk-ant-/.test(v)) return v.trim();
+  return null;
+}
+function aiClient() { const k = aiKey(); if (!k) return null; if (!ai) ai = new Anthropic({ apiKey: k }); return ai; }
 
 async function handleChat(req, res) {
   const client = aiClient();
@@ -213,7 +219,7 @@ http.createServer(async (req, res) => {
   }
   if (url.pathname === '/api/state') return handleState(req, res);
   if (url.pathname === '/api/chat' && req.method === 'POST') return handleChat(req, res);
-  if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!process.env.ANTHROPIC_API_KEY, model: AI_MODEL });
+  if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL });
   if (url.pathname === '/api/history') {
     const sym = String(url.searchParams.get('s') || '').toUpperCase();
     const rng = String(url.searchParams.get('r') || 'max');
