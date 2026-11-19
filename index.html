@@ -666,7 +666,6 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
       <div class="side">
         <span class="k" id="fHead">At age 65</span>
         <span class="dv g" id="fMd">…</span>
-        <span class="dnote" id="fNote"></span>
         
       </div>
     </div>
@@ -674,7 +673,6 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">With Added Money</span><span class="ls">Added</span></span></div>
     <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
-    <div class="agerow dolrow"><span class="k">Show</span><div class="chips" id="dollars" role="group" aria-label="Dollars"><button data-d="today">Today's Dollars</button><button data-d="future">Future Dollars</button></div></div>
     <div class="range num">
       <div><span class="k">Poor Market</span><span class="v" id="fLo"></span></div>
       <div><span class="k">Average</span><span class="v" id="fMd2"></span></div>
@@ -844,7 +842,7 @@ let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
 if(S.v!==2){S.us=70;S.v=2;}
 S.outlook='mid';
-const realOn=()=>S.dollars!=='future'; // projections in today's dollars unless the user picks future dollars
+const realOn=()=>false; // projections in normal (future) dollars
 function migrate(){if(!(S.goal>=1000))S.goal=3000000; if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
 migrate();
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
@@ -1045,8 +1043,6 @@ function draw(){
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
   const mo=v=>usd(v*.04/12)+'/mo';
   $('fHead').textContent='At Age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
-  $('fNote').textContent=realOn()?'in today\'s dollars':'in future dollars';
-  $('dollars').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String((b.dataset.d==='future')!==realOn()));b.onclick=()=>{S.dollars=b.dataset.d;save();draw();};});
   { const R=REC(), rh=S.rh||{}, perDay=R.daily, perMo=R.a1+R.a2;
     if(perMo>0&&noRec){const add=Math.max(0,md[Ma]-noRec.md[Ma]/d(Ma));
       $('habitT').innerHTML='<div><span class="k">Auto-Invest</span><span class="v g">'+(perDay?usd(perDay)+'<em>/day</em>':usd(perMo)+'<em>/mo</em>')+'</span><span class="s">≈ '+big(perMo*12)+' a year</span></div>'+
