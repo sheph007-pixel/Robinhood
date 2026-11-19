@@ -315,17 +315,6 @@ td.exp{color:var(--gt)}
   </section>
 
 
-  <!-- 5. Projection -->
-  <section class="card">
-    <div class="head"><h2>By age</h2></div>
-    <div class="grid2">
-      <div class="ctl"><div class="row"><label for="monthly">Adding each month</label><input type="text" inputmode="decimal" id="monthly"></div>
-        <small class="muted">Invested at your target mix.</small></div>
-      <div class="ctl"><div class="row"><label for="dob">Birthday</label><input type="date" id="dob"></div></div>
-    </div>
-    <label class="check"><input type="checkbox" id="real"> Show in today's dollars (2.5% inflation)</label>
-    <div class="scroll"><table id="tbl"></table></div>
-  </section>
   </div>
 
   <div id="tab-hold" class="panel">
@@ -357,6 +346,16 @@ td.exp{color:var(--gt)}
       <div class="cell r val" data-k="Value" id="vCash"></div>
       </div>
     </div>
+  </section>
+  <section class="card">
+    <div class="head"><h2>Settings</h2></div>
+    <div class="grid2">
+      <div class="ctl"><div class="row"><label for="monthly">Adding each month</label><input type="text" inputmode="decimal" id="monthly"></div>
+        <small class="muted">Used in your projections, invested at your target mix.</small></div>
+      <div class="ctl"><div class="row"><label for="dob">Birthday</label><input type="date" id="dob"></div></div>
+    </div>
+    <label class="check" hidden><input type="checkbox" id="real"></label>
+    <div hidden><table id="tbl"></table></div>
   </section>
   </div>
 
@@ -406,7 +405,7 @@ const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',r
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
 if(S.v!==2){S.us=70;S.v=2;}
-S.outlook='mid';
+S.outlook='mid';S.real=false;
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
 let synced=false, pushT;
 function push(){clearTimeout(pushT);pushT=setTimeout(async()=>{
