@@ -1396,9 +1396,10 @@ function silentWav(){const n=800,b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(
 function unlockAudio(){ if(!VA){VA=new Audio();VA.setAttribute('playsinline','');VA.preload='auto';} try{VA.src=silentWav();const p=VA.play();if(p)p.catch(()=>{});}catch(e){} unlockTTS(); }
 function stopSpeech(){ if(TTS)TTS.cancel(); if(VA){try{VA.onended=VA.onerror=null;VA.pause();}catch(e){}} }
 function ttsUrl(t){ return fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})}).then(r=>r.ok?r.blob():null).then(b=>b?URL.createObjectURL(b):null).catch(()=>null); }
-function sayBrowser(t,v,done){ if(!TTS){done();return;} const u=new SpeechSynthesisUtterance(t); if(v)u.voice=v; u.rate=1.06; u.onend=u.onerror=()=>done(); TTS.speak(u); }
+function sayBrowser(t,v,done){ if(!TTS){done();return;} const u=new SpeechSynthesisUtterance(t); if(v)u.voice=v; u.rate=1.15; u.onend=u.onerror=()=>done(); TTS.speak(u); }
 let VOICEV=null; function pickVoice(){if(VOICEV)return VOICEV; const vs=(TTS?TTS.getVoices():[]).filter(v=>/^en(-|_)US/i.test(v.lang));
-  return VOICEV=vs.find(v=>/premium/i.test(v.name))||vs.find(v=>/enhanced|natural|neural/i.test(v.name))||vs.find(v=>/samantha|ava|allison|google us/i.test(v.name))||vs[0]||null;}
+  const male=vs.filter(v=>/aaron|alex|tom|fred|evan|nathan|daniel|male|guy|david|mark/i.test(v.name));
+  return VOICEV=male.find(v=>/premium|enhanced/i.test(v.name))||male[0]||vs.find(v=>/premium/i.test(v.name))||vs.find(v=>/enhanced|natural|neural/i.test(v.name))||vs.find(v=>/samantha|ava|allison|google us/i.test(v.name))||vs[0]||null;}
 if(TTS)TTS.onvoiceschanged=()=>{VOICEV=null;};
 function plain(t){return String(t).replace(/```[\s\S]*?```/g,'').replace(/[*_#>`]/g,'').replace(/\[(.*?)\]\(.*?\)/g,'$1').replace(/^\s*[-•]\s+/gm,'').replace(/\$([\d.,]+)M\b/g,'$1 million dollars').replace(/\$([\d.,]+)k\b/gi,'$1 thousand dollars').replace(/\s+/g,' ').trim();}
 // one recognizer helper: live text, ends after a short silence
@@ -1493,7 +1494,7 @@ async function vmAsk(q){
     it.url.then(u=>{ if(!VM||VM.gen!==g)return;
       if(!u){ vmSet('speaking',it.text); sayBrowser(it.text,v,next); return; }
       vmSet('speaking',it.text); VA.onended=()=>{URL.revokeObjectURL(u);next();}; VA.onerror=()=>{URL.revokeObjectURL(u);sayBrowser(it.text,v,next);};
-      VA.src=u; const p=VA.play(); if(p)p.catch(()=>{VA.onended=VA.onerror=null;sayBrowser(it.text,v,next);}); }); };
+      VA.src=u; VA.playbackRate=1.12; try{VA.preservesPitch=true;VA.webkitPreservesPitch=true;}catch(e){} const p=VA.play(); if(p)p.catch(()=>{VA.onended=VA.onerror=null;sayBrowser(it.text,v,next);}); }); };
   const take=(full,final)=>{ let rest=full.slice(used), m;
     while((m=/[.!?]["')\]]?\s+/.exec(rest))){const seg=rest.slice(0,m.index+m[0].length); used+=seg.length; rest=rest.slice(seg.length); const t=plain(seg); if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});}
     if(final&&rest.trim()){used=full.length;const t=plain(rest);if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});} pump(); };
