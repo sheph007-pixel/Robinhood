@@ -421,7 +421,11 @@ async function getBrief(force) {
   try { return await briefJob; } catch (e) { if (b) return Object.assign({ stale: true }, b); throw e; }
 }
 // ---------- speech-to-text for voice mode where the browser can't (iPhone home-screen apps) ----------
-function sttKey() { return (process.env.OPENAI_API_KEY || '').trim() || null; }
+function sttKey() { // OpenAI key for voice: OPENAI_API_KEY, CHATGPT, or any variable holding an OpenAI-style key
+  const named = process.env.OPENAI_API_KEY || process.env.CHATGPT || process.env.CHATGPT_API_KEY || process.env.OPENAI_KEY;
+  if (named && named.trim()) return named.trim();
+  for (const v of Object.values(process.env)) if (typeof v === 'string' && /^\s*sk-(proj-|svcacct-)?[A-Za-z0-9_-]{20,}/.test(v) && !/^\s*sk-ant-/.test(v)) return v.trim();
+  return null; }
 function readRaw(req, limit) {
   return new Promise((resolve, reject) => { const parts = []; let n = 0;
     req.on('data', c => { n += c.length; if (n > limit) { reject(new Error('too large')); req.destroy(); } else parts.push(c); });
