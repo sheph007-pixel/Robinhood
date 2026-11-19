@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Allocation Planner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout idea: answer first (three buckets and what to buy), then the 20-year projection, then the dials. */
+:root{
+  --bg:#f3f4f1; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --line:#dcdcd5; --accent:#0d5c4d; --accent-soft:#e2efe9;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --bad:#b3261e;
+  --display:"Newsreader",Georgia,serif; --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --line:#34342f; --accent:#6fcbb3; --accent-soft:#1d2c28;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --bad:#f08a80; } }
+:root[data-theme="dark"]{ color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --line:#34342f; --accent:#6fcbb3; --accent-soft:#1d2c28;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --bad:#f08a80; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+main{max-width:880px;margin:0 auto;padding:24px 16px 56px;display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-weight:600;font-size:30px;line-height:1.15;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:21px;line-height:1.2;margin:0;text-wrap:balance}
+p{margin:0}
+.sub{color:var(--ink2);font-size:15px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 16px;display:flex;flex-direction:column;gap:14px}
+.pick{border-color:var(--accent);border-width:2px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.buckets{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.bucket{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0;border-top-width:4px}
+.bucket .nm{font-weight:700;font-size:15px}
+.bucket .amt{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.bucket .pc{color:var(--ink2);font-size:13px;font-variant-numeric:tabular-nums}
+.bucket .do{margin-top:6px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+@media (max-width:560px){.buckets{grid-template-columns:1fr}}
+.bar{display:flex;height:14px;gap:2px}
+.bar div{border-radius:3px;min-width:2px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--accent-soft);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile .k{font-size:12px;color:var(--ink2);line-height:1.25}
+.tile .v{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+@media (max-width:560px){.tiles{grid-template-columns:1fr}.tile{flex-direction:row;justify-content:space-between;align-items:baseline;gap:10px}}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 20px}
+@media (max-width:620px){.grid{grid-template-columns:1fr}}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ctl .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ctl label{font-weight:600;font-size:15px}
+.ctl output{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ctl small{color:var(--ink2);font-size:13px}
+input[type=range]{width:100%;accent-color:var(--accent);height:28px;margin:0}
+input[type=text]{font:inherit;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:150px;text-align:right}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:inherit;font-size:14px;font-weight:600;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:7px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink2)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+#wrap{position:relative;touch-action:pan-y}
+#chart{display:block;width:100%;height:auto}
+#tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.14);display:none;min-width:190px;font-variant-numeric:tabular-nums}
+#tip .t{font-weight:700;margin-bottom:4px}
+#tip .r{display:flex;justify-content:space-between;gap:12px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:480px;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:12px;color:var(--ink2);font-weight:600}
+td.exp{font-weight:700}
+.note{font-size:14px;color:var(--ink2)} .note b{color:var(--ink)}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<main>
+  <header style="display:flex;flex-direction:column;gap:6px">
+    <h1>Where every dollar goes</h1>
+    <p class="sub">Enter what you have. It tells you what to hold in VTI, VXUS and cash, what to buy, and what the total could be worth in 5, 10, 15 and 20 years.</p>
+  </header>
+
+  <section class="card pick" aria-live="polite">
+    <div class="eyebrow">Your split today, on <span id="totNow"></span></div>
+    <div class="bar" id="bar" role="img" aria-label="Share in VTI, VXUS and cash"></div>
+    <div class="buckets" id="buckets"></div>
+    <div class="tiles" id="tiles"></div>
+    <p class="note" id="later"></p>
+  </section>
+
+  <section class="card">
+    <h2>What it could be worth</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between">
+      <div class="seg" role="group" aria-label="Stock market outlook"><button type="button" data-r="5">Cautious 5%</button><button type="button" data-r="7">Middle 7%</button><button type="button" data-r="8.7">History 8.7%</button></div>
+      <label class="check"><input type="checkbox" id="real"> Show in today's dollars</label>
+    </div>
+    <div class="legend"><span><i style="background:var(--s1)"></i>Expected</span><span><i style="background:var(--s1);opacity:.25;height:10px"></i>Poor to strong markets (8 in 10 outcomes)</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0"></i>Money you put in</span></div>
+    <div id="wrap"><svg id="chart" role="img" aria-label="Projected total value over 20 years with a range from poor to strong markets"></svg><div id="tip"></div></div>
+    <div class="scroll"><table id="tbl"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>What you have</h2>
+    <div class="grid">
+      <div class="ctl"><div class="row"><label for="vti">VTI now</label><input type="text" inputmode="numeric" id="vti" value="700,000"></div></div>
+      <div class="ctl"><div class="row"><label for="vxus">VXUS now</label><input type="text" inputmode="numeric" id="vxus" value="300,000"></div></div>
+      <div class="ctl"><div class="row"><label for="cash">Cash now</label><input type="text" inputmode="numeric" id="cash" value="500,000"></div><small>Include cash that has landed or is about to.</small></div>
+      <div class="ctl"><div class="row"><label for="adds">Regular buys per month</label><input type="text" inputmode="numeric" id="adds" value="2,000"></div><small>Your recurring buys, added up for a month.</small></div>
+    </div>
+    <div class="ctl"><div class="row"><label for="more">More cash landing over the next 12 months</label><output id="moreO"></output></div>
+      <input type="range" id="more" min="0" max="5000000" step="250000" value="1000000"><small>Assumed to arrive in even waves and go into stocks as it lands.</small></div>
+    <h2 style="margin-top:6px">Your rules</h2>
+    <div class="ctl"><div class="row"><label for="res">Cash reserve to keep</label><output id="resO"></output></div>
+      <input type="range" id="res" min="0" max="1500000" step="20000" value="300000"><small id="resNote"></small></div>
+    <div class="grid">
+      <div class="ctl"><div class="row"><label for="split">VTI share of stocks</label><output id="splitO"></output></div><input type="range" id="split" min="50" max="100" step="5" value="70"></div>
+      <div class="ctl"><div class="row"><label for="apy">Cash rate (APY)</label><output id="apyO"></output></div><input type="range" id="apy" min="0" max="6" step="0.05" value="3.6"></div>
+      <div class="ctl"><div class="row"><label for="cost">Living costs per month</label><input type="text" inputmode="numeric" id="cost" value="5,000"></div><small>Only used to show how many years the reserve covers. Not withdrawn in the projection.</small></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>How to read this</h2>
+    <ul class="plain">
+      <li>The reserve is a dollar amount, so the stock share rises as the total grows. That is by design: the reserve covers living costs, and everything above it works.</li>
+      <li>Buys never ask you to sell. If one fund is over its share, new money goes to the other until they line up.</li>
+      <li>Expected is the middle outcome. Poor and strong are the 1 in 10 results on each side, from 4,000 simulated markets with swings the size stocks have had historically. A crash like 2008 can drop below the poor line for a while.</li>
+      <li>History 8.7% is what a 70/30 VTI and VXUS mix earned a year from June 2001 to November 2026, dividends included. Projections are estimates, not promises. Taxes are not included.</li>
+      <li>Your inputs are saved in this browser only.</li>
+    </ul>
+  </section>
+</main>
+<script>
+(function(){
+const $=id=>document.getElementById(id), css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const num=id=>parseFloat(String($(id).value).replace(/[^0-9.]/g,''))||0;
+const usd=v=>(v<0?'-':'')+'$'+Math.round(Math.abs(v)).toLocaleString('en-US');
+const big=v=>{const a=Math.abs(v);return (v<0?'-':'')+'$'+(a>=1e6?(a/1e6).toFixed(2)+'M':Math.round(a/1e3)+'k');};
+const TXT=['vti','vxus','cash','adds','cost'], RNG=['more','res','split','apy'];
+let ret=7, proj=null;
+try{const s=JSON.parse(localStorage.getItem('alloc-planner')||'null');if(s){TXT.concat(RNG).forEach(k=>{if(s[k]!=null)$(k).value=s[k];});if(s.ret)ret=s.ret;$('real').checked=!!s.real;}}catch(e){}
+function save(){try{const s={ret:ret,real:$('real').checked};TXT.concat(RNG).forEach(k=>s[k]=$(k).value);localStorage.setItem('alloc-planner',JSON.stringify(s));}catch(e){}}
+function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function alloc(){
+  const vti=num('vti'), vxus=num('vxus'), cash=num('cash'), res=+$('res').value, w=+$('split').value/100;
+  const total=vti+vxus+cash, keep=Math.min(res,cash), invest=cash-keep, stocks=vti+vxus+invest;
+  let bV=Math.min(invest,Math.max(0,stocks*w-vti)), bX=Math.min(invest-bV,Math.max(0,stocks*(1-w)-vxus)); bV+=invest-bV-bX;
+  return {vti,vxus,cash,res,w,total,keep,invest,stocks,bV,bX,tV:vti+bV,tX:vxus+bX};
+}
+function project(a){
+  const N=4000, M=240, r=rng(11), mu=Math.log(1+ret/100)/12, sg=.16/Math.sqrt(12), cy=Math.pow(1+(+$('apy').value)/100,1/12)-1, adds=num('adds'), wave=+$('more').value/12;
+  const cols=[]; for(let t=0;t<=M;t++)cols.push(new Float64Array(N));
+  const put=new Float64Array(M+1); put[0]=a.total; for(let t=1;t<=M;t++)put[t]=put[t-1]+adds+(t<=12?wave:0);
+  for(let i=0;i<N;i++){let s=a.stocks,c=a.keep;cols[0][i]=s+c;
+    for(let t=1;t<=M;t++){let u=0;while(u===0)u=r();const z=Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());
+      s=s*Math.exp(mu+sg*z)+adds+(t<=12?wave:0); c*=1+cy; cols[t][i]=s+c;}}
+  const q=(arr,p)=>{const i=(arr.length-1)*p,l=Math.floor(i);return arr[l]+(arr[Math.min(l+1,arr.length-1)]-arr[l])*(i-l);};
+  const lo=[],md=[],hi=[],cashOnly=[]; let co=a.total;
+  for(let t=0;t<=M;t++){const s=Array.from(cols[t]).sort((x,y)=>x-y);lo.push(q(s,.1));md.push(q(s,.5));hi.push(q(s,.9));if(t>0)co=co*(1+cy)+adds+(t<=12?wave:0);cashOnly.push(co);}
+  const sm=a=>a.map((v,t)=>{if(t===0)return v;let s=0,n=0;for(let j=Math.max(1,t-3);j<=Math.min(M,t+3);j++){s+=a[j];n++;}return s/n;});
+  return {lo:sm(lo),md:sm(md),hi:sm(hi),put,cashOnly,M};
+}
+function render(){
+  const a=alloc(), cost=num('cost');
+  $('moreO').textContent=usd(+$('more').value); $('resO').textContent=usd(a.res); $('splitO').textContent=$('split').value+' / '+(100-$('split').value); $('apyO').textContent=(+$('apy').value).toFixed(2)+'%';
+  $('resNote').textContent=cost>0?'Covers about '+(a.keep/(cost*12)).toFixed(1)+' years of living costs. Earns about '+usd(a.keep*(+$('apy').value)/100)+' a year at this rate.':'';
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.r===ret)));
+  $('totNow').textContent=usd(a.total);
+  const parts=[['VTI',a.tV,'--s1',a.bV,'US stocks'],['VXUS',a.tX,'--s2',a.bX,'International stocks'],['Cash',a.keep,'--s3',0,'Reserve at '+(+$('apy').value).toFixed(2)+'% APY']];
+  $('bar').innerHTML=parts.map(p=>'<div style="background:var('+p[2]+');flex:'+Math.max(p[1],1)+'"></div>').join('');
+  $('buckets').innerHTML=parts.map((p,i)=>'<div class="bucket" style="border-top-color:var('+p[2]+')"><span class="nm">'+p[0]+'</span><span class="pc">'+p[4]+'</span><span class="amt">'+usd(p[1])+'</span><span class="pc">'+(a.total?Math.round(p[1]/a.total*100):0)+'% of the total</span><span class="do">'+(i<2?(p[3]>0?'Buy '+usd(p[3])+' now':'Nothing to buy now'):(a.cash>a.keep?'Keep '+usd(a.keep)+', invest the other '+usd(a.invest):a.cash<a.res?'Short of the reserve by '+usd(a.res-a.cash):'Keep all of it'))+'</span></div>').join('');
+  $('tiles').innerHTML='<div class="tile"><span class="k">Stocks / cash</span><span class="v">'+(a.total?Math.round(a.stocks/a.total*100):0)+' / '+(a.total?Math.round(a.keep/a.total*100):0)+'</span></div><div class="tile"><span class="k">On paper in a 2008-size drop (stocks down 57%)</span><span class="v" style="color:var(--bad)">'+big(-a.stocks*.57)+'</span></div><div class="tile"><span class="k">Years of living costs in cash</span><span class="v">'+(cost>0?(a.keep/(cost*12)).toFixed(1):'n/a')+'</span></div>';
+  const more=+$('more').value, adds=num('adds'), w=a.w, short=Math.max(0,a.res-a.cash);
+  $('later').innerHTML='<b>When more cash lands:</b> '+(short>0?'the first '+usd(short)+' tops up the reserve. After that, ':'')+'every $100,000 is '+usd(1e5*w)+' VTI and '+usd(1e5*(1-w))+' VXUS'+(more>0?', so the '+usd(more)+' you expect is '+usd(Math.max(0,more-short)*w)+' VTI and '+usd(Math.max(0,more-short)*(1-w))+' VXUS':'')+'. Monthly buys of '+usd(adds)+' are '+usd(adds*w)+' VTI and '+usd(adds*(1-w))+' VXUS.';
+  proj=project(a); draw(); save();
+}
+function draw(){
+  if(!proj)return; const real=$('real').checked, d=t=>real?Math.pow(1.03,t/12):1, M=proj.M;
+  const lo=proj.lo.map((v,t)=>v/d(t)), md=proj.md.map((v,t)=>v/d(t)), hi=proj.hi.map((v,t)=>v/d(t)), put=proj.put.map((v,t)=>v/d(t)), co=proj.cashOnly.map((v,t)=>v/d(t));
+  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(Math.min(400,Math.max(260,W*.5))), m={l:52,r:16,t:22,b:26}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const top=Math.max.apply(null,hi), step=[1e6,2e6,5e6,1e7,2e7,5e7,1e8].find(x=>top/x<=6)||2e8, ymax=Math.ceil(top/step)*step;
+  const X=t=>m.l+t/M*iw, Y=v=>m.t+(1-v/ymax)*ih, ink=css('--ink'), ink2=css('--ink2'), line=css('--line'), s1=css('--s1'), sf=css('--surface');
+  let g='';
+  for(let v=0;v<=ymax+1;v+=step)g+='<line x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'"/><text x="'+(m.l-6)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">$'+(v/1e6)+'M</text>';
+  [0,5,10,15,20].forEach(y=>{g+='<text x="'+X(y*12)+'" y="'+(H-8)+'" text-anchor="'+(y===0?'start':y===20?'end':'middle')+'" font-size="11" fill="'+ink2+'">'+(y===0?'Today':y+' yrs')+'</text>';});
+  let band='';for(let t=0;t<=M;t++)band+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(hi[t]).toFixed(1);for(let t=M;t>=0;t--)band+='L'+X(t).toFixed(1)+' '+Y(lo[t]).toFixed(1);
+  g+='<path d="'+band+'Z" fill="'+s1+'" opacity=".18"/>';
+  const path=a=>{let p='';for(let t=0;t<=M;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(a[t]).toFixed(1);return p;};
+  g+='<path d="'+path(put)+'" fill="none" stroke="'+ink2+'" stroke-width="2" stroke-dasharray="4 4"/><path d="'+path(md)+'" fill="none" stroke="'+s1+'" stroke-width="2.5" stroke-linejoin="round"/>';
+  [5,10,15,20].forEach(y=>{const t=y*12;g+='<circle cx="'+X(t)+'" cy="'+Y(md[t])+'" r="4.5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2"/><text x="'+(X(t)-(y===20?8:0))+'" y="'+(Y(md[t])-10)+'" text-anchor="'+(y===20?'end':'middle')+'" font-size="12" font-weight="700" fill="'+ink+'" stroke="'+sf+'" stroke-width="3" paint-order="stroke">'+big(md[t])+'</text>';});
+  g+='<line id="xh" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/>';
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
+  let h='<thead><tr><th>In</th><th>Money you put in</th><th>All in cash instead</th><th>Poor markets</th><th>Expected</th><th>Strong markets</th></tr></thead><tbody>';
+  [5,10,15,20].forEach(y=>{const t=y*12;h+='<tr><td>'+y+' years</td><td>'+big(put[t])+'</td><td>'+big(co[t])+'</td><td>'+big(lo[t])+'</td><td class="exp">'+big(md[t])+'</td><td>'+big(hi[t])+'</td></tr>';});
+  $('tbl').innerHTML=h+'</tbody>';
+  const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh');
+  wrap.onpointermove=wrap.onpointerdown=function(ev){const rc=svg.getBoundingClientRect(), t=Math.max(0,Math.min(M,Math.round((ev.clientX-rc.left-m.l)/iw*M)));
+    xh.setAttribute('x1',X(t));xh.setAttribute('x2',X(t));xh.setAttribute('visibility','visible');
+    tip.innerHTML='<div class="t">'+(t===0?'Today':'Year '+(t/12).toFixed(1))+'</div><div class="r"><span>Strong markets</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Expected</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor markets</span><b>'+big(lo[t])+'</b></div><div class="r"><span>Money you put in</span><b>'+big(put[t])+'</b></div>';
+    tip.style.display='block';const tw=tip.offsetWidth;let x=X(t)+12;if(x+tw>W)x=X(t)-tw-12;tip.style.left=Math.max(0,x)+'px';tip.style.top=(m.t+4)+'px';};
+  wrap.onpointerleave=function(){tip.style.display='none';xh.setAttribute('visibility','hidden');};
+}
+let tm;const later=()=>{clearTimeout(tm);tm=setTimeout(render,80);};
+RNG.forEach(id=>$(id).addEventListener('input',later));
+TXT.forEach(id=>$(id).addEventListener('change',function(){this.value=Math.round(num(id)).toLocaleString('en-US');render();}));
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{ret=+b.dataset.r;render();}));
+$('real').addEventListener('change',()=>{draw();save();});
+window.addEventListener('resize',draw);
+try{new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
+render();
+})();
+</script>
+</body>
+</html>
