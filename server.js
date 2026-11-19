@@ -62,7 +62,8 @@ Every request includes a snapshot of their live portfolio data (holdings, prices
 
 How to help:
 - Answer questions about their portfolio, where they stand against their targets and goal, how much to put where, and what the projections mean.
-- For market news, today's moves or anything that happened recently, use web search and say when the information is from.
+- For prices, today's moves and performance of any ticker or index (VTI, VXUS, S&P 500 ^GSPC, Nasdaq ^IXIC, Dow ^DJI, VIX ^VIX, 10-year yield ^TNX, etc.), use get_quotes and get_price_history first. Use web search only for news and explanations (why something moved), and say when that information is from.
+- The portfolio snapshot comes from the owner's Robinhood Core account (synced daily and on request): shares, average cost, cash, recurring buys and recent recurring orders. Margin is intentionally ignored.
 - Keep a calm, long-term perspective. Explain short-term drops in context; don't encourage timing the market or trading on headlines.
 - Give clear, practical suggestions when asked (e.g. how to split a deposit to reach their targets, whether their cash level fits their stated targets), and explain the reasoning. Mention big trade-offs or risks briefly. You are not a licensed advisor; say so only when the question is about taxes, legal matters or a major life decision, not on every answer.
 - Be concise: short paragraphs or a few bullets, plain language, no tables unless asked. Use dollar amounts rounded sensibly (e.g. $1.28M, $54,180).`;
@@ -74,6 +75,52 @@ function aiKey() {
   return null;
 }
 function aiClient() { const k = aiKey(); if (!k) return null; if (!ai) ai = new Anthropic({ apiKey: k }); return ai; }
+
+const AI_TOOLS = [
+  { name: 'get_quotes', description: 'Live market quotes for one or more tickers (stocks, ETFs, indexes such as ^GSPC, ^DJI, ^IXIC, ^VIX, or yields such as ^TNX). Returns price, previous close, day change, and 52-week high/low. Use this for any current price or "how did X do today" question before considering web search.', strict: true,
+    input_schema: { type: 'object', properties: { symbols: { type: 'array', items: { type: 'string' }, description: 'Ticker symbols, e.g. ["VTI","VXUS","^GSPC"]' } }, required: ['symbols'], additionalProperties: false } },
+  { name: 'get_price_history', description: 'Price history summary for one ticker over a period: start and end price, total % change, annualized return, high, low, maximum drawdown, current 200-day moving average (for 1y or longer), and ~24 sampled points. Prices are not dividend-adjusted. Use for performance and trend questions.', strict: true,
+    input_schema: { type: 'object', properties: { symbol: { type: 'string' }, range: { type: 'string', enum: ['5d', '1mo', '3mo', '6mo', 'ytd', '1y', '2y', '5y', '10y', 'max'] } }, required: ['symbol', 'range'], additionalProperties: false } },
+];
+const SYM_RE = /^[A-Za-z0-9.^=\-]{1,15}$/;
+async function yChart(sym, range, interval) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error(`No data for ${sym}`);
+  const j = await r.json(); if (!j.chart || !j.chart.result) throw new Error(`No data for ${sym}`);
+  return j.chart.result[0];
+}
+async function runAiTool(name, input) {
+  if (name === 'get_quotes') {
+    const syms = (Array.isArray(input.symbols) ? input.symbols : []).filter(x => SYM_RE.test(x)).slice(0, 10);
+    if (!syms.length) throw new Error('No valid symbols');
+    return Promise.all(syms.map(async (sym) => {
+      try { const m = (await yChart(sym, '1d', '1d')).meta, prev = m.previousClose ?? m.chartPreviousClose;
+        return { symbol: sym, name: m.longName || m.shortName, price: m.regularMarketPrice, prevClose: prev, changePct: prev ? +((m.regularMarketPrice / prev - 1) * 100).toFixed(2) : null,
+          high52: m.fiftyTwoWeekHigh, low52: m.fiftyTwoWeekLow, asOf: new Date(m.regularMarketTime * 1000).toISOString(), currency: m.currency }; }
+      catch (e) { return { symbol: sym, error: e.message }; }
+    }));
+  }
+  if (name === 'get_price_history') {
+    const sym = String(input.symbol || ''); if (!SYM_RE.test(sym)) throw new Error('Invalid symbol');
+    const range = ['5d', '1mo', '3mo', '6mo', 'ytd', '1y', '2y', '5y', '10y', 'max'].includes(input.range) ? input.range : '1y';
+    const interval = { '5d': '1d', '1mo': '1d', '3mo': '1d', '6mo': '1d', ytd: '1d', '1y': '1d', '2y': '1d', '5y': '1wk', '10y': '1wk', max: '1mo' }[range];
+    const res = await yChart(sym, range, interval), q = res.indicators.quote[0], pts = [];
+    res.timestamp.forEach((t, i) => { if (q.close[i] != null) pts.push([t * 1000, q.close[i]]); });
+    if (pts.length < 2) throw new Error('Not enough data');
+    const first = pts[0], last = pts[pts.length - 1], yrs = (last[0] - first[0]) / 3.156e10;
+    let peak = -Infinity, mdd = 0, hi = -Infinity, lo = Infinity;
+    for (const [, c] of pts) { peak = Math.max(peak, c); mdd = Math.min(mdd, c / peak - 1); hi = Math.max(hi, c); lo = Math.min(lo, c); }
+    let ma200 = null;
+    if (interval === '1d' && pts.length >= 200) ma200 = pts.slice(-200).reduce((s, p) => s + p[1], 0) / 200;
+    if (interval === '1wk' && pts.length >= 40) ma200 = pts.slice(-40).reduce((s, p) => s + p[1], 0) / 40;
+    const step = Math.max(1, Math.floor(pts.length / 24)), d = t => new Date(t).toISOString().slice(0, 10);
+    return { symbol: sym, range, start: { date: d(first[0]), price: +first[1].toFixed(2) }, end: { date: d(last[0]), price: +last[1].toFixed(2) },
+      changePct: +((last[1] / first[1] - 1) * 100).toFixed(2), annualizedPct: yrs >= 0.95 ? +((Math.pow(last[1] / first[1], 1 / yrs) - 1) * 100).toFixed(2) : null,
+      high: +hi.toFixed(2), low: +lo.toFixed(2), maxDrawdownPct: +(mdd * 100).toFixed(2), ma200: ma200 ? +ma200.toFixed(2) : null,
+      samples: pts.filter((_, i) => i % step === 0).map(p => [d(p[0]), +p[1].toFixed(2)]) };
+  }
+  throw new Error('Unknown tool');
+}
 
 async function handleChat(req, res) {
   const client = aiClient();
@@ -87,7 +134,7 @@ async function handleChat(req, res) {
   const context = String(body.context || '').slice(0, 20000);
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
   try {
-    for (let round = 0; round < 4; round++) {
+    for (let round = 0; round < 8; round++) {
       const stream = client.beta.messages.stream({
         model: AI_MODEL,
         max_tokens: 16000,
@@ -96,17 +143,30 @@ async function handleChat(req, res) {
         output_config: { effort: 'medium' },
         system: [
           { type: 'text', text: AI_SYSTEM, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot:\n' + context },
+          { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot (synced from the Robinhood Core account):\n' + context },
         ],
-        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
+        tools: [...AI_TOOLS, { type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
         messages,
       });
       stream.on('text', (t) => res.write(t));
       stream.on('streamEvent', (ev) => {
-        if (ev.type === 'content_block_start' && ev.content_block && ev.content_block.type === 'server_tool_use') res.write('\u0000S');
+        if (ev.type === 'content_block_start' && ev.content_block) {
+          if (ev.content_block.type === 'server_tool_use') res.write('\u0000S');
+          if (ev.content_block.type === 'tool_use') res.write('\u0000Q');
+        }
       });
       const msg = await stream.finalMessage();
       if (msg.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: msg.content }); continue; }
+      if (msg.stop_reason === 'tool_use') {
+        const results = [];
+        for (const blk of msg.content.filter(c => c.type === 'tool_use')) {
+          let out, isErr = false;
+          try { out = await runAiTool(blk.name, blk.input || {}); } catch (e) { out = { error: String(e && e.message || e) }; isErr = true; }
+          results.push({ type: 'tool_result', tool_use_id: blk.id, content: JSON.stringify(out), is_error: isErr });
+        }
+        messages.push({ role: 'assistant', content: msg.content }, { role: 'user', content: results });
+        continue;
+      }
       if (msg.stop_reason === 'refusal') res.write('\n\nSorry, I can\'t help with that one.');
       if (msg.stop_reason === 'max_tokens') res.write('\n\n(Answer cut short.)');
       break;
@@ -191,6 +251,8 @@ async function handleRhSync(req, res) {
   const st = readState(), pos = Array.isArray(b.positions) ? b.positions : [];
   const q = sym => { const p = pos.find(x => String(x.symbol).toUpperCase() === sym); return p ? +p.quantity : 0; };
   st.shVTI = q('VTI'); st.shVXUS = q('VXUS');
+  const ac = sym => { const p = pos.find(x => String(x.symbol).toUpperCase() === sym); return p && +p.average_buy_price ? +p.average_buy_price : null; };
+  st.avgCost = { VTI: ac('VTI'), VXUS: ac('VXUS') };
   if (b.cash != null && isFinite(+b.cash)) st.cash = Math.max(0, Math.round(+b.cash * 100) / 100);
   const r = summarizeRecurring(Array.isArray(b.orders) ? b.orders : []);
   st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent };
