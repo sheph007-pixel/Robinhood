@@ -286,9 +286,7 @@ td.exp{color:var(--gt)}
       <div><span class="k">Average</span><span class="v" id="fMd2"></span><span class="m" id="fMdM2"></span></div>
       <div><span class="k">Strong market</span><span class="v" id="fHi"></span><span class="m" id="fHiM"></span></div>
     </div>
-    <div class="outrow"><span class="k">Outlook</span>
-      <div class="chips" id="outlook" role="group" aria-label="Market outlook"><button data-o="low">Cautious</button><button data-o="mid">Moderate</button><button data-o="hist">Historical</button></div></div>
-    <p class="fnote"><span id="outNote"></span>. Monthly amounts are what the balance could pay you for life at 4% a year. Poor and strong are the 1-in-10 results on each side, shown as the shaded area. The dashed line is what you put in.</p>
+    <p class="fnote">Assumes stocks earn about 7% a year on average, with real-world ups and downs, across 4,000 simulated markets. Monthly amounts are what the balance could pay you for life at 4% a year. Poor and strong are the 1-in-10 results on each side, shown as the shaded area. The dashed line is what you put in.</p>
   </section>
 
   <div class="sale" id="saleHome" hidden></div>
@@ -404,6 +402,7 @@ const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',r
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
 if(S.v!==2){S.us=70;S.v=2;}
+S.outlook='mid';
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
 let synced=false, pushT;
 function push(){clearTimeout(pushT);pushT=setTimeout(async()=>{
@@ -431,7 +430,7 @@ $('real').addEventListener('change',function(){S.real=this.checked;save();draw()
 $('gAmt').addEventListener('change',function(){S.goal=Math.max(0,parse(this.value));this.value=usd(S.goal);save();draw();});
 $('gAge').addEventListener('change',function(){const a=Math.round(parse(this.value));S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a||60));this.value=S.goalAge;save();draw();});
 $('dob').addEventListener('change',function(){if(this.value){S.dob=this.value;save();render(true);}});
-document.querySelectorAll('#outlook button').forEach(b=>b.addEventListener('click',()=>{S.outlook=b.dataset.o;save();render(true);}));
+
 
 // ---------- holdings math ----------
 function holdings(){
@@ -548,9 +547,7 @@ function draw(){
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
   $('ages').innerHTML=AG.map(a=>'<button data-a="'+a+'" aria-pressed="'+(a===S.age)+'">'+a+'</button>').join('');
   $('ages').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.age=+b.dataset.a;save();draw();});
-    document.querySelectorAll('#outlook button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.o===S.outlook)));
-  $('outNote').textContent=OUT[S.outlook].label;
-  if(!proj)return;
+    if(!proj)return;
   const d=t=>S.real?Math.pow(1+INFL,t/12):1, Mh=proj.M, Ma=Math.min(Mh,monthsTo(S.age));
   const lo=proj.lo.map((v,t)=>v/d(t)), md=proj.md.map((v,t)=>v/d(t)), hi=proj.hi.map((v,t)=>v/d(t)), put=proj.put.map((v,t)=>v/d(t));
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
@@ -640,7 +637,7 @@ async function pull(){
   if(!r.ok){$('sync').textContent='Saved on this device';return;}
   const j=await r.json(); $('lock').hidden=true;
   try{localStorage.setItem('portfolio-pin',PINV);}catch(e){}
-  if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
+  if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
   synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent='Synced';
 }
 $('pinForm').addEventListener('submit',e=>{e.preventDefault();PINV=$('pin').value.trim();pull();});
