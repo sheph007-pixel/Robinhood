@@ -433,6 +433,32 @@ input[type=text],input[type=date],.aiform textarea{background:var(--inbg)!import
 input[type=text]:hover,input[type=date]:hover,.aiform textarea:hover{border-color:var(--ink2)!important}
 input[type=text]:focus,input[type=date]:focus,.aiform textarea:focus{border-color:var(--g)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--g) 25%,transparent);outline:none}
 input::placeholder,textarea::placeholder{color:var(--ink2);opacity:.8}
+.clegend .sw{display:inline-block;width:16px;height:0;border-radius:0;margin-right:6px;vertical-align:middle;background:none}
+.sw-avg{border-top:3px solid var(--g)}
+.sw-rng{height:10px!important;border-radius:3px!important;background:var(--g)!important;opacity:.35}
+.sw-poor{border-top:2px solid var(--ink2)}
+.sw-put{border-top:2px dashed var(--ink2)}
+.sw-scen{border-top:2px dotted var(--g)}
+.ls{display:none}
+@media (max-width:640px){
+  .clegend{flex-wrap:nowrap;justify-content:space-between;gap:6px;font-size:12px;white-space:nowrap}
+  .clegend:has(#lgScen:not([hidden])){font-size:11px;gap:4px}
+  .clegend .ll{display:none} .clegend .ls{display:inline}
+  .clegend .sw{width:12px;margin-right:3px}
+  .clegend .sw-rng{width:10px}
+}
+.gtiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gt{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:14px;padding:12px 14px;min-width:0}
+.gl{font-size:13px;font-weight:600;color:var(--ink2)}
+.gv{font-size:26px;font-weight:700;color:var(--gt);letter-spacing:-.02em;line-height:1.15}
+.gv em{font-style:normal;font-size:15px;font-weight:600;margin-left:1px}
+.gm{font-size:13px;color:var(--ink2)}
+.gnh{font-size:15px;font-weight:700;margin-top:4px}
+@media (max-width:380px){.gv{font-size:22px}}
+.goalin{display:grid!important;grid-template-columns:2fr 1fr;gap:10px;max-width:420px}
+.goalin input{width:100%!important;max-width:none}
+.gchance{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.gchance .big{margin-right:0}
 </style>
 </head>
 <body>
@@ -480,7 +506,7 @@ input::placeholder,textarea::placeholder{color:var(--ink2);opacity:.8}
       </div>
     </div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
-    <div class="legend clegend"><span><i style="background:var(--g);height:3px"></i>Average Market</span><span><i style="background:var(--ink2);height:2px"></i>Poor Market</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0;border-radius:0"></i>What You Put In</span><span><i style="background:var(--g);opacity:.35"></i>Likely Range</span><span id="lgScen" hidden><i style="background:none;border-top:2px dotted var(--g);height:0;border-radius:0"></i>With Added Money</span></div>
+    <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">With Added Money</span><span class="ls">Added</span></span></div>
     <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
     <div class="range num">
       <div><span class="k">Poor Market</span><span class="v" id="fLo"></span></div>
@@ -505,7 +531,7 @@ input::placeholder,textarea::placeholder{color:var(--ink2);opacity:.8}
   <!-- Goal -->
   <section class="card goal">
     <div class="head"><h2>Your Goal</h2></div>
-    <div class="goalin"><span>Reach</span><input type="text" inputmode="decimal" id="gAmt" aria-label="Goal amount"><span>by age</span><input type="text" inputmode="numeric" id="gAge" aria-label="Goal age"></div>
+    <div class="goalin"><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div>
     <div class="gchance num"><span class="big" id="gPct"></span><span id="gTxt"></span></div>
     <div class="pbar"><div id="gBar"></div></div>
     <div class="muted small num" id="gSub"></div>
@@ -863,11 +889,11 @@ function draw(){
     let lo2=0,hi2=col.length; while(lo2<hi2){const mid=(lo2+hi2)>>1; if(col[mid]<need)lo2=mid+1; else hi2=mid;}
     const pct=Math.round((col.length-lo2)/col.length*100), when=md.findIndex(v=>v>=S.goal);
     $('gPct').textContent=pct+'%'; GOALPCT=pct;
-    $('gTxt').textContent=' chance of '+big(S.goal)+' by age '+S.goalAge+(S.real?' (today\'s dollars)':'');
+    $('gTxt').textContent='chance of '+big(S.goal)+' by '+S.goalAge;
     $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
     const T0=md[0]; $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
-    { const n50=goalNeed(.5), n75=goalNeed(.75), line=(lab,v)=>'<div class="gn"><span>'+lab+'</span><b>'+(v===0?'On track already':v==null?'Not reachable':usd(v)+'/day')+'</b>'+(v?'<small>about '+usd(v*21)+'/mo, every market day</small>':'')+'</div>';
-      $('gNeed').innerHTML='<div class="gnh">To Reach Your Goal, Buy Daily</div>'+line('Average market',n50)+line('75% chance',n75); }
+    { const n50=goalNeed(.5), n75=goalNeed(.75), tile=(lab,v)=>'<div class="gt"><span class="gl">'+lab+'</span><span class="gv">'+(v===0?'On Track':v==null?'Out of Reach':usd(v)+'<em>/day</em>')+'</span><span class="gm">'+(v?'≈ '+usd(v*21)+'/mo':v===0?'No extra buys needed':'Try a later age')+'</span></div>';
+      $('gNeed').innerHTML='<div class="gnh">Buy Daily to Reach It</div><div class="gtiles">'+tile('Average Market',n50)+tile('75% Chance',n75)+'</div>'; }
     $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%). '+(when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
