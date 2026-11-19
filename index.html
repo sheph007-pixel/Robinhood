@@ -745,7 +745,7 @@ bindNum('monthly','monthly',v=>usd(v),true);
 let SC=null, scen=null; const TD=21; // market days per month
 $('wCalc').addEventListener('click',()=>{const a1=Math.round(parse($('dcaVTI').value)),a2=Math.round(parse($('dcaVXUS').value)),L=Math.round(parse($('lump').value));
   if(!(a1||a2||L)){SC=null;scen=null;draw();return;}
-  SC={d1:a1,d2:a2,a1:a1*TD,a2:a2*TD,L}; $('wCalc').textContent='Calculating…'; setTimeout(()=>{scen=sim(a1,a2,L,false);$('wCalc').textContent='Calculate';draw();},20);});
+  SC={d1:a1,d2:a2,a1:a1*TD,a2:a2*TD,L}; $('wCalc').textContent='Calculating…'; setTimeout(()=>{const R=REC();scen=sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,false);$('wCalc').textContent='Calculate';draw();},20);});
 $('wClear').addEventListener('click',()=>{['dcaVTI','dcaVXUS','lump'].forEach(id=>$(id).value='');SC=null;scen=null;draw();});
 let tm; ['eq','us'].forEach(id=>$(id).addEventListener('input',function(){S[id]=+this.value;save();render(false);clearTimeout(tm);tm=setTimeout(()=>render(true),150);}));
 $('dep').addEventListener('input',()=>render(false));
