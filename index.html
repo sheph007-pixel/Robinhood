@@ -1069,7 +1069,10 @@ function draw(){
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
   const mo=v=>usd(v*.04/12)+'/mo';
   $('fHead').textContent='At Age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
-  { const R=REC(), rh=S.rh||{}, perDay=R.daily, perMo=R.a1+R.a2, n=rh.streak||0;
+  { const R=REC(), rh=S.rh||{}, perDay=R.daily, perMo=R.a1+R.a2;
+    let n=rh.streak; if(n==null){ // older sync without a streak: work it out from recent buys
+      const ds=[...new Set((rh.recent||[]).map(o=>o.date))].sort().reverse(); n=0;
+      if(ds.length&&Date.now()-Date.parse(ds[0])<=5*864e5){n=1;for(let i=1;i<ds.length&&Date.parse(ds[i-1])-Date.parse(ds[i])<=4*864e5;i++)n++;}}
     if(perMo>0){
       $('skN').textContent=n?(n+(rh.streakAll?'+':'')):'0'; $('skT').textContent=n===1?'day buy streak':'day buy streak';
       $('skR').innerHTML='<b>'+(perDay?usd(perDay)+'/day':usd(perMo)+'/mo')+'</b><span>auto-invest</span>';
