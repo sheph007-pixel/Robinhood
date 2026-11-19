@@ -619,6 +619,13 @@ body.on-ai .ft{display:none}
 main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the scroll area */
 /* phones: leave room for the pinned composer so the end of an answer can scroll into view */
 @media (max-width:640px){body.on-ai main{padding-bottom:calc(150px + max(4px, calc(env(safe-area-inset-bottom) - 16px)))!important}}
+
+/* phones: if the system stops the fixed tab bar short of the screen edge (iOS home-screen apps),
+   fill the strip below it with the bar colour and drop the bar's own home-indicator padding */
+@media (max-width:640px){
+  .tabs::after{content:'';position:absolute;left:0;right:0;top:100%;height:80px;background:inherit}
+  html.tabgap .tabs{padding-bottom:4px!important}
+}
 </style>
 </head>
 <body>
@@ -1329,6 +1336,10 @@ async function pull(){
   if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';migrate();fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
   synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent=''; syncNote();
 }
+function tabGap(){const t=document.querySelector('.tabs'); if(!t)return; const b=t.getBoundingClientRect().bottom, H=Math.max(window.innerHeight,document.documentElement.clientHeight);
+  const standalone=window.navigator.standalone||matchMedia('(display-mode: standalone)').matches;
+  document.documentElement.classList.toggle('tabgap', !!standalone && screen.height-b>8 && H<screen.height-8);}
+tabGap(); addEventListener('resize',tabGap); addEventListener('orientationchange',()=>setTimeout(tabGap,300));
 $('onTrack').addEventListener('click',()=>document.querySelector('.goal').scrollIntoView({behavior:'smooth',block:'start'}));
 $('ftInfo').addEventListener('click',e=>{e.stopPropagation();const f=document.querySelector('.ft'),o=!f.classList.contains('open');f.classList.toggle('open',o);$('ftInfo').setAttribute('aria-expanded',o);});
 document.addEventListener('click',e=>{const f=document.querySelector('.ft');if(f&&f.classList.contains('open')&&!e.target.closest('.ftpop')){f.classList.remove('open');$('ftInfo').setAttribute('aria-expanded','false');}});
