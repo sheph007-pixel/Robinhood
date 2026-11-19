@@ -367,6 +367,58 @@ async function handleState(req, res) {
 
 
 const rh = require('./rh')(DATA_DIR);
+// ---------- Markets: AI daily brief (cached; at most a few generations per day) ----------
+const BRIEF_FILE = path.join(DATA_DIR, 'brief.json');
+const BRIEF_SYSTEM = `You write a short daily market brief inside a personal long-term investing app. The owner holds VTI (US total market) and VXUS (international) and buys both every market day; the app exists to keep them focused on the long run, not daily noise.
+Use the tools: pull today's numbers first (robinhood get_index_quotes / get_equity_quotes when available, and get_quotes for VTI, VXUS, ^GSPC, ^IXIC, ^DJI, ^VIX, ^TNX), then one or two web searches for today's market news and current strategist views. Do not invent numbers or quotes.
+Write markdown with exactly these sections, each 1-3 short sentences, about 170 words in total:
+**Today** - one line: how VTI and VXUS closed (or are trading) with % moves, and the S&P 500.
+**Why VTI Moved** - the main US drivers today.
+**Why VXUS Moved** - the main international drivers (Europe, Japan, emerging markets, the dollar).
+**What to Expect** - the next scheduled catalysts (data releases, Fed, earnings) in the coming days.
+**What Experts Think** - the range of current strategist/economist views, attributed to firms where the source names them.
+**For You** - one calm sentence tying it to their daily buys and long horizon.
+No preamble, no disclaimers, no tables.`;
+function etNow() { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date()), g = t => (p.find(x => x.type === t) || {}).value;
+  return { date: g('year') + '-' + g('month') + '-' + g('day'), min: (+g('hour') % 24) * 60 + +g('minute'), wd: g('weekday') }; }
+let briefJob = null;
+async function makeBrief(phase) {
+  const client = aiClient(); if (!client) throw new Error('no_key');
+  const q = await quotes().catch(() => ({}));
+  const messages = [{ role: 'user', content: 'Write the ' + (phase === 'close' ? 'end-of-day' : phase === 'open' ? 'midday' : 'latest') + ' brief. Today (US Eastern) is ' + etNow().date + '. Site quote snapshot: ' + JSON.stringify(q).slice(0, 2000) }];
+  for (let round = 0; round < 8; round++) {
+    const msg = await client.messages.create({ model: AI_MODEL, max_tokens: 4000, output_config: { effort: 'low' }, system: BRIEF_SYSTEM,
+      tools: [...AI_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }], messages });
+    if (msg.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: msg.content }); continue; }
+    if (msg.stop_reason === 'tool_use') {
+      const results = [];
+      for (const blk of msg.content.filter(c => c.type === 'tool_use')) {
+        let out, isErr = false; try { out = await runAiTool(blk.name, blk.input || {}); } catch (e) { out = { error: String(e && e.message || e) }; isErr = true; }
+        results.push({ type: 'tool_result', tool_use_id: blk.id, content: JSON.stringify(out), is_error: isErr });
+      }
+      messages.push({ role: 'assistant', content: msg.content }, { role: 'user', content: results }); continue;
+    }
+    const text = msg.content.filter(c => c.type === 'text').map(c => c.text).join('').trim();
+    if (!text || msg.stop_reason === 'refusal') throw new Error('empty brief');
+    return text;
+  }
+  throw new Error('brief took too many steps');
+}
+async function getBrief(force) {
+  const et = etNow(), weekend = et.wd === 'Sat' || et.wd === 'Sun';
+  const phase = weekend ? 'weekend' : et.min >= 16 * 60 + 10 ? 'close' : et.min >= 9 * 60 + 30 ? 'open' : 'pre';
+  let b = null; try { b = JSON.parse(fs.readFileSync(BRIEF_FILE, 'utf8')); } catch (e) { /* none */ }
+  const age = b ? Date.now() - Date.parse(b.at) : Infinity;
+  const fresh = b && (
+    (phase === 'close' && b.date === et.date && b.phase === 'close') ||
+    (phase === 'open' && b.date === et.date && age < 2 * 3600e3) ||
+    ((phase === 'pre' || phase === 'weekend') && age < 12 * 3600e3));
+  if (fresh && !(force && age > 15 * 60e3)) return b;
+  if (!briefJob) briefJob = makeBrief(phase).then(text => {
+    const nb = { text, at: new Date().toISOString(), date: et.date, phase }; fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(BRIEF_FILE, JSON.stringify(nb)); return nb;
+  }).finally(() => { briefJob = null; });
+  try { return await briefJob; } catch (e) { if (b) return Object.assign({ stale: true }, b); throw e; }
+}
 async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
 // Daily sync after the close: weekdays 4:20 PM ET.
 let lastAutoSync = '';
@@ -429,6 +481,10 @@ http.createServer(async (req, res) => {
     try { return json(res, 200, await serverSync()); } catch (e) { return json(res, 502, { error: e.message }); }
   }
   if (url.pathname === '/api/rh/disconnect' && req.method === 'POST') { rh.disconnect(); return json(res, 200, { ok: true }); }
+  if (url.pathname === '/api/brief') {
+    try { return json(res, 200, await getBrief(url.searchParams.get('force') === '1')); }
+    catch (e) { console.error('brief error', e && e.status, e && e.message); return json(res, e.message === 'no_key' ? 503 : 502, { error: 'unavailable' }); }
+  }
   if (url.pathname === '/api/quotes') {
     try {
       const data = await quotes();

@@ -671,6 +671,10 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
 @keyframes micp{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.5)}50%{box-shadow:0 0 0 8px rgba(229,72,77,0)}}
 .aiform.has #aiMic{display:none}
 .vstat{font-size:13px;color:var(--ink2);text-align:center;margin:0 0 6px}
+
+.brief .aimsg{font-size:15px;line-height:1.55}
+.brief .aimsg p{margin:0 0 10px}
+.brief .aimsg strong,.brief .aimsg b{display:block;margin-top:4px;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -809,6 +813,10 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
   </div>
 
   <div id="tab-mkt" class="panel">
+  <section class="card brief">
+    <div class="head"><h2>Today's Market</h2><span class="muted small" id="brAt"></span></div>
+    <div class="aimsg" id="brBody"><span class="typing">Loading today's brief…</span></div>
+  </section>
   <section class="card">
     <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="max">All</button></div></div>
     <div class="mk" id="mkVTI"></div>
@@ -1201,7 +1209,17 @@ function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('po
   $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)scrollTop0();}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
+let BRIEF=null, briefAt=0;
+async function loadBrief(force){
+  if(!force&&BRIEF&&Date.now()-briefAt<10*60e3)return;
+  if(!BRIEF)$('brBody').innerHTML='<span class="typing">Writing today\'s brief… (first view of the day takes ~20 seconds)</span>';
+  try{const r=await fetch('/api/brief'+(force?'?force=1':''),{cache:'no-store'}); if(!r.ok)throw r.status;
+    BRIEF=await r.json(); briefAt=Date.now(); $('brBody').innerHTML=md(String(BRIEF.text).replace(/\*\*\s*[-–—:]\s*/g,'** '));
+    const d=new Date(BRIEF.at); $('brAt').textContent=(BRIEF.phase==='close'?'After the close · ':BRIEF.phase==='open'?'Midday · ':'')+d.toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'});}
+  catch(e){ if(!BRIEF)$('brBody').innerHTML='<span class="muted">'+(e===503?'Ask AI isn\'t set up, so the brief is unavailable.':'Today\'s brief isn\'t available right now. Try again later.')+'</span>'; }
+}
 async function markets(){
+  loadBrief(false);
   const r=S.mr||'max'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
   for(const sym of ['VTI','VXUS']){const el=$('mk'+sym), k=sym+r;
     if(!HC[k]){el.innerHTML='<div class="muted small">Loading '+sym+'…</div>';try{const x=await fetch('/api/history?s='+sym+'&r='+r);if(!x.ok)throw 0;HC[k]=await x.json();}catch(e){el.innerHTML='<div class="muted small">'+sym+' history unavailable</div>';continue;}}
