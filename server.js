@@ -456,8 +456,8 @@ async function handleTts(req, res) {
   const input = String(b.text || '').slice(0, 800).trim(); if (!input) return json(res, 400, { error: 'empty' });
   try {
     const r = await fetch('https://api.openai.com/v1/audio/speech', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: process.env.TTS_MODEL || 'gpt-4o-mini-tts', voice: process.env.TTS_VOICE || 'sage', input, response_format: 'mp3',
-        instructions: 'Warm, calm and friendly, like a trusted financial coach talking with a friend. Natural conversational pace.' }) });
+      body: JSON.stringify({ model: process.env.TTS_MODEL || 'gpt-4o-mini-tts', voice: process.env.TTS_VOICE || 'ash', input, response_format: 'mp3',
+        instructions: 'American male voice. Warm, confident and friendly, like a trusted financial coach talking with a friend. Brisk, upbeat conversational pace, a little faster than normal, no long pauses.' }) });
     if (!r.ok) { const j = await r.json().catch(() => ({})); console.error('tts error', r.status, j && j.error && j.error.message); return json(res, 502, { error: 'tts failed' }); }
     const audio = Buffer.from(await r.arrayBuffer());
     res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': audio.length, 'Cache-Control': 'no-store' }); return res.end(audio);
