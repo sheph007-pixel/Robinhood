@@ -633,6 +633,16 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
 .range .v{font-variant-numeric:tabular-nums;white-space:nowrap}
 @media (max-width:640px){.range>div{padding:10px}.range .k{font-size:12px!important;white-space:nowrap}.range .v{font-size:16px!important}}
 @media (max-width:360px){.range .v{font-size:14px!important}}
+
+/* habit: one compact streak row */
+.habit{padding-top:14px!important;padding-bottom:14px!important}
+.streak{display:flex;align-items:center;gap:12px}
+.streak .fire{font-size:30px;line-height:1}
+.streak .sk{display:flex;flex-direction:column;flex:1;min-width:0}
+.streak .sk b{font-size:24px;font-weight:800;line-height:1.1;color:var(--gt)}
+.streak .sk span,.streak .sr span{font-size:13px;color:var(--ink2)}
+.streak .sr{display:flex;flex-direction:column;align-items:flex-end}
+.streak .sr b{font-size:16px}
 </style>
 </head>
 <body>
@@ -699,9 +709,7 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
   </section>
 
   <section class="card habit" id="habit" hidden>
-    <div class="head"><h2>Your Investing Habit</h2></div>
-    <div class="htiles num" id="habitT"></div>
-    <p class="muted small" id="habitN"></p>
+    <div class="streak num"><span class="fire" aria-hidden="true">🔥</span><div class="sk"><b id="skN"></b><span id="skT"></span></div><div class="sr" id="skR"></div></div>
   </section>
 
   <section class="card whatif">
@@ -981,7 +989,7 @@ function sim(a1,a2,L,full){
   return {lo,lq,md,hq,hi,put,M,cols};
 }
 function project(){
-  const R=REC(); proj=sim(R.a1,R.a2,0,true); base=proj; noRec=(R.a1+R.a2)>0?sim(0,0,0,false):null;
+  const R=REC(); proj=sim(R.a1,R.a2,0,true); base=proj;
   scen=SC?sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,false):null;
 }
 
@@ -1061,12 +1069,10 @@ function draw(){
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
   const mo=v=>usd(v*.04/12)+'/mo';
   $('fHead').textContent='At Age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
-  { const R=REC(), rh=S.rh||{}, perDay=R.daily, perMo=R.a1+R.a2;
-    if(perMo>0&&noRec){const add=Math.max(0,md[Ma]-noRec.md[Ma]/d(Ma));
-      $('habitT').innerHTML='<div><span class="k">Auto-Invest</span><span class="v g">'+(perDay?usd(perDay)+'<em>/day</em>':usd(perMo)+'<em>/mo</em>')+'</span><span class="s">≈ '+big(perMo*12)+' a year</span></div>'+
-        (rh.invested30!=null?'<div><span class="k">Last 30 Days</span><span class="v">'+usd(rh.invested30)+'</span><span class="s">bought on '+rh.days30+' days</span></div>':'')+
-        '<div><span class="k">Adds by Age '+S.age+'</span><span class="v g">+'+big(add)+'</span><span class="s">average market</span></div>';
-      $('habitN').textContent='Small amounts, every market day, no matter what the market does. That habit does more for your future than any single day\'s price.';
+  { const R=REC(), rh=S.rh||{}, perDay=R.daily, perMo=R.a1+R.a2, n=rh.streak||0;
+    if(perMo>0){
+      $('skN').textContent=n?(n+(rh.streakAll?'+':'')):'0'; $('skT').textContent=n===1?'day buy streak':'day buy streak';
+      $('skR').innerHTML='<b>'+(perDay?usd(perDay)+'/day':usd(perMo)+'/mo')+'</b><span>auto-invest</span>';
       $('habit').hidden=false;}
     else $('habit').hidden=true; }
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
