@@ -280,6 +280,7 @@ td.exp{color:var(--gt)}
   .duo .side + .arrow + .side{border-top:1px solid var(--line);padding-top:12px;margin-top:8px}
   .duo .dv{font-size:42px}
 }
+.hi52{font-size:12px;color:var(--ink2);font-weight:500}
 </style>
 </head>
 <body>
@@ -532,7 +533,8 @@ function render(reproject){
 
   ['VTI','VXUS'].forEach(k=>{
     const el=$('px'+k), q=Q[k];
-    if(live&&q){el.textContent=usd(q.price,true);}
+    if(live&&q){const off=q.high52?(1-q.price/q.high52)*100:null;
+      el.innerHTML='<div>'+usd(q.price,true)+'</div>'+(off==null?'':'<div class="hi52">'+(off<0.5?'At 52-wk high':off.toFixed(1)+'% below 52-wk high')+'</div>');}
     else if(!el.querySelector('input')){el.innerHTML='<input type="text" inputmode="decimal" aria-label="'+k+' price" value="'+(S.px[k]?S.px[k].toFixed(2):'')+'" placeholder="Price">';
       el.querySelector('input').addEventListener('change',function(){S.px[k]=parse(this.value);save();render(true);});}
   });
