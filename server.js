@@ -199,6 +199,32 @@ async function handleRhSync(req, res) {
   json(res, 200, { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring });
 }
 
+// ---- Saved Ask AI conversations (shared across devices) ----
+const CHATS_FILE = path.join(DATA_DIR, 'chats.json');
+function readChats() { try { return JSON.parse(fs.readFileSync(CHATS_FILE, 'utf8')); } catch (e) { return { chats: [] }; } }
+function writeChats(o) { fs.mkdirSync(DATA_DIR, { recursive: true }); const t = CHATS_FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(o)); fs.renameSync(t, CHATS_FILE); }
+async function handleChats(req, res, url) {
+  const id = decodeURIComponent(url.pathname.slice('/api/chats'.length).replace(/^\//, ''));
+  if (id && !/^[a-z0-9-]{6,64}$/i.test(id)) return json(res, 400, { error: 'bad id' });
+  const db = readChats();
+  if (!id && req.method === 'GET') {
+    return json(res, 200, { chats: db.chats.map(c => ({ id: c.id, title: c.title, updated: c.updated, count: c.messages.length })).sort((a, b) => b.updated.localeCompare(a.updated)) });
+  }
+  const i = db.chats.findIndex(c => c.id === id);
+  if (req.method === 'GET') return i < 0 ? json(res, 404, { error: 'not found' }) : json(res, 200, db.chats[i]);
+  if (req.method === 'DELETE') { if (i >= 0) { db.chats.splice(i, 1); writeChats(db); } return json(res, 200, { ok: true }); }
+  if (req.method === 'PUT') {
+    let b; try { b = JSON.parse(await readBody(req, 600 * 1024)); } catch (e) { return json(res, 400, { error: 'bad data' }); }
+    const messages = (Array.isArray(b.messages) ? b.messages : []).filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string').slice(-200).map(m => ({ role: m.role, content: m.content.slice(0, 20000) }));
+    const title = String(b.title || (messages.find(m => m.role === 'user') || {}).content || 'New chat').slice(0, 80);
+    const chat = { id, title, updated: new Date().toISOString(), messages };
+    if (i >= 0) db.chats[i] = chat; else db.chats.push(chat);
+    db.chats.sort((a, b) => b.updated.localeCompare(a.updated)); db.chats = db.chats.slice(0, 300);
+    writeChats(db); return json(res, 200, { ok: true });
+  }
+  json(res, 405, { error: 'method' });
+}
+
 async function handleState(req, res) {
   const ip = clientIp(req), f = fails.get(ip);
   if (f && f.until > Date.now()) return json(res, 429, { error: 'Too many tries. Wait 15 minutes.' });
@@ -254,6 +280,7 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/state') return handleState(req, res);
   if (url.pathname === '/api/rh-sync') return handleRhSync(req, res);
   if (url.pathname === '/api/chat' && req.method === 'POST') return handleChat(req, res);
+  if (url.pathname.startsWith('/api/chats')) return handleChats(req, res, url);
   if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL });
   if (url.pathname === '/api/history') {
     const sym = String(url.searchParams.get('s') || '').toUpperCase();
