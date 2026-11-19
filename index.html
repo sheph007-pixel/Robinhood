@@ -9,9 +9,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hood Investing">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="manifest" href="/manifest.webmanifest?v=2">
+<link rel="icon" href="/icon.svg?v=2" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-180.png?v=2">
 <title>Hood Investing</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -490,6 +490,11 @@ body.on-ai .upd{display:none}
   .aipanel{min-height:calc(100dvh - 90px - env(safe-area-inset-bottom))}
   .aiform{bottom:calc(70px + env(safe-area-inset-bottom));padding:5px 5px 5px 14px}
 }
+.mkh{align-items:flex-end;gap:10px;flex-wrap:wrap}
+.mklg{display:flex;gap:12px;font-size:12px;color:var(--ink2);white-space:nowrap}
+.mklg .sw{display:inline-block;width:14px;height:0;margin-right:5px;vertical-align:middle}
+.sw-px{border-top:2px solid var(--g)}
+.sw-ma{border-top:2px solid var(--ink);opacity:.75}
 </style>
 </head>
 <body>
@@ -972,28 +977,34 @@ async function markets(){
     mchart(el,sym,HC[k]);}
 }
 function mchart(el,sym,h){
-  const c=h.c.slice(), t=h.t.slice(); if(Q[sym]&&Q[sym].price){c.push(Q[sym].price);t.push(Date.now());}
+  const C=h.c.slice(), Tm=h.t.slice(); if(Q[sym]&&Q[sym].price){C.push(Q[sym].price);Tm.push(Date.now());}
+  const rg=S.mr||'max', win={'1y':200,'5y':40,'10y':40,'max':10}[rg], yrsBack={'1y':1,'5y':5,'10y':10}[rg];
+  const MA=C.map((v,i)=>{if(i<win-1)return null;let s=0;for(let j=i-win+1;j<=i;j++)s+=C[j];return s/win;});
+  let s0=0; if(yrsBack){const cut=Date.now()-yrsBack*365.25*864e5; s0=Math.max(0,Tm.findIndex(x=>x>=cut));}
+  const c=C.slice(s0), t=Tm.slice(s0), ma=MA.slice(s0);
   const n=c.length, first=c[0], last=c[n-1], chg=(last/first-1)*100, since=new Date(t[0]);
   const names={VTI:'US Total Stock Market',VXUS:'Total International Stock'};
   const lbl=(S.mr||'max')==='max'?'since '+since.getFullYear():'in '+({'1y':'1 year','5y':'5 years','10y':'10 years'})[S.mr];
   el.innerHTML='<div class="mkh"><div><div class="mks">'+sym+' <span class="muted small">'+names[sym]+'</span></div><div class="mkp num">'+usd(last,true)+'</div>'+
-    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
+    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span><span><i class="sw sw-ma"></i>200-Day Average</span></div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
   const svg=el.querySelector('svg'), W=Math.max(300,el.clientWidth), H=Math.round(Math.min(260,Math.max(180,W*.32))), m={l:4,r:52,t:10,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
-  let lo=Math.min(...c), hi=Math.max(...c); const pad=(hi-lo)*.06; lo=Math.max(0,lo-pad); hi+=pad;
+  const mv=ma.filter(v=>v!=null); let lo=Math.min(...c,...mv), hi=Math.max(...c,...mv); const pad=(hi-lo)*.06; lo=Math.max(0,lo-pad); hi+=pad;
   const X=i=>m.l+i/(n-1)*iw, Y=v=>m.t+(1-(v-lo)/(hi-lo))*ih, g1=css('--g'), ink2=css('--ink2'), line=css('--line'), sf=css('--surface');
   let g=''; const st=[1,2,5,10,20,25,50,100].find(x=>(hi-lo)/x<=4)||200;
   for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">$'+v+'</text>';
   const yrs=(t[n-1]-t[0])/3.156e10, every=yrs>12?5:yrs>6?2:yrs>2?1:0;
-  if(every){let last=-1;t.forEach((ts,i)=>{const y=new Date(ts).getFullYear();if(y!==last&&y%every===0&&i>0&&X(i)<W-m.r-20){last=y;g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">'+y+'</text>';}else if(y!==last&&y%every!==0)last=-1;});}
+  if(every){let last=-1;t.forEach((ts,i)=>{const y=new Date(ts).getFullYear();if(y!==last&&y%every===0&&i>0&&X(i)>m.l+16&&X(i)<W-m.r-20){last=y;g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">'+y+'</text>';}else if(y!==last&&y%every!==0)last=-1;});}
   else{[0,Math.floor(n/2),n-1].forEach((i,k)=>{g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="'+(k===0?'start':k===2?'end':'middle')+'" font-size="11" fill="'+ink2+'">'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',year:'2-digit'})+'</text>';});}
   let p='';for(let i=0;i<n;i++)p+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(c[i]).toFixed(1);
   g+='<path d="'+p+'L'+X(n-1)+' '+(m.t+ih)+'L'+X(0)+' '+(m.t+ih)+'Z" fill="'+g1+'" opacity=".08"/><path d="'+p+'" fill="none" stroke="'+g1+'" stroke-width="2" stroke-linejoin="round"/>';
+  { let mp='',on=false; for(let i=0;i<n;i++){if(ma[i]==null){on=false;continue;} mp+=(on?'L':'M')+X(i).toFixed(1)+' '+Y(ma[i]).toFixed(1); on=true;}
+    if(mp)g+='<path d="'+mp+'" fill="none" stroke="'+css('--ink')+'" stroke-width="1.6" stroke-opacity=".75" stroke-linejoin="round"/>'; }
   g+='<circle cx="'+X(n-1)+'" cy="'+Y(last)+'" r="4" fill="'+g1+'" stroke="'+sf+'" stroke-width="2"/><line class="xh" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle class="xd" r="4.5" fill="'+g1+'" stroke="'+sf+'" stroke-width="2" visibility="hidden"/>';
   svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
   const wrap=el.querySelector('.mkw'), tip=el.querySelector('.mtip'), xh=svg.querySelector('.xh'), xd=svg.querySelector('.xd');
   wrap.onpointermove=wrap.onpointerdown=ev=>{const rc=svg.getBoundingClientRect(), i=Math.max(0,Math.min(n-1,Math.round((ev.clientX-rc.left-m.l)/iw*(n-1))));
     xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.setAttribute('visibility','visible');xd.setAttribute('cx',X(i));xd.setAttribute('cy',Y(c[i]));xd.setAttribute('visibility','visible');
-    tip.innerHTML='<b>'+usd(c[i],true)+'</b><br>'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'});tip.style.display='block';
+    tip.innerHTML='<b>'+usd(c[i],true)+'</b>'+(ma[i]!=null?'<br><span class="muted">200-day avg '+usd(ma[i],true)+'</span>':'')+'<br>'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'});tip.style.display='block';
     const tw=tip.offsetWidth;let x=X(i)+10;if(x+tw>W)x=X(i)-tw-10;tip.style.left=Math.max(0,x)+'px';};
   wrap.onpointerleave=()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
 }
