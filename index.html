@@ -289,6 +289,15 @@ td.exp{color:var(--gt)}
 .rbtn.spin svg{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (max-width:640px){.upd{padding-top:calc(4px + env(safe-area-inset-top))}}
+.splits{display:flex;flex-direction:column;gap:18px}
+.split{display:flex;flex-direction:column;gap:6px}
+.srow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sn{font-size:16px;font-weight:600}
+.sv{font-size:22px;font-weight:700}
+.sbar{position:relative;display:flex;gap:2px;height:12px}
+.sbar div{border-radius:4px;min-width:0}
+.sbar i{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:1px;transform:translateX(-1px)}
+.ok{color:var(--gt);font-weight:600} .off{color:var(--ink);font-weight:600}
 </style>
 </head>
 <body>
@@ -392,6 +401,11 @@ td.exp{color:var(--gt)}
       <div class="cell r val" data-k="Value" id="vCash"></div>
       </div>
     </div>
+  </section>
+
+  <section class="card">
+    <div class="head"><h2>Your split</h2></div>
+    <div class="splits" id="splits"></div>
   </section>
   </div>
 
@@ -549,6 +563,13 @@ function render(reproject){
       el.querySelector('input').addEventListener('change',function(){S.px[k]=parse(this.value);save();render(true);});}
   });
   $('vVTI').textContent=usd(h.vti,true); $('vVXUS').textContent=usd(h.vxus,true); $('vCash').textContent=usd(h.cash,true);
+  { const st=h.vti+h.vxus, pv=st?h.vti/st*100:0, ps=T?st/T*100:0, tu=S.us, te=S.eq;
+    const row=(name,a,b,la,lb,ca,cb,ta)=>{const off=Math.abs(a-ta), ok=off<2;
+      return '<div class="split"><div class="srow"><span class="sn">'+name+'</span><span class="sv num">'+Math.round(a)+' / '+Math.round(b)+'</span></div>'+
+        '<div class="sbar"><div style="width:'+a+'%;background:var('+ca+')"></div><div style="width:'+b+'%;background:var('+cb+')"></div><i style="left:'+ta+'%"></i></div>'+
+        '<div class="srow small"><span class="muted">'+la+' / '+lb+' · target '+ta+' / '+(100-ta)+'</span><span class="'+(ok?'ok':'off')+'">'+(ok?'✓ On target':'Off by '+Math.round(off)+'%')+'</span></div></div>';};
+    $('splits').innerHTML=row('US / International',pv,100-pv,'VTI','VXUS','--s1','--s2',tu)+row('Stocks / Cash',ps,100-ps,'Stocks','Cash','--g','--s3',te)+
+      '<p class="muted small">New deposits fix any gap without selling. Use the New money tab.</p>'; }
 
   // target mix
   $('eqO').textContent=S.eq+' / '+(100-S.eq); $('usO').textContent=S.us+' / '+(100-S.us);
