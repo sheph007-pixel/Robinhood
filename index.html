@@ -2,7 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Portfolio">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-180.png">
 <title>My Portfolio</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -61,17 +70,8 @@ h2{font-size:18px;font-weight:600}
 .hold .nm span{display:block;font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hold .val{font-weight:600}
 .hold .sep{grid-column:1/-1;border-top:1px solid var(--line);margin:4px 0}
-@media (max-width:620px){
-  .hold{grid-template-columns:1fr 1fr}
-  .hold > .h{display:none}
-  .hold .nm{grid-column:1/-1}
-  .hold .cell{display:flex;flex-direction:column}
-  .hold .cell::before{content:attr(data-k);font-size:12px;color:var(--ink2)}
-  .hold .r{text-align:left}
-}
 input[type=text]{font:inherit;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%;max-width:150px;text-align:right}
 .hold .cell input{margin-left:auto;display:block}
-@media (max-width:620px){.hold .cell input{margin-left:0;text-align:left}}
 input:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 input[type=range]{width:100%;accent-color:var(--accent);height:28px;margin:0}
 
@@ -125,21 +125,85 @@ details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .panel{display:flex;flex-direction:column;gap:18px}
 .panel[hidden]{display:none}
+.hrow{display:contents}
+.tabs svg{display:none;width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+button,input,a{touch-action:manipulation}
+input[type=text]{font-size:16px}
+
+/* Phone: app-like layout */
+@media (max-width:640px){
+  body{background:var(--bg)}
+  main{padding:calc(12px + env(safe-area-inset-top)) 12px calc(88px + env(safe-area-inset-bottom));gap:12px}
+  .card{border-radius:16px;padding:16px 14px;gap:14px}
+  .panel{gap:12px}
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);border-bottom:0;
+        padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:0;box-shadow:0 -2px 12px rgba(0,0,0,.06)}
+  .tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;padding:6px 0;border:0;margin:0;color:var(--ink2)}
+  .tabs button[aria-selected="true"]{color:var(--accent)}
+  .tabs svg{display:block}
+  .hero{padding-top:20px;padding-bottom:20px}
+  .hero .total{font-size:38px}
+  .head h2{font-size:17px}
+  .head .muted{width:100%}
+  /* Holdings as list rows */
+  .hold{display:block}
+  .hold > .h,.hold .sep{display:none}
+  .hrow{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"nm val" "a b";gap:10px 12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}
+  .hrow:first-of-type{padding-top:0}
+  .hrow:last-child{border-bottom:0;padding-bottom:0}
+  .hrow .nm{grid-area:nm}
+  .hrow .val{grid-area:val;text-align:right;font-size:17px}
+  .hrow .cell{display:flex;flex-direction:column;gap:3px}
+  .hrow .cell::before{content:attr(data-k);font-size:12px;color:var(--ink2);text-align:left}
+  .hrow .val::before{display:none}
+  .hrow .cell:not(.val){text-align:left}
+  .hrow .cell input{max-width:none;margin:0;text-align:left;padding:10px 12px}
+  /* Controls */
+  #hz{width:100%;display:flex} #hz button{flex:1;padding:8px 0}
+  #outlook{width:100%;display:flex} #outlook button{flex:1;padding:8px 0}
+  .big{font-size:32px}
+  .ctl .row input{max-width:140px}
+  .dep-in{flex-direction:column;align-items:stretch}
+  .dep-in input{max-width:none;font-size:24px}
+  .btn{width:100%;padding:13px 18px}
+  .plan > div{flex-direction:row;flex-wrap:wrap;align-items:baseline;justify-content:space-between;border-top-width:1px;border-left-width:4px;padding:12px 14px}
+  .plan > div:nth-child(1){border-left-color:var(--s1)} .plan > div:nth-child(2){border-left-color:var(--s2)} .plan > div:nth-child(3){border-left-color:var(--s3)}
+  .plan .k{font-size:14px;color:var(--ink);font-weight:600;order:1}
+  .plan .v{font-size:20px;order:2}
+  .plan .small{order:3;width:100%}
+  table{min-width:0;font-size:14px}
+  th,td{padding:9px 4px}
+  th:nth-child(2),td:nth-child(2){display:none}
+  .legend{font-size:12px}
+}
+.lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+.lock[hidden]{display:none}
+.lockbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 20px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
+.lockbox input{max-width:none;text-align:center;font-size:24px;letter-spacing:.3em;padding:12px}
 </style>
 </head>
 <body>
+<div id="lock" class="lock" hidden>
+  <form id="pinForm" class="lockbox">
+    <h2>Enter your PIN</h2>
+    <p class="muted small">Your portfolio is saved on the server so it shows on every device.</p>
+    <input type="password" id="pin" inputmode="numeric" autocomplete="current-password" aria-label="PIN">
+    <p class="small" id="pinErr" style="color:var(--down)"></p>
+    <button class="btn" type="submit">Unlock</button>
+  </form>
+</div>
 <main>
 
   <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="home">Home</button>
-    <button role="tab" data-tab="money">New money</button>
+    <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+    <button role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>New money</span></button>
   </nav>
 
   <div id="tab-home" class="panel">
   <!-- 1. Balance -->
   <section class="card hero" aria-live="polite">
     <div class="head">
-      <span class="label">Total balance</span>
+      <span class="label">Total balance <span class="muted small" id="sync" style="margin-left:6px"></span></span>
       <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span></span>
     </div>
     <div class="total num" id="total">$0</div>
@@ -151,21 +215,27 @@ details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;
     <div class="hold num" id="hold">
       <div class="h">Holding</div><div class="h r">Shares</div><div class="h r">Price</div><div class="h r">Value</div>
 
+      <div class="hrow">
       <div class="nm"><i style="background:var(--s1)"></i><div><b>VTI</b><span>Vanguard Total Stock Market (US)</span></div></div>
       <div class="cell r" data-k="Shares"><input type="text" inputmode="decimal" id="shVTI" aria-label="VTI shares"></div>
       <div class="cell r" data-k="Price" id="pxVTI"></div>
       <div class="cell r val" data-k="Value" id="vVTI"></div>
+      </div>
 
+      <div class="hrow">
       <div class="nm"><i style="background:var(--s2)"></i><div><b>VXUS</b><span>Vanguard Total International Stock</span></div></div>
       <div class="cell r" data-k="Shares"><input type="text" inputmode="decimal" id="shVXUS" aria-label="VXUS shares"></div>
       <div class="cell r" data-k="Price" id="pxVXUS"></div>
       <div class="cell r val" data-k="Value" id="vVXUS"></div>
+      </div>
 
       <div class="sep"></div>
+      <div class="hrow">
       <div class="nm"><i style="background:var(--s3)"></i><div><b>Cash</b><span>High-yield cash</span></div></div>
       <div class="cell r" data-k="Balance"><input type="text" inputmode="decimal" id="cash" aria-label="Cash balance"></div>
       <div class="cell r" data-k="APY %"><input type="text" inputmode="decimal" id="apy" aria-label="Cash APY percent"></div>
       <div class="cell r val" data-k="Value" id="vCash"></div>
+      </div>
     </div>
   </section>
 
@@ -236,15 +306,22 @@ const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',r
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
 if(S.v!==2){S.us=70;S.v=2;}
-const save=()=>{try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}};
+let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
+let synced=false, pushT;
+function push(){clearTimeout(pushT);pushT=setTimeout(async()=>{
+  try{const r=await fetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':PINV},body:JSON.stringify(S)});
+    $('sync').textContent=r.ok?'Saved':'Not saved';}catch(e){$('sync').textContent='Offline, saved on this device';}},600);}
+const save=()=>{try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){} if(synced)push();};
 
 let Q={}, live=false;   // quotes
 const price=sym=>(Q[sym]&&Q[sym].price)||S.px[sym]||0;
 
 // ---------- inputs ----------
+function fill(){
 $('shVTI').value=fmtSh(S.shVTI); $('shVXUS').value=fmtSh(S.shVXUS);
 $('cash').value=usd(S.cash,true); $('apy').value=S.apy.toFixed(2); $('monthly').value=usd(S.monthly);
-$('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real;
+$('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real;}
+fill();
 const bindNum=(id,key,fmt,proj)=>$(id).addEventListener('change',function(){S[key]=Math.max(0,parse(this.value));this.value=fmt(S[key]);save();render(proj);});
 bindNum('shVTI','shVTI',fmtSh,true); bindNum('shVXUS','shVXUS',fmtSh,true);
 bindNum('cash','cash',v=>usd(v,true),true); bindNum('apy','apy',v=>v.toFixed(2),true);
@@ -419,6 +496,20 @@ function showTab(t){S.tab=t;save();document.querySelectorAll('.tabs button').for
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 showTab(S.tab==='money'?'money':'home');
 render(false); draw(); loadQuotes(); setInterval(loadQuotes,60000);
+
+// ---------- saved on the server, shared across devices ----------
+async function pull(){
+  let r; try{r=await fetch('/api/state',{headers:{'X-Pin':PINV},cache:'no-store'});}catch(e){$('sync').textContent='Offline, saved on this device';return;}
+  if(r.status===401||r.status===429){const j=await r.json().catch(()=>({}));$('lock').hidden=false;$('pinErr').textContent=PINV?(j.error||'Wrong PIN'):'';$('pin').value='';$('pin').focus();return;}
+  if(!r.ok){$('sync').textContent='Saved on this device';return;}
+  const j=await r.json(); $('lock').hidden=true;
+  try{localStorage.setItem('portfolio-pin',PINV);}catch(e){}
+  if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
+  synced=true; if(!j.state)push(); $('sync').textContent='Synced';
+}
+$('pinForm').addEventListener('submit',e=>{e.preventDefault();PINV=$('pin').value.trim();pull();});
+pull();
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&synced)pull();});
 })();
 </script>
 </body>
