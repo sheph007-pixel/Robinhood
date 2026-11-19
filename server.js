@@ -274,10 +274,8 @@ function summarizeRecurring(orders) {
   const recurring = [];
   for (const sym of [...new Set(filled.map(o => o.symbol))]) {
     const mine = filled.filter(o => o.symbol === sym), last = mine[0].date;
-    // Typical buy = median of the per-day totals in the last 14 days (one larger or doubled day doesn't skew it).
-    const byDay = {}; mine.filter(o => (Date.parse(last) - Date.parse(o.date)) <= 14 * 864e5).forEach(o => { byDay[o.date] = (byDay[o.date] || 0) + o.amount; });
-    const dayTotals = Object.values(byDay).sort((a, b) => a - b), mid = dayTotals.length >> 1;
-    const amount = dayTotals.length % 2 ? dayTotals[mid] : (dayTotals[mid - 1] + dayTotals[mid]) / 2;
+    // Current schedule = what all recurring orders bought on the latest day (picks up increases right away).
+    const amount = mine.filter(o => o.date === last).reduce((s, o) => s + o.amount, 0);
     const days = new Set(mine.filter(o => (Date.parse(last) - Date.parse(o.date)) <= 14 * 864e5).map(o => o.date)).size;
     const freq = days >= 6 ? 'daily' : days >= 2 ? 'weekly' : 'monthly';
     const perMonth = amount * (freq === 'daily' ? 21 : freq === 'weekly' ? 4.33 : 1);
