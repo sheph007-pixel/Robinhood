@@ -622,7 +622,7 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
       <div class="hrow">
       <div class="nm"><i style="background:var(--s3)"></i><div><b>Cash</b><span>High-yield cash</span></div></div>
       <div class="cell r" data-k="Balance"><input type="text" inputmode="decimal" id="cash" aria-label="Cash balance"></div>
-      <div class="cell r" data-k="APY %"><input type="text" inputmode="decimal" id="apy" aria-label="Cash APY percent"></div>
+      <div class="cell r" data-k="APY"><input type="text" inputmode="decimal" id="apy" aria-label="Cash APY percent"></div>
       <div class="cell r val" data-k="Value" id="vCash"></div>
       <div class="cell r pct" data-k="% of Total" id="pCash"></div>
       </div>
@@ -733,12 +733,12 @@ const price=sym=>(Q[sym]&&Q[sym].price)||S.px[sym]||0;
 function fill(){
   const ro=!!S.rh; ['shVTI','shVXUS','cash','apy'].forEach(id=>{$(id).readOnly=ro;$(id).classList.toggle('ro',ro);}); $('rhBadge').hidden=!ro;
 $('shVTI').value=fmtSh(S.shVTI); $('shVXUS').value=fmtSh(S.shVXUS);
-$('cash').value=usd(S.cash,true); $('apy').value=S.apy.toFixed(2); $('monthly').value=usd(S.monthly);
+$('cash').value=usd(S.cash,true); $('apy').value=S.apy.toFixed(2)+'% APY'; $('monthly').value=usd(S.monthly);
 $('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real; $('dob').value=S.dob; $('gAmt').value=usd(S.goal);  $('gAge').value=S.goalAge;}
 fill();
 const bindNum=(id,key,fmt,proj)=>$(id).addEventListener('change',function(){S[key]=Math.max(0,parse(this.value));this.value=fmt(S[key]);save();render(proj);});
 bindNum('shVTI','shVTI',fmtSh,true); bindNum('shVXUS','shVXUS',fmtSh,true);
-bindNum('cash','cash',v=>usd(v,true),true); bindNum('apy','apy',v=>v.toFixed(2),true);
+bindNum('cash','cash',v=>usd(v,true),true); bindNum('apy','apy',v=>v.toFixed(2)+'% APY',true);
 bindNum('monthly','monthly',v=>usd(v),true);
 ['dcaVTI','dcaVXUS','lump'].forEach(id=>{$(id).placeholder='$0';$(id).addEventListener('change',function(){const v=Math.max(0,Math.round(parse(this.value)));this.value=v?usd(v):'';});
   $(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('wCalc').click();}});});
