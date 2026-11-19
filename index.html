@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Portfolio">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -16,18 +16,18 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --bg:#f5f6f8; --surface:#ffffff; --ink:#101828; --ink2:#5b6474; --line:#e3e6eb; --soft:#eef3fb;
-  --accent:#1f5fbf; --accent-ink:#ffffff; --up:#0f7a4a; --down:#b42318;
+  --bg:#ffffff; --surface:#ffffff; --ink:#000000; --ink2:#6f6f6f; --line:#ebebeb; --soft:#f4f4f4;
+  --g:#00C805; --gt:#008a03; --accent:#00C805; --accent-ink:#000000; --up:#008a03; --down:#e0471f;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
   --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ color-scheme:dark;
-  --bg:#0f1115; --surface:#171a20; --ink:#eef0f3; --ink2:#a6adbb; --line:#2a2f38; --soft:#1c2533;
-  --accent:#6aa3f0; --accent-ink:#0f1115; --up:#4cc38a; --down:#f08a80;
+  --bg:#000000; --surface:#000000; --ink:#ffffff; --ink2:#9a9a9a; --line:#222222; --soft:#151515;
+  --g:#00C805; --gt:#00C805; --accent:#00C805; --accent-ink:#000000; --up:#00C805; --down:#ff5000;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; } }
 :root[data-theme="dark"]{ color-scheme:dark;
-  --bg:#0f1115; --surface:#171a20; --ink:#eef0f3; --ink2:#a6adbb; --line:#2a2f38; --soft:#1c2533;
-  --accent:#6aa3f0; --accent-ink:#0f1115; --up:#4cc38a; --down:#f08a80;
+  --bg:#000000; --surface:#000000; --ink:#ffffff; --ink2:#9a9a9a; --line:#222222; --soft:#151515;
+  --g:#00C805; --gt:#00C805; --accent:#00C805; --accent-ink:#000000; --up:#00C805; --down:#ff5000;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -180,27 +180,67 @@ input[type=text]{font-size:16px}
 .lock[hidden]{display:none}
 .lockbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 20px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
 .lockbox input{max-width:none;text-align:center;font-size:24px;letter-spacing:.3em;padding:12px}
-.future{background:linear-gradient(160deg,#1f5fbf,#173f80);color:#fff;border:0;gap:6px}
-.future .label{font-size:15px;opacity:.9;font-weight:500}
-.trio{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:8px;margin-top:6px;align-items:end}
-.trio > div{display:flex;flex-direction:column;gap:2px;background:rgba(255,255,255,.1);border-radius:12px;padding:12px;min-width:0}
-.trio .avg{background:#fff;color:#173f80}
-.trio .k{font-size:13px;opacity:.85;font-weight:500}
-.trio .v{font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
-.trio .avg .v{font-size:34px}
-.trio .m{font-size:13px;opacity:.85}
-.fnote{opacity:.75;margin-top:4px}
-.future .muted{color:rgba(255,255,255,.85);font-size:15px}
-.future b{color:#fff}
-.ages{margin-top:10px;background:rgba(255,255,255,.12);border-color:transparent;display:flex}
-.ages button{flex:1;color:rgba(255,255,255,.85);padding:7px 0}
-.ages button[aria-pressed="true"]{background:#fff;color:#173f80}
 tr.sel td{background:var(--soft)}
 input[type=date]{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
-@media (max-width:640px){.trio{grid-template-columns:1fr 1fr}.trio .avg{grid-column:1/-1;order:-1}.trio .v{font-size:20px}.trio .avg .v{font-size:36px}}
 /* pull to refresh */
 #ptr{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;z-index:40;pointer-events:none;transform:translateY(-60px);transition:transform .2s}
 #ptr span{margin-top:calc(10px + env(safe-area-inset-top));background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--ink2);box-shadow:0 2px 10px rgba(0,0,0,.12)}
+
+/* ===== Robinhood-style theme ===== */
+body{background:var(--bg)}
+main{max-width:760px;gap:0}
+.panel{gap:0}
+.card{background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:24px 0}
+.card.hero{padding-top:20px}
+h2{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.tabs{border-bottom:1px solid var(--line);margin-bottom:8px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--g)}
+.future{display:flex;flex-direction:column;gap:6px;padding:20px 0 24px;border-bottom:1px solid var(--line)}
+.flabel{font-size:15px;font-weight:600;color:var(--ink2)}
+.fnum{font-size:48px;font-weight:700;letter-spacing:-.03em;line-height:1.05}
+.fsub{font-size:15px;font-weight:600;color:var(--gt)}
+#wrap{margin:14px 0 4px}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chips button{font:inherit;font-size:14px;font-weight:700;color:var(--gt);background:none;border:0;border-radius:99px;padding:7px 12px;cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--g);color:#000}
+.agerow{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.agerow .k{font-size:15px;font-weight:600}
+#ages{flex:1;justify-content:space-between}
+.range{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 0;border-bottom:1px solid var(--line)}
+.range > div{display:flex;flex-direction:column;min-width:0}
+.range .k{font-size:13px;color:var(--ink2);font-weight:500}
+.range .v{font-size:20px;font-weight:700}
+.range .m{font-size:13px;color:var(--ink2)}
+.range > div:nth-child(2) .v{color:var(--gt)}
+.outrow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:8px}
+.outrow .k{font-size:15px;font-weight:600}
+.fnote{font-size:12px;color:var(--ink2);margin-top:4px}
+.hero .total{font-size:32px}
+.hero .label{font-size:15px;font-weight:600;color:var(--ink)}
+input[type=text],input[type=date]{background:var(--soft);border:1px solid transparent;border-radius:10px}
+input[type=text]:focus,input[type=date]:focus{border-color:var(--g)}
+input[type=range]{accent-color:var(--g)}
+.check input{accent-color:var(--g)}
+.seg{background:var(--soft);border-color:transparent}
+.seg button[aria-pressed="true"]{background:var(--g);color:#000;box-shadow:none}
+.btn{background:var(--g);color:#000;font-weight:700}
+.callout{background:var(--soft);border-radius:12px}
+.plan > div{border-color:var(--line);background:var(--soft);border-width:0;border-top-width:4px}
+.dot.live{background:var(--g)}
+tr.sel td{background:var(--soft)}
+td.exp{color:var(--gt)}
+.lockbox{border-radius:16px}
+#tip{background:var(--soft);border-color:var(--line)}
+@media (max-width:640px){
+  main{padding-left:16px;padding-right:16px}
+  .card{padding:20px 0;border-radius:0}
+  .fnum{font-size:44px}
+  #ages button{padding:7px 9px;font-size:13px}
+  .range .v{font-size:17px}
+  .tabs{background:var(--bg);border-top:1px solid var(--line);box-shadow:none;margin:0}
+  .tabs button[aria-selected="true"]{color:var(--ink)}
+  .plan > div{border-width:0;border-left-width:4px}
+}
 </style>
 </head>
 <body>
@@ -223,15 +263,20 @@ input[type=date]{font:inherit;font-size:16px;color:var(--ink);background:var(--b
 
   <div id="tab-home" class="panel">
   <!-- 0. Future -->
-  <section class="card future" aria-live="polite">
-    <div class="label" id="fHead">At age 65</div>
-    <div class="trio num">
+  <section class="future" aria-live="polite">
+    <div class="flabel" id="fHead">At age 65</div>
+    <div class="fnum num" id="fMd">…</div>
+    <div class="fsub num" id="fMdM"></div>
+    <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
+    <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
+    <div class="range num">
       <div><span class="k">Poor market</span><span class="v" id="fLo"></span><span class="m" id="fLoM"></span></div>
-      <div class="avg"><span class="k">Average</span><span class="v" id="fMd"></span><span class="m" id="fMdM"></span></div>
+      <div><span class="k">Average</span><span class="v" id="fMd2"></span><span class="m" id="fMdM2"></span></div>
       <div><span class="k">Strong market</span><span class="v" id="fHi"></span><span class="m" id="fHiM"></span></div>
     </div>
-    <div class="small fnote">Monthly amount is what the balance could pay you for life, withdrawing 4% a year.</div>
-    <div class="seg ages" id="ages" role="group" aria-label="Age"></div>
+    <div class="outrow"><span class="k">Outlook</span>
+      <div class="chips" id="outlook" role="group" aria-label="Market outlook"><button data-o="low">Cautious</button><button data-o="mid">Moderate</button><button data-o="hist">Historical</button></div></div>
+    <p class="fnote"><span id="outNote"></span>. Monthly amounts are what the balance could pay you for life at 4% a year. Poor and strong are the 1-in-10 results on each side, shown as the shaded area. The dashed line is what you put in.</p>
   </section>
 
   <!-- 1. Balance -->
@@ -275,16 +320,11 @@ input[type=date]{font:inherit;font-size:16px;color:var(--ink);background:var(--b
 
   <!-- 5. Projection -->
   <section class="card">
-    <div class="head"><h2>Your path to 75</h2></div>
-    <div class="legend"><span><i style="background:var(--s1);height:3px;vertical-align:middle"></i>Average</span><span><i style="background:var(--s1);opacity:.25"></i>Poor to strong markets (80% of outcomes)</span><span><i style="background:none;border-top:2px dashed var(--ink2);height:0;border-radius:0;vertical-align:middle"></i>What you put in</span></div>
-    <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value with a range from poor to strong markets"></svg><div id="tip"></div></div>
+    <div class="head"><h2>By age</h2></div>
     <div class="grid2">
       <div class="ctl"><div class="row"><label for="monthly">Adding each month</label><input type="text" inputmode="decimal" id="monthly"></div>
-        <small class="muted">Invested at your target mix.</small>
-        <div class="row" style="margin-top:10px"><label for="dob">Birthday</label><input type="date" id="dob"></div></div>
-      <div class="ctl"><div class="row"><label>Market outlook</label></div>
-        <div class="seg" id="outlook" role="group" aria-label="Market outlook"><button data-o="low">Cautious</button><button data-o="mid">Moderate</button><button data-o="hist">Historical</button></div>
-        <small class="muted" id="outNote"></small></div>
+        <small class="muted">Invested at your target mix.</small></div>
+      <div class="ctl"><div class="row"><label for="dob">Birthday</label><input type="date" id="dob"></div></div>
     </div>
     <label class="check"><input type="checkbox" id="real"> Show in today's dollars (2.5% inflation)</label>
     <div class="scroll"><table id="tbl"></table></div>
@@ -327,9 +367,9 @@ const usd=(v,c)=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFra
 const big=v=>{const a=Math.abs(v),s=v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2)+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':usd(v);};
 const fmtSh=v=>(+v).toLocaleString('en-US',{maximumFractionDigits:4});
 
-const OUT={ low:{us:.05,intl:.055,label:'US 5% · International 5.5% a year'},
-            mid:{us:.07,intl:.07,label:'US 7% · International 7% a year'},
-            hist:{us:.10,intl:.08,label:'US 10% · International 8% a year'} };
+const OUT={ low:{us:.05,intl:.055,label:'Cautious: US 5%, international 5.5% a year'},
+            mid:{us:.07,intl:.07,label:'Moderate: US and international 7% a year'},
+            hist:{us:.10,intl:.08,label:'Historical: US 10%, international 8% a year'} };
 const VOL={us:.16,intl:.17}, RHO=.85, FEE={us:.0003,intl:.0005}, INFL=.025;
 
 const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',px:{},tab:'home',v:2};
@@ -481,13 +521,14 @@ function draw(){
   const mo=v=>usd(v*.04/12)+'/mo';
   $('fHead').textContent='At age '+S.age+' · '+(isNaN(bday)?'':(bday.getFullYear()+S.age)+' · ')+'in '+yrs+' years'+(S.real?' · today\'s dollars':'');
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
-  $('fLoM').textContent=mo(lo[Ma]); $('fMdM').textContent=mo(md[Ma]); $('fHiM').textContent=mo(hi[Ma]);
+  $('fLoM').textContent=mo(lo[Ma]); $('fHiM').textContent=mo(hi[Ma]); $('fMd2').textContent=big(md[Ma]); $('fMdM2').textContent=mo(md[Ma]);
+  $('fMdM').textContent='Average outcome · about '+usd(md[Ma]*.04/12)+' a month for life';
 
   const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(Math.min(360,Math.max(240,W*.45))), m={l:54,r:14,t:24,b:26}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const top=Math.max(1,...hi.slice(0,Mh+1));
   const steps=[1e3,2e3,5e3,1e4,2e4,5e4,1e5,2e5,5e5,1e6,2e6,5e6,1e7,2e7,5e7,1e8,2e8,5e8];
   const step=steps.find(x=>top/x<=5)||1e9, ymax=Math.ceil(top/step)*step;
-  const X=t=>m.l+t/Mh*iw, Y=v=>m.t+(1-v/ymax)*ih, ink=css('--ink'), ink2=css('--ink2'), line=css('--line'), s1=css('--s1'), sf=css('--surface');
+  const X=t=>m.l+t/Mh*iw, Y=v=>m.t+(1-v/ymax)*ih, ink=css('--ink'), ink2=css('--ink2'), line=css('--line'), s1=css('--g'), sf=css('--surface');
   const lab=v=>v>=1e6?'$'+(v/1e6)+'M':v>=1e3?'$'+(v/1e3)+'k':'$'+v;
   let g='';
   for(let v=0;v<=ymax+1;v+=step)g+='<line x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'"/><text x="'+(m.l-8)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+lab(v)+'</text>';
