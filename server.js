@@ -445,6 +445,20 @@ async function handleStt(req, res) {
     return json(res, 200, { text: String(j.text || '').trim() });
   } catch (e) { console.error('stt error', e.message); return json(res, 502, { error: 'stt failed' }); }
 }
+// Natural-sounding speech for voice mode (plays reliably on iPhone, unlike the browser's built-in voice).
+async function handleTts(req, res) {
+  const key = sttKey(); if (!key) return json(res, 503, { error: 'no_tts_key' });
+  let b; try { b = JSON.parse(await readBody(req, 8 * 1024)); } catch (e) { return json(res, 400, { error: 'bad data' }); }
+  const input = String(b.text || '').slice(0, 800).trim(); if (!input) return json(res, 400, { error: 'empty' });
+  try {
+    const r = await fetch('https://api.openai.com/v1/audio/speech', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: process.env.TTS_MODEL || 'gpt-4o-mini-tts', voice: process.env.TTS_VOICE || 'sage', input, response_format: 'mp3',
+        instructions: 'Warm, calm and friendly, like a trusted financial coach talking with a friend. Natural conversational pace.' }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); console.error('tts error', r.status, j && j.error && j.error.message); return json(res, 502, { error: 'tts failed' }); }
+    const audio = Buffer.from(await r.arrayBuffer());
+    res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': audio.length, 'Cache-Control': 'no-store' }); return res.end(audio);
+  } catch (e) { console.error('tts error', e.message); return json(res, 502, { error: 'tts failed' }); }
+}
 async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
 // Daily sync after the close: weekdays 4:20 PM ET.
 let lastAutoSync = '';
@@ -534,8 +548,9 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/rh-sync') return handleRhSync(req, res);
   if (url.pathname === '/api/chat' && req.method === 'POST') return handleChat(req, res);
   if (url.pathname.startsWith('/api/chats')) return handleChats(req, res, url);
-  if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL, stt: !!sttKey() });
+  if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL, stt: !!sttKey(), tts: !!sttKey() });
   if (url.pathname === '/api/stt' && req.method === 'POST') return handleStt(req, res);
+  if (url.pathname === '/api/tts' && req.method === 'POST') return handleTts(req, res);
   if (url.pathname === '/api/history') {
     const sym = String(url.searchParams.get('s') || '').toUpperCase();
     const rng = String(url.searchParams.get('r') || 'max');
