@@ -319,6 +319,8 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
   .hrow.tot .blank,.hrow.tot .pct{display:none}
   .hrow.tot .val{font-size:20px}
 }
+.range{border-bottom:0}
+@media (max-width:640px){.chk{display:none}}
 </style>
 </head>
 <body>
@@ -363,8 +365,8 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
         
       </div>
     </div>
-    <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
+    <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
     <div class="range num">
       <div><span class="k">Poor market</span><span class="v" id="fLo"></span></div>
       <div><span class="k">Average</span><span class="v" id="fMd2"></span></div>
@@ -648,24 +650,29 @@ function draw(){
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
   $('fMd2').textContent=big(md[Ma]);
 
-  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(Math.min(360,Math.max(240,W*.45))), m={l:54,r:14,t:24,b:26}, iw=W-m.l-m.r, ih=H-m.t-m.b;
-  const top=Math.max(1,...hi.slice(0,Mh+1));
+  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(Math.min(360,Math.max(240,W*.45))), m={l:48,r:78,t:20,b:26}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const Mx=Math.max(1,Ma), top=Math.max(1,...hi.slice(0,Mx+1));
   const steps=[1e3,2e3,5e3,1e4,2e4,5e4,1e5,2e5,5e5,1e6,2e6,5e6,1e7,2e7,5e7,1e8,2e8,5e8];
-  const step=steps.find(x=>top/x<=5)||1e9, ymax=Math.ceil(top/step)*step;
-  const X=t=>m.l+t/Mh*iw, Y=v=>m.t+(1-v/ymax)*ih, ink=css('--ink'), ink2=css('--ink2'), line=css('--line'), s1=css('--g'), sf=css('--surface');
+  const step=steps.find(x=>top/x<=4)||1e9, ymax=Math.ceil(top/step)*step;
+  const X=t=>m.l+t/Mx*iw, Y=v=>m.t+(1-v/ymax)*ih, ink=css('--ink'), ink2=css('--ink2'), line=css('--line'), s1=css('--g'), sf=css('--surface');
   const lab=v=>v>=1e6?'$'+(v/1e6)+'M':v>=1e3?'$'+(v/1e3)+'k':'$'+v;
   let g='';
-  for(let v=0;v<=ymax+1;v+=step)g+='<line x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'"/><text x="'+(m.l-8)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+lab(v)+'</text>';
+  for(let v=0;v<=ymax+1;v+=step)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(m.l-8)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+lab(v)+'</text>';
   g+='<text x="'+X(0)+'" y="'+(H-8)+'" text-anchor="start" font-size="11" fill="'+ink2+'">Now</text>';
-  AG.forEach(a=>{const t=monthsTo(a);if(X(t)-X(0)<34)return;g+='<text x="'+X(t)+'" y="'+(H-8)+'" text-anchor="'+(t===Mh?'end':'middle')+'" font-size="11" fill="'+(a===S.age?ink:ink2)+'" font-weight="'+(a===S.age?700:400)+'">'+a+'</text>';});
-  const P=a=>{let p='';for(let t=0;t<=Mh;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(a[t]).toFixed(1);return p;};
-  let band='';for(let t=0;t<=Mh;t++)band+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(hi[t]).toFixed(1);for(let t=Mh;t>=0;t--)band+='L'+X(t).toFixed(1)+' '+Y(lo[t]).toFixed(1);
+  const a0=Math.ceil(ageNow()), every=S.age-a0>20?5:S.age-a0>8?2:1;
+  for(let a=a0;a<=S.age;a++){if(a!==S.age&&a%every)continue;const t=Math.min(Mx,monthsTo(a));if(X(t)-X(0)<44||(a!==S.age&&X(Mx)-X(t)<30))continue;
+    g+='<text x="'+X(t)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="'+(a===S.age?ink:ink2)+'" font-weight="'+(a===S.age?700:400)+'">'+(a===S.age?'Age ':'')+a+'</text>';}
+  const P=a=>{let p='';for(let t=0;t<=Mx;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(a[t]).toFixed(1);return p;};
+  let band='';for(let t=0;t<=Mx;t++)band+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(hi[t]).toFixed(1);for(let t=Mx;t>=0;t--)band+='L'+X(t).toFixed(1)+' '+Y(lo[t]).toFixed(1);
   g+='<path d="'+band+'Z" fill="'+s1+'" opacity=".16"/>';
-  g+='<path d="'+P(put)+'" fill="none" stroke="'+ink2+'" stroke-width="2" stroke-dasharray="4 4"/>';
-  g+='<path d="'+P(md)+'" fill="none" stroke="'+s1+'" stroke-width="2.5" stroke-linejoin="round"/>';
-  g+='<line x1="'+X(Ma)+'" x2="'+X(Ma)+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+s1+'" stroke-dasharray="2 3" opacity=".6"/>';
-  g+='<circle cx="'+X(Ma)+'" cy="'+Y(md[Ma])+'" r="5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2"/>';
-  g+='<text x="'+(X(Ma)-8)+'" y="'+(Y(md[Ma])-10)+'" text-anchor="end" font-size="12" font-weight="700" fill="'+ink+'" stroke="'+sf+'" stroke-width="3" paint-order="stroke">'+big(md[Ma])+' at '+S.age+'</text>';
+  g+='<path d="'+P(put)+'" fill="none" stroke="'+ink2+'" stroke-width="1.5" stroke-dasharray="4 4"/>';
+  g+='<path d="'+P(md)+'" fill="none" stroke="'+s1+'" stroke-width="3" stroke-linejoin="round"/>';
+  g+='<circle cx="'+X(Mx)+'" cy="'+Y(md[Mx])+'" r="5.5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2"/>';
+  const endLab=(v,txt,col,w)=>'<text x="'+(X(Mx)+10)+'" y="'+(Y(v)+4)+'" font-size="12" font-weight="'+w+'" fill="'+col+'">'+txt+'</text>';
+  let yh=Y(hi[Mx]), ym=Y(md[Mx]), yl=Y(lo[Mx]); if(ym-yh<16)yh=ym-16; if(yl-ym<16)yl=ym+16;
+  g+='<text x="'+(X(Mx)+10)+'" y="'+(yh+4)+'" font-size="12" fill="'+ink2+'">'+big(hi[Mx])+'</text>';
+  g+='<text x="'+(X(Mx)+10)+'" y="'+(ym+4)+'" font-size="13" font-weight="700" fill="'+s1+'">'+big(md[Mx])+'</text>';
+  g+='<text x="'+(X(Mx)+10)+'" y="'+(yl+4)+'" font-size="12" fill="'+ink2+'">'+big(lo[Mx])+'</text>';
   g+='<line id="xh" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle id="xd" r="5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2" visibility="hidden"/>';
   svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g;
 
@@ -683,7 +690,7 @@ function draw(){
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
   wrap.onpointermove=wrap.onpointerdown=function(ev){
-    const rc=svg.getBoundingClientRect(), t=Math.max(0,Math.min(Mh,Math.round((ev.clientX-rc.left-m.l)/iw*Mh)));
+    const rc=svg.getBoundingClientRect(), t=Math.max(0,Math.min(Mx,Math.round((ev.clientX-rc.left-m.l)/iw*Mx)));
     xh.setAttribute('x1',X(t));xh.setAttribute('x2',X(t));xh.setAttribute('visibility','visible');
     xd.setAttribute('cx',X(t));xd.setAttribute('cy',Y(md[t]));xd.setAttribute('visibility','visible');
     const ag=Math.floor(ageNow()+t/12+1e-6);
@@ -708,7 +715,7 @@ async function loadQuotes(){
     const first=!live; Q=j; live=true; S.px={VTI:j.VTI.price,VXUS:j.VXUS.price}; save();
     $('dot').className='dot live';
     const tm=new Date(Math.max(j.VTI.time,j.VXUS.time)), now=new Date(), same=tm.toDateString()===now.toDateString();
-    $('qstat').textContent='Prices as of '+(same?'':tm.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+', ')+tm.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+' · checked '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    $('qstat').innerHTML='Prices as of '+(same?'':tm.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+', ')+tm.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'<span class="chk"> · checked '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'</span>';
     render(first); sale();
   }catch(e){
     if(!live){$('qstat').textContent=S.px.VTI?'Live prices unavailable · using last saved prices':'Live prices unavailable · enter prices below';render(true);}
