@@ -179,6 +179,9 @@ input[type=text]{font-size:16px}
 .lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
 .lock[hidden]{display:none}
 .lockbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px 20px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
+.lockbox h2{text-align:center;margin:0 0 4px}
+#pinErr{text-align:center;margin:0}
+#pinErr:empty{display:none}
 .lockbox input{max-width:none;text-align:center;font-size:24px;letter-spacing:.3em;padding:12px}
 tr.sel td{background:var(--soft)}
 input[type=date]{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
@@ -580,8 +583,7 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 <body>
 <div id="lock" class="lock" hidden>
   <form id="pinForm" class="lockbox">
-    <h2>Enter your PIN</h2>
-    <p class="muted small">Hood Investing is private. Enter your PIN to continue; this device stays signed in for 6 months.</p>
+    <h2>Hood Investing</h2>
     <input type="password" id="pin" inputmode="numeric" autocomplete="current-password" aria-label="PIN">
     <p class="small" id="pinErr" style="color:var(--down)"></p>
     <button class="btn" type="submit">Unlock</button>
