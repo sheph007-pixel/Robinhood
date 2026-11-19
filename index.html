@@ -1331,7 +1331,10 @@ $('onTrack').addEventListener('click',()=>document.querySelector('.goal').scroll
 $('ftInfo').addEventListener('click',e=>{e.stopPropagation();const f=document.querySelector('.ft'),o=!f.classList.contains('open');f.classList.toggle('open',o);$('ftInfo').setAttribute('aria-expanded',o);});
 document.addEventListener('click',e=>{const f=document.querySelector('.ft');if(f&&f.classList.contains('open')&&!e.target.closest('.ftpop')){f.classList.remove('open');$('ftInfo').setAttribute('aria-expanded','false');}});
 new MutationObserver(()=>{$('syncRow').hidden=!$('sync').textContent;}).observe($('sync'),{childList:true,characterData:true,subtree:true});
-fetch('/api/version',{cache:'no-store'}).then(r=>r.json()).then(j=>{$('ver').textContent=j.version+(j.sha?' ('+j.sha+')':'');}).catch(()=>{});
+let VER=null; // reload into a new deploy automatically (home-screen apps otherwise keep the old page)
+function checkVer(){fetch('/api/version',{cache:'no-store'}).then(r=>r.json()).then(j=>{const v=j.version+(j.sha?' ('+j.sha+')':'');$('ver').textContent=v;
+  if(VER&&v!==VER&&!document.querySelector('#aiIn')?.value&&!$('aiSend').disabled)location.reload(); VER=v;}).catch(()=>{});}
+checkVer(); setInterval(checkVer,5*60e3); document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkVer();});
 $('rhConnect').addEventListener('click',e=>{e.preventDefault();$('rhErr').textContent='';$('rhUrl').value='';$('rhSheet').hidden=false;});
 $('rhCancel').addEventListener('click',e=>{e.preventDefault();$('rhSheet').hidden=true;});
 $('rhForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('rhGo');b.disabled=true;b.textContent='Connecting…';$('rhErr').textContent='';

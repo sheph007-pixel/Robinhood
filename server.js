@@ -438,7 +438,7 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/' || url.pathname === '/index.html') {
     fs.readFile(page, (err, buf) => {
       if (err) { res.writeHead(500); res.end('error'); return; }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
       res.end(buf);
     });
     return;
