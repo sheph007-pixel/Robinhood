@@ -704,7 +704,7 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
   <!-- Goal -->
   <section class="card goal">
     <div class="head"><h2>Your Goal</h2></div>
-    <div class="goalin"><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div>
+    <div class="goalin"><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt" placeholder="$3M"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div>
     <div class="gchance num"><span class="big" id="gPct"></span><span id="gTxt"></span></div>
     <div class="pbar"><div id="gBar"></div></div>
     <div class="muted small num" id="gSub"></div>
@@ -845,7 +845,7 @@ try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Obje
 if(S.v!==2){S.us=70;S.v=2;}
 S.outlook='mid';
 const realOn=()=>S.dollars!=='future'; // projections in today's dollars unless the user picks future dollars
-function migrate(){if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
+function migrate(){if(!(S.goal>=1000))S.goal=3000000; if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
 migrate();
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
 let synced=false, pushT;
@@ -879,7 +879,9 @@ let tm; ['eq','us'].forEach(id=>$(id).addEventListener('input',function(){S[id]=
 $('dep').addEventListener('input',()=>render(false));
 $('dep').addEventListener('change',function(){const v=Math.round(parse(this.value));this.value=v?usd(v):'';});
 $('real').addEventListener('change',function(){S.real=this.checked;save();draw();});
-$('gAmt').addEventListener('change',function(){S.goal=Math.max(0,parse(this.value));this.value=usd(S.goal);save();draw();});
+// Goal accepts 3000000, $3,000,000, 3M, 3.5m, 750k; anything else keeps the previous goal.
+function parseAmt(v){const m=String(v).replace(/[$,\s]/g,'').match(/^(\d*\.?\d+)([kmb])?$/i); if(!m)return 0; return +m[1]*({k:1e3,m:1e6,b:1e9}[(m[2]||'').toLowerCase()]||1);}
+$('gAmt').addEventListener('change',function(){const g=parseAmt(this.value); if(g>=1000)S.goal=Math.round(g); this.value=usd(S.goal);save();draw();});
 $('gAge').addEventListener('change',function(){const a=Math.round(parse(this.value));S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a||60));this.value=S.goalAge;save();draw();});
 $('dob').addEventListener('change',function(){if(this.value){S.dob=this.value;save();render(true);}});
 
