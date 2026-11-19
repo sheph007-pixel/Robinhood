@@ -1,23 +1,31 @@
-# Allocation Planner
+# My Portfolio
 
-A single-page calculator for a VTI, VXUS and cash portfolio.
+A simple, Betterment-style page for a VTI + VXUS + cash portfolio.
 
-- Enter what you hold and how much cash you have.
-- It shows the dollars to hold in each bucket and what to buy now, without ever selling.
-- It projects the total 5, 10, 15 and 20 years out, with a range from poor to strong markets.
+- **Holdings:** enter your VTI and VXUS share counts; live prices give the value. Enter your cash balance and its APY (change the APY any time).
+- **Target mix:** pick your stocks/cash split and your US/international split.
+- **Got new money?** Type an amount and it tells you how much to put in VTI, VXUS and cash to move toward your target without selling. "I did it" adds the shares and cash to your holdings.
+- **Projected value:** 5, 10, 15 and 20 years out, with expected, poor-market and strong-market outcomes.
 
-## Use it
+Your numbers are saved in your browser only.
 
-Open `index.html` in a browser. There is nothing to install and no server.
+## Run it
 
-The numbers in the file are examples. Type in your own. They are saved in your browser only and never leave your device.
+```bash
+npm start
+```
+
+Then open http://localhost:3000. Needs Node 18 or newer, no packages to install. The server serves the page and `/api/quotes`, which fetches VTI and VXUS prices from Yahoo Finance (Stooq as backup), cached for 60 seconds.
+
+Deploys as-is to Railway, Render or any Node host (`PORT` is read from the environment).
 
 ## How the projection works
 
-- 4,000 simulated markets in monthly steps over 20 years.
-- Stocks grow at the outlook you pick (5%, 7% or 8.7% a year) with yearly swings of about 16%.
-- Cash grows at the rate you set.
-- New cash and regular buys go into stocks at your VTI and VXUS split.
-- Expected is the middle outcome. Poor and strong are the 1 in 10 results on each side.
+Monte Carlo simulation, like Betterment and Vanguard use:
 
-Estimates only, not promises. Taxes are not included. This is not financial advice.
+- 5,000 simulated markets, monthly steps, 20 years.
+- VTI and VXUS grow at the chosen outlook's yearly return (Cautious, Moderate, Historical) with about 16% and 17% yearly volatility and 0.85 correlation. Fund fees are subtracted.
+- Cash grows at your APY. Monthly additions go in at your target mix; the portfolio is rebalanced to target yearly.
+- Expected is the median; poor and strong markets are the 10th and 90th percentiles.
+
+Estimates only. Taxes not included. Not financial advice.
