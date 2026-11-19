@@ -16,17 +16,17 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --bg:#ffffff; --surface:#ffffff; --ink:#000000; --ink2:#6f6f6f; --line:#ebebeb; --soft:#f4f4f4;
+  --bg:#ffffff; --surface:#ffffff; --ink:#000000; --ink2:#5a5a5a; --line:#ebebeb; --soft:#f4f4f4;
   --g:#00C805; --gt:#008a03; --accent:#00C805; --accent-ink:#000000; --up:#008a03; --down:#e0471f;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
   --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ color-scheme:dark;
-  --bg:#000000; --surface:#000000; --ink:#ffffff; --ink2:#9a9a9a; --line:#222222; --soft:#151515;
+  --bg:#000000; --surface:#000000; --ink:#ffffff; --ink2:#b4b4b4; --line:#222222; --soft:#151515;
   --g:#00C805; --gt:#00C805; --accent:#00C805; --accent-ink:#000000; --up:#00C805; --down:#ff5000;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; } }
 :root[data-theme="dark"]{ color-scheme:dark;
-  --bg:#000000; --surface:#000000; --ink:#ffffff; --ink2:#9a9a9a; --line:#222222; --soft:#151515;
+  --bg:#000000; --surface:#000000; --ink:#ffffff; --ink2:#b4b4b4; --line:#222222; --soft:#151515;
   --g:#00C805; --gt:#00C805; --accent:#00C805; --accent-ink:#000000; --up:#00C805; --down:#ff5000;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; }
 *{box-sizing:border-box}
@@ -253,6 +253,17 @@ td.exp{color:var(--gt)}
 .goalin #gAge{width:64px}
 .gchance{font-size:15px;color:var(--ink2)}
 .gchance .big{font-size:32px;font-weight:700;margin-right:4px}
+.brand{display:none}
+.small{font-size:14px}
+.range .k,.range .m{font-size:14px}
+.fnote{font-size:13px;line-height:1.5}
+.future h2{margin-bottom:6px}
+.flabel{font-size:16px}
+@media (min-width:641px){
+  .tabs{position:sticky;top:0;z-index:20;background:var(--bg);align-items:center;gap:6px;padding-top:6px}
+  .tabs .brand{display:block;font-size:20px;font-weight:800;letter-spacing:-.02em;margin-right:auto}
+  .tabs button{font-size:16px;padding:14px 16px}
+}
 </style>
 </head>
 <body>
@@ -269,6 +280,7 @@ td.exp{color:var(--gt)}
 <main>
 
   <nav class="tabs" role="tablist">
+    <span class="brand">Portfolio</span>
     <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
     <button role="tab" data-tab="hold"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Holdings</span></button>
     <button role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>New money</span></button>
@@ -277,6 +289,7 @@ td.exp{color:var(--gt)}
   <div id="tab-home" class="panel">
   <!-- 0. Future -->
   <section class="future" aria-live="polite">
+    <h2>Your future</h2>
     <div class="flabel" id="fHead">At age 65</div>
     <div class="fnum num" id="fMd">…</div>
     <div class="fsub num" id="fMdM"></div>
@@ -287,14 +300,14 @@ td.exp{color:var(--gt)}
       <div><span class="k">Average</span><span class="v" id="fMd2"></span><span class="m" id="fMdM2"></span></div>
       <div><span class="k">Strong market</span><span class="v" id="fHi"></span><span class="m" id="fHiM"></span></div>
     </div>
-    <p class="fnote">Assumes stocks earn about 7% a year on average, with real-world ups and downs, across 4,000 simulated markets. Monthly amounts are what the balance could pay you for life at 4% a year. Poor and strong are the 1-in-10 results on each side, shown as the shaded area. The dashed line is what you put in.</p>
+    <p class="fnote">Based on 4,000 simulated markets with stocks averaging about 7% a year. Shaded area: poor to strong markets. Dashed line: what you put in. Monthly amounts assume you withdraw 4% a year.</p>
   </section>
 
   <div class="sale" id="saleHome" hidden></div>
   <!-- 1. Balance -->
   <section class="card hero" aria-live="polite">
     <div class="head">
-      <span class="label">Today <span class="muted small" id="sync" style="margin-left:6px"></span></span>
+      <h2>Today <span class="muted small" id="sync" style="margin-left:6px;font-weight:500"></span></h2>
       <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span></span>
     </div>
     <div class="total num" id="total">$0</div>
@@ -360,6 +373,16 @@ td.exp{color:var(--gt)}
   </div>
 
   <div id="tab-money" class="panel">
+  <div class="sale" id="saleMoney" hidden></div>
+  <!-- 4. New money -->
+  <section class="card">
+    <div class="head"><h2>Got new money?</h2><span class="muted small">Where to put it so you move toward your target, without selling anything.</span></div>
+    <div class="dep-in"><input type="text" inputmode="decimal" id="dep" placeholder="$0" aria-label="New money amount">
+      <button class="btn" id="apply" disabled>I did it, update my holdings</button></div>
+    <div class="plan num" id="plan"></div>
+    <p class="callout" id="planNote"></p>
+  </section>
+
   <!-- 3. Target mix -->
   <section class="card">
     <div class="head"><h2>Your target mix</h2><span class="muted small" id="drift"></span></div>
@@ -376,15 +399,6 @@ td.exp{color:var(--gt)}
     <div class="legend"><span><i style="background:var(--s1)"></i>VTI</span><span><i style="background:var(--s2)"></i>VXUS</span><span><i style="background:var(--s3)"></i>Cash</span></div>
   </section>
 
-  <div class="sale" id="saleMoney" hidden></div>
-  <!-- 4. New money -->
-  <section class="card">
-    <div class="head"><h2>Got new money?</h2><span class="muted small">Where to put it so you move toward your target, without selling anything.</span></div>
-    <div class="dep-in"><input type="text" inputmode="decimal" id="dep" placeholder="$0" aria-label="New money amount">
-      <button class="btn" id="apply" disabled>I did it, update my holdings</button></div>
-    <div class="plan num" id="plan"></div>
-    <p class="callout" id="planNote"></p>
-  </section>
   </div>
 
 </main>
@@ -410,7 +424,7 @@ let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
 let synced=false, pushT;
 function push(){clearTimeout(pushT);pushT=setTimeout(async()=>{
   try{const r=await fetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':PINV},body:JSON.stringify(S)});
-    $('sync').textContent=r.ok?'Saved':'Not saved';}catch(e){$('sync').textContent='Offline, saved on this device';}},600);}
+    $('sync').textContent=r.ok?'':'Not saved';}catch(e){$('sync').textContent='Offline, saved on this device';}},600);}
 const save=()=>{try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){} if(synced)push();};
 
 let Q={}, live=false;   // quotes
@@ -641,7 +655,7 @@ async function pull(){
   const j=await r.json(); $('lock').hidden=true;
   try{localStorage.setItem('portfolio-pin',PINV);}catch(e){}
   if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
-  synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent='Synced';
+  synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent='';
 }
 $('pinForm').addEventListener('submit',e=>{e.preventDefault();PINV=$('pin').value.trim();pull();});
 pull();
