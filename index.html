@@ -745,7 +745,7 @@ bindNum('monthly','monthly',v=>usd(v),true);
 let SC=null, scen=null; const TD=21; // market days per month
 $('wCalc').addEventListener('click',()=>{const a1=Math.round(parse($('dcaVTI').value)),a2=Math.round(parse($('dcaVXUS').value)),L=Math.round(parse($('lump').value));
   if(!(a1||a2||L)){SC=null;scen=null;draw();return;}
-  SC={d1:a1,d2:a2,a1:a1*TD,a2:a2*TD,L}; $('wCalc').textContent='Calculating…'; setTimeout(()=>{scen=sim(a1,a2,L,false);$('wCalc').textContent='Calculate';draw();},20);});
+  SC={d1:a1,d2:a2,a1:a1*TD,a2:a2*TD,L}; $('wCalc').textContent='Calculating…'; setTimeout(()=>{const R=REC();scen=sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,false);$('wCalc').textContent='Calculate';draw();},20);});
 $('wClear').addEventListener('click',()=>{['dcaVTI','dcaVXUS','lump'].forEach(id=>$(id).value='');SC=null;scen=null;draw();});
 let tm; ['eq','us'].forEach(id=>$(id).addEventListener('input',function(){S[id]=+this.value;save();render(false);clearTimeout(tm);tm=setTimeout(()=>render(true),150);}));
 $('dep').addEventListener('input',()=>render(false));
@@ -921,7 +921,7 @@ function draw(){
     if(!scen){el.innerHTML='<div class="muted">Enter a daily amount and/or a one-time deposit, then tap Calculate to see the impact at age '+S.age+'.</div>';}
     else{const sm=scen.md[Ma]/d(Ma), gain=sm-md[Ma], pct=md[Ma]?gain/md[Ma]*100:0, mo=SC.a1+SC.a2, own=SC.L+mo*Ma, grow=Math.max(0,gain-own);
       const parts=[]; if(SC.d1)parts.push(usd(SC.d1)+'/day to VTI'); if(SC.d2)parts.push(usd(SC.d2)+'/day to VXUS'); if(SC.L)parts.push(usd(SC.L)+' one time');
-      el.innerHTML='<div class="wimpact"><div><span class="k">More at Age '+S.age+'</span><span class="wbig">+'+big(gain)+'</span></div><div><span class="k">Impact</span><span class="wbig">+'+pct.toFixed(0)+'%</span></div></div>'+
+      el.innerHTML='<div class="wimpact"><div><span class="k">More at Age '+S.age+'</span><span class="wbig">'+(gain<0?'−'+big(-gain):'+'+big(gain))+'</span></div><div><span class="k">Impact</span><span class="wbig">'+(pct<0?'−':'+')+Math.abs(pct).toFixed(0)+'%</span></div></div>'+
         '<div><b>'+big(md[Ma])+'</b> → <b class="g">'+big(sm)+'</b> at age '+S.age+' (average market)</div>'+
         '<div class="muted">Adding '+parts.join(' + ')+(mo?' (about '+usd(mo)+'/mo, every market day)':'')+'. You put in '+big(own)+'; growth adds '+big(grow)+'.</div>';}
   }
