@@ -652,6 +652,14 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
 .duo .dv{font-size:40px!important;white-space:nowrap}
 @media (max-width:640px){.duo .side{padding:12px 14px!important}.duo .k{font-size:13px!important}.duo .dv{font-size:30px!important}}
 @media (max-width:360px){.duo .dv{font-size:25px!important}.duo .k{font-size:12px!important}}
+
+/* invest tab: recent buys collapsed by default */
+.recent{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.recent summary{cursor:pointer;font-weight:600;color:var(--gt);list-style:none}
+.recent summary::-webkit-details-marker{display:none}
+.recent summary::after{content:' ›';display:inline-block;transition:transform .15s}
+.recent[open] summary::after{transform:rotate(90deg)}
+.recent[open] summary{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -684,8 +692,7 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
     <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
     <button role="tab" data-tab="hold"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Holdings</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
-    <button role="tab" data-tab="dca"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/></svg><span>DCA</span></button>
-    <button role="tab" data-tab="money"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>New Money</span></button>
+    <button role="tab" data-tab="invest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>Invest</span></button>
     <button role="tab" data-tab="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
   </nav>
 
@@ -717,20 +724,7 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
     </div>
   </section>
 
-  <section class="card habit" id="habit" hidden>
-    <div class="streak num"><span class="fire" aria-hidden="true">🔥</span><div class="sk"><b id="skN"></b><span id="skT"></span></div><div class="sr" id="skR"></div></div>
-  </section>
 
-  <section class="card whatif">
-    <div class="head"><h2>What If You Add More?</h2></div>
-    <div class="wgrid">
-      <label class="wf"><span>Daily to VTI</span><input type="text" inputmode="decimal" id="dcaVTI"></label>
-      <label class="wf"><span>Daily to VXUS</span><input type="text" inputmode="decimal" id="dcaVXUS"></label>
-      <label class="wf"><span>One-Time Deposit</span><input type="text" inputmode="decimal" id="lump"></label>
-    </div>
-    <div class="wbtns"><button type="button" class="btn" id="wCalc">Calculate</button><button type="button" class="btn ghost" id="wClear">Clear</button></div>
-    <div class="wres num" id="wres"></div>
-  </section>
   <div hidden><span id="mileT"></span><span id="mileR"></span><div id="mileB"></div><div id="saleHome"></div><div id="saleMoney"></div></div>
 
 
@@ -821,29 +815,34 @@ main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the
     <p class="ainote" id="aiNote"></p>
   </div>
 
-  <div id="tab-dca" class="panel">
-  <section class="card">
-    <div class="head"><h2>Recurring Investments</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
-    <div id="dcaBody"></div>
-  </section>
-  <section class="card">
-    <div class="head"><h2>Recent Recurring Buys</h2></div>
-    <div id="dcaRecent"></div>
-  </section>
-  </div>
 
-  <div id="tab-money" class="panel">
-  <!-- 4. New money -->
+
+  <div id="tab-invest" class="panel">
+  <section class="card habit" id="habit" hidden>
+    <div class="streak num"><span class="fire" aria-hidden="true">🔥</span><div class="sk"><b id="skN"></b><span id="skT"></span></div><div class="sr" id="skR"></div></div>
+  </section>
   <section class="card">
-    <div class="head"><h2>Got New Money?</h2><span class="muted small">Enter an amount to see what to buy in Robinhood and the impact.</span></div>
+    <div class="head"><h2>Your Auto-Invest</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
+    <div id="dcaBody"></div>
+    <details class="recent"><summary>Recent Buys</summary><div id="dcaRecent"></div></details>
+  </section>
+  <section class="card">
+    <div class="head"><h2>Add New Money</h2><span class="muted small">Enter an amount to see what to buy in Robinhood.</span></div>
     <div class="dep-in"><input type="text" inputmode="decimal" id="dep" placeholder="$0" aria-label="New money amount"></div>
     <div class="plan num" id="plan"></div>
     <p class="callout" id="planNote"></p>
     <button id="apply" hidden></button>
   </section>
-
-
-
+  <section class="card whatif">
+    <div class="head"><h2>What If You Add More?</h2></div>
+    <div class="wgrid">
+      <label class="wf"><span>Daily to VTI</span><input type="text" inputmode="decimal" id="dcaVTI"></label>
+      <label class="wf"><span>Daily to VXUS</span><input type="text" inputmode="decimal" id="dcaVXUS"></label>
+      <label class="wf"><span>One-Time Deposit</span><input type="text" inputmode="decimal" id="lump"></label>
+    </div>
+    <div class="wbtns"><button type="button" class="btn" id="wCalc">Calculate</button><button type="button" class="btn ghost" id="wClear">Clear</button></div>
+    <div class="wres num" id="wres"></div>
+  </section>
   </div>
 
   <div class="ft">
@@ -1188,7 +1187,7 @@ function scroller(){return phoneScroll()?document.querySelector('main'):null;}
 function scrollTop0(){const m=scroller(); if(m)m.scrollTop=0; else window.scrollTo(0,0);}
 function scrollPos(){const m=scroller(); return m?m.scrollTop:window.scrollY;}
 function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-money').hidden=t!=='money'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-dca').hidden=t!=='dca'; if(t==='dca')dcaRender(); document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)scrollTop0();}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)scrollTop0();}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 async function markets(){
@@ -1322,7 +1321,7 @@ $('aiHistList').addEventListener('click',async e=>{const del=e.target.closest('[
   const it=e.target.closest('[data-id]'); if(it){await aiLoad(it.dataset.id); $('aiHistPanel').hidden=true;}});
 function dcaRender(){
   const R=REC(), rh=S.rh;
-  if(!rh||!R.list.length){$('dcaBody').innerHTML='<p class="muted">No recurring investments synced yet. Ask Claude to sync Robinhood.</p>';$('dcaRecent').innerHTML='';return;}
+  if(!rh||!R.list.length){$('dcaBody').innerHTML='<p class="muted">No recurring investments synced yet. Tap Refresh below to sync with Robinhood.</p>';$('dcaRecent').innerHTML='';return;}
   const fq={daily:'every market day',weekly:'every week',monthly:'every month'}, d=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const tot=R.list.reduce((a,x)=>a+(+x.perMonth||0),0), l30=R.list.reduce((a,x)=>a+(+x.last30||0),0);
   $('dcaBody').innerHTML='<div class="dcasum num"><div><span class="k">Per Month</span><span class="v g">'+usd(tot)+'</span></div><div><span class="k">Per Year</span><span class="v">'+big(tot*12)+'</span></div><div><span class="k">Last 30 Days</span><span class="v">'+usd(l30)+'</span></div></div>'+
@@ -1330,7 +1329,7 @@ function dcaRender(){
     '<p class="muted small">Included in all projections. Change amounts in the Robinhood app; they sync here automatically.</p>';
   $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
 }
-showTab(['money','hold','mkt','ai','dca'].includes(S.tab)?S.tab:'home');
+showTab(S.tab==='money'||S.tab==='dca'?'invest':['hold','mkt','ai','invest'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes();
 // Prices refresh after the open (9:30 ET) and the close (4:00 ET), or by hand.
 let lastQ=Date.now();
