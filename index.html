@@ -407,6 +407,17 @@ td.exp{color:var(--gt)}
     <div class="head"><h2>Your split</h2></div>
     <div class="splits" id="splits"></div>
   </section>
+
+  <section class="card">
+    <div class="head"><h2>Targets</h2><span class="muted small" id="drift" hidden></span></div>
+    <div class="grid2">
+      <div class="ctl"><div class="row"><label for="us">US / International</label><output id="usO"></output></div>
+        <input type="range" id="us" min="0" max="100" step="5"></div>
+      <div class="ctl"><div class="row"><label for="eq">Stocks / Cash</label><output id="eqO"></output></div>
+        <input type="range" id="eq" min="0" max="100" step="5"></div>
+    </div>
+    <div hidden><div id="barNow"></div><div id="barTgt"></div></div>
+  </section>
   </div>
 
   <div id="tab-money" class="panel">
@@ -425,21 +436,6 @@ td.exp{color:var(--gt)}
       <small class="muted">Used in your projections on Home.</small></div>
   </section>
 
-  <!-- 3. Target mix -->
-  <section class="card">
-    <div class="head"><h2>Your target mix</h2><span class="muted small" id="drift"></span></div>
-    <div class="grid2">
-      <div class="ctl"><div class="row"><label for="eq">Stocks / cash</label><output id="eqO"></output></div>
-        <input type="range" id="eq" min="0" max="100" step="5"></div>
-      <div class="ctl"><div class="row"><label for="us">Of stocks: US (VTI) / International (VXUS)</label><output id="usO"></output></div>
-        <input type="range" id="us" min="0" max="100" step="5"></div>
-    </div>
-    <div class="bars">
-      <div class="barrow"><span>Now</span><div class="bar" id="barNow" role="img"></div></div>
-      <div class="barrow"><span>Target</span><div class="bar" id="barTgt" role="img"></div></div>
-    </div>
-    <div class="legend"><span><i style="background:var(--s1)"></i>VTI</span><span><i style="background:var(--s2)"></i>VXUS</span><span><i style="background:var(--s3)"></i>Cash</span></div>
-  </section>
 
   </div>
 
@@ -567,9 +563,9 @@ function render(reproject){
     const row=(name,a,b,la,lb,ca,cb,ta)=>{const off=Math.abs(a-ta), ok=off<2;
       return '<div class="split"><div class="srow"><span class="sn">'+name+'</span><span class="sv num">'+Math.round(a)+' / '+Math.round(b)+'</span></div>'+
         '<div class="sbar"><div style="width:'+a+'%;background:var('+ca+')"></div><div style="width:'+b+'%;background:var('+cb+')"></div><i style="left:'+ta+'%"></i></div>'+
-        '<div class="srow small"><span class="muted">'+la+' / '+lb+' · target '+ta+' / '+(100-ta)+'</span><span class="'+(ok?'ok':'off')+'">'+(ok?'✓ On target':'Off by '+Math.round(off)+'%')+'</span></div></div>';};
+        '<div class="srow small"><span class="muted">Target '+ta+' / '+(100-ta)+'</span><span class="'+(ok?'ok':'off')+'">'+(ok?'✓ On target':'Off by '+Math.round(off)+'%')+'</span></div></div>';};
     $('splits').innerHTML=row('US / International',pv,100-pv,'VTI','VXUS','--s1','--s2',tu)+row('Stocks / Cash',ps,100-ps,'Stocks','Cash','--g','--s3',te)+
-      '<p class="muted small">New deposits fix any gap without selling. Use the New money tab.</p>'; }
+      ''; }
 
   // target mix
   $('eqO').textContent=S.eq+' / '+(100-S.eq); $('usO').textContent=S.us+' / '+(100-S.us);
