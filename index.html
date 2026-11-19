@@ -398,6 +398,41 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
   #apply{margin-top:2px}
 }
 @media (max-width:380px){.duo .dv{font-size:27px}}
+.gneed{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.gnh{font-size:15px;font-weight:700}
+.gn{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:0 12px;background:var(--soft);border-radius:12px;padding:10px 14px}
+.gn span{font-size:14px;color:var(--ink2)}
+.gn b{font-size:20px;color:var(--gt)}
+.gn small{grid-column:1/-1;font-size:13px;color:var(--ink2)}
+
+/* ===== Section panels ===== */
+:root{--page:#f2f2f4;--card:#ffffff;--cardline:#e6e6ea}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#000;--card:#121212;--cardline:#1f1f1f;--soft:#1e1e1e}}
+:root[data-theme="dark"]{--page:#000;--card:#121212;--cardline:#1f1f1f;--soft:#1e1e1e}
+html,body{background:var(--page)}
+.tabs{background:var(--page)}
+.panel{gap:14px}
+.card,.future{background:var(--card);border:1px solid var(--cardline);border-radius:18px;padding:20px 18px}
+.card.hero{padding-top:20px}
+.future .agerow{padding-bottom:4px}
+.range{padding-bottom:0}
+.upd{padding-bottom:10px}
+.mk{padding:12px 0}
+@media (max-width:640px){
+  .panel{gap:12px}
+  .card,.future{padding:16px 14px;border-radius:16px}
+  main{padding-left:12px;padding-right:12px}
+  .tabs{background:var(--card)}
+}
+
+/* ===== Inputs: clearly editable ===== */
+:root{--inbg:#ffffff;--inline:#c9c9d1}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--inbg:#232326;--inline:#45454c}}
+:root[data-theme="dark"]{--inbg:#232326;--inline:#45454c}
+input[type=text],input[type=date],.aiform textarea{background:var(--inbg)!important;border:1.5px solid var(--inline)!important;color:var(--ink)}
+input[type=text]:hover,input[type=date]:hover,.aiform textarea:hover{border-color:var(--ink2)!important}
+input[type=text]:focus,input[type=date]:focus,.aiform textarea:focus{border-color:var(--g)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--g) 25%,transparent);outline:none}
+input::placeholder,textarea::placeholder{color:var(--ink2);opacity:.8}
 </style>
 </head>
 <body>
@@ -474,6 +509,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
     <div class="gchance num"><span class="big" id="gPct"></span><span id="gTxt"></span></div>
     <div class="pbar"><div id="gBar"></div></div>
     <div class="muted small num" id="gSub"></div>
+    <div class="gneed num" id="gNeed"></div>
   </section>
 
 
@@ -659,6 +695,27 @@ function monthsTo(age){const b=new Date(S.dob+'T00:00:00'),n=new Date();if(isNaN
 function ageNow(){return 75-monthsTo(75)/12;}
 function ages(){return AGES.filter(a=>monthsTo(a)>0);}
 let base=null;
+// Final values at month m for a given daily buy (split by target US/Intl), small sample for speed.
+function goalVals(daily,m){
+  const h=holdings(), w=weights(), o=OUT[S.outlook], N=1500, r=rng(7);
+  const mu1=Math.log(1+o.us-FEE.us)/12, mu2=Math.log(1+o.intl-FEE.intl)/12, s1=VOL.us/Math.sqrt(12), s2=VOL.intl/Math.sqrt(12), cm=Math.pow(1+S.apy/100,1/12)-1, k2=Math.sqrt(1-RHO*RHO);
+  const add=daily*21, u=S.us/100, out=new Float64Array(N);
+  const gauss=()=>{let x=0;while(x===0)x=r();return Math.sqrt(-2*Math.log(x))*Math.cos(2*Math.PI*r());};
+  for(let i=0;i<N;i++){let a=h.vti,b=h.vxus,c=h.cash;
+    for(let t=1;t<=m;t++){const z1=gauss(),z2=RHO*z1+k2*gauss();a*=Math.exp(mu1+s1*z1);b*=Math.exp(mu2+s2*z2);c*=1+cm;a+=add*u;b+=add*(1-u);
+      if(t%12===0){const T=a+b+c;a=T*w.vti;b=T*w.vxus;c=T*w.cash;}}
+    out[i]=a+b+c;}
+  return out.sort();
+}
+const GN={};
+function goalNeed(p){ // daily amount so that P(value >= goal) >= p
+  const m=Math.max(1,monthsTo(S.goalAge)), key=[p,S.goal,S.goalAge,S.shVTI,S.shVXUS,S.cash,S.apy,S.eq,S.us,Math.round(price('VTI')),Math.round(price('VXUS'))].join('|');
+  if(key in GN)return GN[key];
+  const ok=d=>{const v=goalVals(d,m);return v[Math.floor((1-p)*(v.length-1))]>=S.goal;};
+  let res;
+  if(ok(0))res=0; else{let lo=0,hi=50; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi);}}
+  return GN[key]=res;
+}
 function sim(a1,a2,L,full){
   const h=holdings(), w=weights(), o=OUT[S.outlook], N=4000, M=Math.max(12,monthsTo(Math.max(...AGES))), r=rng(42);
   const mu1=Math.log(1+o.us-FEE.us)/12, mu2=Math.log(1+o.intl-FEE.intl)/12;
@@ -809,6 +866,8 @@ function draw(){
     $('gTxt').textContent=' chance of '+big(S.goal)+' by age '+S.goalAge+(S.real?' (today\'s dollars)':'');
     $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
     const T0=md[0]; $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
+    { const n50=goalNeed(.5), n75=goalNeed(.75), line=(lab,v)=>'<div class="gn"><span>'+lab+'</span><b>'+(v===0?'On track already':v==null?'Not reachable':usd(v)+'/day')+'</b>'+(v?'<small>about '+usd(v*21)+'/mo, every market day</small>':'')+'</div>';
+      $('gNeed').innerHTML='<div class="gnh">To Reach Your Goal, Buy Daily</div>'+line('Average market',n50)+line('75% chance',n75); }
     $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%). '+(when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
