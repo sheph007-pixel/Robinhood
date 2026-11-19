@@ -598,6 +598,23 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .ft.open .ftpop{display:block}
 @media (hover:hover){.ft:hover .ftpop{display:block}}
 body.on-ai .ft{display:none}
+
+/* today's dollars, on-track line, habit card */
+.dnote{display:block;font-size:12px;color:var(--ink2);margin-top:2px}
+.dolrow .chips button{padding:6px 12px}
+.ontrack{display:block;position:relative;padding-right:34px!important;width:100%;margin:10px 0 2px;padding:10px 14px;border-radius:12px;border:0;font:inherit;font-size:14px;text-align:left;cursor:pointer;color:var(--ink);background:var(--soft)}
+.ontrack b{font-weight:700}
+.ontrack.ok b{color:var(--gt)} .ontrack.mid b,.ontrack.low b{color:#d08a00}
+.ontrack .chev{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--ink2);font-size:18px;line-height:1}
+.ontrack b{white-space:nowrap}
+.htiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.htiles>div{background:var(--soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.htiles .k{font-size:12px;color:var(--ink2)} .htiles .v{font-size:20px;font-weight:700} .htiles .v em{font-style:normal;font-size:13px;font-weight:500;color:var(--ink2)} .htiles .s{font-size:12px;color:var(--ink2)}
+.habit p{margin:10px 0 0}
+@media (max-width:640px){.htiles{grid-template-columns:1fr 1fr}.htiles>div:last-child{grid-column:1 / -1}}
+main>*{flex-shrink:0} /* panels must not shrink, or long chats overflow past the scroll area */
+/* phones: leave room for the pinned composer so the end of an answer can scroll into view */
+@media (max-width:640px){body.on-ai main{padding-bottom:calc(150px + max(4px, calc(env(safe-area-inset-bottom) - 16px)))!important}}
 </style>
 </head>
 <body>
@@ -649,17 +666,26 @@ body.on-ai .ft{display:none}
       <div class="side">
         <span class="k" id="fHead">At age 65</span>
         <span class="dv g" id="fMd">…</span>
+        <span class="dnote" id="fNote"></span>
         
       </div>
     </div>
+    <button type="button" class="ontrack" id="onTrack" hidden></button>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">With Added Money</span><span class="ls">Added</span></span></div>
     <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
+    <div class="agerow dolrow"><span class="k">Show</span><div class="chips" id="dollars" role="group" aria-label="Dollars"><button data-d="today">Today's Dollars</button><button data-d="future">Future Dollars</button></div></div>
     <div class="range num">
       <div><span class="k">Poor Market</span><span class="v" id="fLo"></span></div>
       <div><span class="k">Average</span><span class="v" id="fMd2"></span></div>
       <div><span class="k">Strong Market</span><span class="v" id="fHi"></span></div>
     </div>
+  </section>
+
+  <section class="card habit" id="habit" hidden>
+    <div class="head"><h2>Your Investing Habit</h2></div>
+    <div class="htiles num" id="habitT"></div>
+    <p class="muted small" id="habitN"></p>
   </section>
 
   <section class="card whatif">
@@ -817,7 +843,8 @@ const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',r
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
 if(S.v!==2){S.us=70;S.v=2;}
-S.outlook='mid';S.real=false;
+S.outlook='mid';
+const realOn=()=>S.dollars!=='future'; // projections in today's dollars unless the user picks future dollars
 function migrate(){if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
 migrate();
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
@@ -889,7 +916,7 @@ function monthsTo(age){const b=new Date(S.dob+'T00:00:00'),n=new Date();if(isNaN
   const tgt=new Date(b.getFullYear()+age,b.getMonth(),b.getDate());return Math.round((tgt-n)/(1000*60*60*24*30.4375));}
 function ageNow(){return 75-monthsTo(75)/12;}
 function ages(){return AGES.filter(a=>monthsTo(a)>0);}
-let base=null;
+let base=null, noRec=null;
 function REC(){const r=(S.rh&&S.rh.recurring)||[], g=sym=>r.filter(x=>x.symbol===sym).reduce((a,x)=>a+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily').reduce((a,x)=>a+(+x.amount||0),0);
   return {a1:g('VTI'),a2:g('VXUS'),daily:dly,list:r};}
 // Final values at month m for a given daily buy (split by target US/Intl), small sample for speed.
@@ -906,9 +933,10 @@ function goalVals(daily,m){
 }
 const GN={};
 function goalNeed(p){ // daily amount so that P(value >= goal) >= p
-  const m=Math.max(1,monthsTo(S.goalAge)), key=[REC().a1,REC().a2,p,S.goal,S.goalAge,S.shVTI,S.shVXUS,S.cash,S.apy,S.eq,S.us,Math.round(price('VTI')),Math.round(price('VXUS'))].join('|');
+  const m=Math.max(1,monthsTo(S.goalAge)), key=[realOn(),REC().a1,REC().a2,p,S.goal,S.goalAge,S.shVTI,S.shVXUS,S.cash,S.apy,S.eq,S.us,Math.round(price('VTI')),Math.round(price('VXUS'))].join('|');
   if(key in GN)return GN[key];
-  const ok=d=>{const v=goalVals(d,m);return v[Math.floor((1-p)*(v.length-1))]>=S.goal;};
+  const need=S.goal*(realOn()?Math.pow(1+INFL,m/12):1);
+  const ok=d=>{const v=goalVals(d,m);return v[Math.floor((1-p)*(v.length-1))]>=need;};
   let res;
   if(ok(0))res=0; else{let lo=0,hi=50; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi);}}
   return GN[key]=res;
@@ -935,7 +963,7 @@ function sim(a1,a2,L,full){
   return {lo,lq,md,hq,hi,put,M,cols};
 }
 function project(){
-  const R=REC(); proj=sim(R.a1,R.a2,0,true); base=proj;
+  const R=REC(); proj=sim(R.a1,R.a2,0,true); base=proj; noRec=(R.a1+R.a2)>0?sim(0,0,0,false):null;
   scen=SC?sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,false):null;
 }
 
@@ -1010,11 +1038,21 @@ function draw(){
   $('ages').innerHTML=AG.map(a=>'<button data-a="'+a+'" aria-pressed="'+(a===S.age)+'">'+a+'</button>').join('');
   $('ages').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.age=+b.dataset.a;save();draw();});
     if(!proj)return;
-  const d=t=>S.real?Math.pow(1+INFL,t/12):1, Mh=proj.M, Ma=Math.min(Mh,monthsTo(S.age));
+  const d=t=>realOn()?Math.pow(1+INFL,t/12):1, Mh=proj.M, Ma=Math.min(Mh,monthsTo(S.age));
   const lo=proj.lo.map((v,t)=>v/d(t)), md=proj.md.map((v,t)=>v/d(t)), hi=proj.hi.map((v,t)=>v/d(t)), put=proj.put.map((v,t)=>v/d(t)), lq=proj.lq.map((v,t)=>v/d(t)), hq=proj.hq.map((v,t)=>v/d(t));
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
   const mo=v=>usd(v*.04/12)+'/mo';
   $('fHead').textContent='At Age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
+  $('fNote').textContent=realOn()?'in today\'s dollars':'in future dollars';
+  $('dollars').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String((b.dataset.d==='future')!==realOn()));b.onclick=()=>{S.dollars=b.dataset.d;save();draw();};});
+  { const R=REC(), rh=S.rh||{}, perDay=R.daily, perMo=R.a1+R.a2;
+    if(perMo>0&&noRec){const add=Math.max(0,md[Ma]-noRec.md[Ma]/d(Ma));
+      $('habitT').innerHTML='<div><span class="k">Auto-Invest</span><span class="v g">'+(perDay?usd(perDay)+'<em>/day</em>':usd(perMo)+'<em>/mo</em>')+'</span><span class="s">≈ '+big(perMo*12)+' a year</span></div>'+
+        (rh.invested30!=null?'<div><span class="k">Last 30 Days</span><span class="v">'+usd(rh.invested30)+'</span><span class="s">bought on '+rh.days30+' days</span></div>':'')+
+        '<div><span class="k">Adds by Age '+S.age+'</span><span class="v g">+'+big(add)+'</span><span class="s">average market</span></div>';
+      $('habitN').textContent='Small amounts, every market day, no matter what the market does. That habit does more for your future than any single day\'s price.';
+      $('habit').hidden=false;}
+    else $('habit').hidden=true; }
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
@@ -1060,6 +1098,8 @@ function draw(){
     let lo2=0,hi2=col.length; while(lo2<hi2){const mid=(lo2+hi2)>>1; if(col[mid]<need)lo2=mid+1; else hi2=mid;}
     const pct=Math.round((col.length-lo2)/col.length*100), when=md.findIndex(v=>v>=S.goal);
     $('gPct').textContent=pct+'%'; GOALPCT=pct;
+    { const ot=$('onTrack'), st=pct>=70?['ok','On Track']:pct>=40?['mid','Getting Close']:['low','Not on Track Yet'];
+      ot.className='ontrack '+st[0]; ot.innerHTML='<b>'+st[1]+'</b> for '+big(S.goal)+' by age '+S.goalAge+' · '+pct+'% chance<span class="chev">›</span>'; ot.hidden=false; }
     $('gTxt').textContent='chance of '+big(S.goal)+' by '+S.goalAge;
     $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
     const T0=md[0]; $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
@@ -1189,7 +1229,7 @@ function aiContext(){
     if(S.rh&&S.rh.recent)lines.push('Recent recurring buys: '+S.rh.recent.slice(0,10).map(o=>o.date+' '+o.symbol+' $'+o.amount+(o.price?' @ $'+o.price:'')).join('; ')); }
   lines.push('Projections include the recurring investments above.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
   lines.push('Goal: $'+f(S.goal)+' by age '+S.goalAge+(GOALPCT!=null?' ('+GOALPCT+'% chance per simulation)':''));
-  if(proj){lines.push('Projection (Monte Carlo, 4,000 paths, stocks ~7%/yr avg, 16-17% volatility, yearly rebalance to target, includes deposits): age -> poor (10th pct) / average (median) / strong (90th pct)');
+  if(proj){lines.push('Projection values below are in future (nominal) dollars. The app shows them '+(realOn()?'in today\'s dollars (divided by 1.025^years for 2.5% inflation)':'in future dollars')+'; the goal amount is '+(realOn()?'in today\'s dollars':'in future dollars')+'.');lines.push('Projection (Monte Carlo, 4,000 paths, stocks ~7%/yr avg, 16-17% volatility, yearly rebalance to target, includes deposits): age -> poor (10th pct) / average (median) / strong (90th pct)');
     AGES.forEach(a=>{const t=Math.min(proj.M,monthsTo(a));if(t>0)lines.push('  '+a+': $'+f(proj.lo[t])+' / $'+f(proj.md[t])+' / $'+f(proj.hi[t]));});}
   lines.push('Prices as of: '+($('qstat').textContent||'unknown'));
   return lines.join('\n');
@@ -1228,7 +1268,9 @@ async function aiAsk(text){
         if(chunk.includes('\u0000S')){searching='Searching the web…';chunk=chunk.split('\u0000S').join('');}
         if(chunk.includes('\u0000Q')){searching='Checking market data…';chunk=chunk.split('\u0000Q').join('');}
         if(chunk.includes('\u0000R')){searching='Checking Robinhood…';chunk=chunk.split('\u0000R').join('');}
-        a.content+=chunk; el.innerHTML=a.content?md(a.content):'<span class="typing">'+(searching||'Thinking…')+'</span>';}
+        const sc=scroller()||document.scrollingElement, near=sc.scrollHeight-sc.scrollTop-sc.clientHeight<160;
+        a.content+=chunk; el.innerHTML=a.content?md(a.content):'<span class="typing">'+(searching||'Thinking…')+'</span>';
+        if(near)sc.scrollTop=sc.scrollHeight;}
     }
   }catch(e){a.content=a.content||'Connection lost. Please try again.';}
   if(!a.content)a.content='No answer came back. Please try again.';
@@ -1285,6 +1327,7 @@ async function pull(){
   if(j.state){const tab=S.tab;S=Object.assign({},DEF,j.state);S.tab=tab;if(S.v!==2){S.us=70;S.v=2;}S.outlook='mid';migrate();fill();try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}render(true);}
   synced=true; if(!j.state&&(S.shVTI||S.shVXUS||S.cash))push(); $('sync').textContent=''; syncNote();
 }
+$('onTrack').addEventListener('click',()=>document.querySelector('.goal').scrollIntoView({behavior:'smooth',block:'start'}));
 $('ftInfo').addEventListener('click',e=>{e.stopPropagation();const f=document.querySelector('.ft'),o=!f.classList.contains('open');f.classList.toggle('open',o);$('ftInfo').setAttribute('aria-expanded',o);});
 document.addEventListener('click',e=>{const f=document.querySelector('.ft');if(f&&f.classList.contains('open')&&!e.target.closest('.ftpop')){f.classList.remove('open');$('ftInfo').setAttribute('aria-expanded','false');}});
 new MutationObserver(()=>{$('syncRow').hidden=!$('sync').textContent;}).observe($('sync'),{childList:true,characterData:true,subtree:true});
