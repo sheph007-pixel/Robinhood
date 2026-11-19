@@ -23,6 +23,7 @@ async function yahoo(sym) {
     prevClose: prev,
     change: prev ? m.regularMarketPrice - prev : null,
     changePct: prev ? (m.regularMarketPrice / prev - 1) * 100 : null,
+    high52: m.fiftyTwoWeekHigh ?? null,
     time: m.regularMarketTime * 1000,
     source: 'Yahoo Finance',
   };

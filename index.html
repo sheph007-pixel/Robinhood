@@ -241,6 +241,18 @@ td.exp{color:var(--gt)}
   .tabs button[aria-selected="true"]{color:var(--ink)}
   .plan > div{border-width:0;border-left-width:4px}
 }
+.sale{background:color-mix(in srgb,var(--g) 12%,transparent);border-radius:12px;padding:12px 14px;font-size:14px;margin:12px 0 4px}
+.sale[hidden]{display:none}
+.paynow{font-size:15px;color:var(--ink2);margin-top:2px} .paynow b{color:var(--gt)}
+.mile{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.mrow{display:flex;justify-content:space-between;font-size:14px;font-weight:600;gap:10px}
+.pbar{height:6px;background:var(--soft);border-radius:99px;overflow:hidden}
+.pbar div{height:100%;background:var(--g);border-radius:99px;transition:width .4s}
+.goalin{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:600}
+.goalin input{width:140px;text-align:left}
+.goalin #gAge{width:64px}
+.gchance{font-size:15px;color:var(--ink2)}
+.gchance .big{font-size:32px;font-weight:700;margin-right:4px}
 </style>
 </head>
 <body>
@@ -279,6 +291,7 @@ td.exp{color:var(--gt)}
     <p class="fnote"><span id="outNote"></span>. Monthly amounts are what the balance could pay you for life at 4% a year. Poor and strong are the 1-in-10 results on each side, shown as the shaded area. The dashed line is what you put in.</p>
   </section>
 
+  <div class="sale" id="saleHome" hidden></div>
   <!-- 1. Balance -->
   <section class="card hero" aria-live="polite">
     <div class="head">
@@ -286,6 +299,20 @@ td.exp{color:var(--gt)}
       <span class="status"><span class="dot" id="dot"></span><span id="qstat">Loading prices…</span></span>
     </div>
     <div class="total num" id="total">$0</div>
+    <div class="paynow num" id="payNow"></div>
+    <div class="mile">
+      <div class="mrow num"><span id="mileT"></span><span class="muted" id="mileR"></span></div>
+      <div class="pbar"><div id="mileB"></div></div>
+    </div>
+  </section>
+
+  <!-- Goal -->
+  <section class="card goal">
+    <div class="head"><h2>Your goal</h2></div>
+    <div class="goalin"><span>Reach</span><input type="text" inputmode="decimal" id="gAmt" aria-label="Goal amount"><span>by age</span><input type="text" inputmode="numeric" id="gAge" aria-label="Goal age"></div>
+    <div class="gchance num"><span class="big" id="gPct"></span><span id="gTxt"></span></div>
+    <div class="pbar"><div id="gBar"></div></div>
+    <div class="muted small num" id="gSub"></div>
   </section>
 
   <!-- 2. Holdings -->
@@ -348,6 +375,7 @@ td.exp{color:var(--gt)}
     <div class="legend"><span><i style="background:var(--s1)"></i>VTI</span><span><i style="background:var(--s2)"></i>VXUS</span><span><i style="background:var(--s3)"></i>Cash</span></div>
   </section>
 
+  <div class="sale" id="saleMoney" hidden></div>
   <!-- 4. New money -->
   <section class="card">
     <div class="head"><h2>Got new money?</h2><span class="muted small">Where to put it so you move toward your target, without selling anything.</span></div>
@@ -372,7 +400,7 @@ const OUT={ low:{us:.05,intl:.055,label:'Cautious: US 5%, international 5.5% a y
             hist:{us:.10,intl:.08,label:'Historical: US 10%, international 8% a year'} };
 const VOL={us:.16,intl:.17}, RHO=.85, FEE={us:.0003,intl:.0005}, INFL=.025;
 
-const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',px:{},tab:'home',v:2};
+const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',goal:3000000,goalAge:60,px:{},tab:'home',v:2};
 let S=Object.assign({},DEF);
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
 if(S.v!==2){S.us=70;S.v=2;}
@@ -390,7 +418,7 @@ const price=sym=>(Q[sym]&&Q[sym].price)||S.px[sym]||0;
 function fill(){
 $('shVTI').value=fmtSh(S.shVTI); $('shVXUS').value=fmtSh(S.shVXUS);
 $('cash').value=usd(S.cash,true); $('apy').value=S.apy.toFixed(2); $('monthly').value=usd(S.monthly);
-$('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real; $('dob').value=S.dob;}
+$('eq').value=S.eq; $('us').value=S.us; $('real').checked=S.real; $('dob').value=S.dob; $('gAmt').value=usd(S.goal); $('gAge').value=S.goalAge;}
 fill();
 const bindNum=(id,key,fmt,proj)=>$(id).addEventListener('change',function(){S[key]=Math.max(0,parse(this.value));this.value=fmt(S[key]);save();render(proj);});
 bindNum('shVTI','shVTI',fmtSh,true); bindNum('shVXUS','shVXUS',fmtSh,true);
@@ -400,6 +428,8 @@ let tm; ['eq','us'].forEach(id=>$(id).addEventListener('input',function(){S[id]=
 $('dep').addEventListener('input',()=>render(false));
 $('dep').addEventListener('change',function(){const v=parse(this.value);this.value=v?usd(v,true):'';});
 $('real').addEventListener('change',function(){S.real=this.checked;save();draw();});
+$('gAmt').addEventListener('change',function(){S.goal=Math.max(0,parse(this.value));this.value=usd(S.goal);save();draw();});
+$('gAge').addEventListener('change',function(){const a=Math.round(parse(this.value));S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a||60));this.value=S.goalAge;save();draw();});
 $('dob').addEventListener('change',function(){if(this.value){S.dob=this.value;save();render(true);}});
 document.querySelectorAll('#outlook button').forEach(b=>b.addEventListener('click',()=>{S.outlook=b.dataset.o;save();render(true);}));
 
@@ -453,13 +483,19 @@ function project(){
   const q=(s,p)=>{const x=(s.length-1)*p,l=Math.floor(x);return s[l]+(s[Math.min(l+1,s.length-1)]-s[l])*(x-l);};
   const lo=[],md=[],hi=[],put=[];
   for(let t=0;t<=M;t++){const s=cols[t].sort();lo.push(q(s,.1));md.push(q(s,.5));hi.push(q(s,.9));put.push(h.total+add*t);}
-  proj={lo,md,hi,put,M};
+  proj={lo,md,hi,put,M,cols};
 }
 
 // ---------- render ----------
 function render(reproject){
   const h=holdings(), w=weights(), T=h.total;
   $('total').textContent=usd(T,true);
+  $('payNow').innerHTML=T?'Already enough to pay you about <b>'+usd(T*.04/12)+' a month</b> for life':'';
+  const MS=[1e5,2.5e5,5e5,7.5e5,1e6,1.25e6,1.5e6,2e6,2.5e6,3e6,4e6,5e6,6e6,7.5e6,1e7,1.5e7,2e7,3e7,5e7];
+  const nxt=MS.find(x=>x>T)||T*1.5, prv=[0,...MS].filter(x=>x<=T).pop()||0;
+  $('mileT').textContent=T&&prv?'Passed '+big(prv)+' ✓':'Next milestone';
+  $('mileR').textContent=big(nxt-T)+' to '+big(nxt);
+  $('mileB').style.width=Math.max(2,Math.min(100,(T-prv)/(nxt-prv)*100))+'%';
   const stocks=h.vti+h.vxus;
 
   ['VTI','VXUS'].forEach(k=>{
@@ -548,6 +584,14 @@ function draw(){
   let tb='<thead><tr><th>Age</th><th>What you put in</th><th>Poor market</th><th>Average</th><th>Strong market</th></tr></thead><tbody>';
   AG.forEach(a=>{const t=monthsTo(a);tb+='<tr'+(a===S.age?' class="sel"':'')+'><td>'+a+' <span class="muted small">in '+Math.round(t/12)+' yrs</span></td><td>'+big(put[t])+'</td><td>'+big(lo[t])+'</td><td class="exp">'+big(md[t])+'</td><td>'+big(hi[t])+'</td></tr>';});
   $('tbl').innerHTML=tb+'</tbody>';
+  { const gm=Math.min(Mh,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], need=S.goal*d(gm);
+    let lo2=0,hi2=col.length; while(lo2<hi2){const mid=(lo2+hi2)>>1; if(col[mid]<need)lo2=mid+1; else hi2=mid;}
+    const pct=Math.round((col.length-lo2)/col.length*100), when=md.findIndex(v=>v>=S.goal);
+    $('gPct').textContent=pct+'%';
+    $('gTxt').textContent=' chance of '+big(S.goal)+' by age '+S.goalAge+(S.real?' (today\'s dollars)':'');
+    $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
+    const T0=md[0]; $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
+    $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%). '+(when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
   wrap.onpointermove=wrap.onpointerdown=function(ev){
@@ -561,6 +605,14 @@ function draw(){
 }
 
 // ---------- quotes ----------
+function sale(){
+  const off=k=>Q[k]&&Q[k].high52?(1-Q[k].price/Q[k].high52)*100:0, a=off('VTI'), b=off('VXUS');
+  let msg='';
+  if(Math.max(a,b)>=3){const k=a>=b?'VTI':'VXUS', o=Math.max(a,b);
+    msg='<b>'+k+' is on sale: '+o.toFixed(1)+'% below its 52-week high.</b> New money buys about '+(100/(100-o)*100-100).toFixed(1)+'% more shares than at the peak. Drops are when long-term investors get the best prices.';}
+  else msg='<b>Markets are near their highs.</b> Keep adding on schedule. Time in the market beats timing the market.';
+  ['saleHome','saleMoney'].forEach(id=>{$(id).innerHTML=msg;$(id).hidden=false;});
+}
 async function loadQuotes(){
   try{
     const r=await fetch('/api/quotes',{cache:'no-store'}); if(!r.ok)throw 0;
@@ -568,7 +620,7 @@ async function loadQuotes(){
     const first=!live; Q=j; live=true; S.px={VTI:j.VTI.price,VXUS:j.VXUS.price}; save();
     $('dot').className='dot live';
     $('qstat').textContent='Live prices · '+new Date(Math.max(j.VTI.time,j.VXUS.time)).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-    render(first);
+    render(first); sale();
   }catch(e){
     if(!live){$('qstat').textContent=S.px.VTI?'Live prices unavailable · using last saved prices':'Live prices unavailable · enter prices below';render(true);}
   }
