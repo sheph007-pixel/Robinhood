@@ -241,18 +241,39 @@ async function handleChat(req, res) {
   res.end();
 }
 // Each view fetches extra history so a 200-day moving average is complete from the first visible point.
-const HIST_RANGES = { '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': ['max', '1wk'], '15y': ['max', '1wk'], '20y': ['max', '1wk'], 'max': ['max', '1mo'] };
+// A number means 'that many years back' via period1: Yahoo quietly turns range=max into monthly points even when weekly/daily is asked for.
+const HIST_RANGES = { '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': [11, '1wk'], '15y': [16, '1wk'], '20y': [21, '1wk'], 'max': ['max', '1mo'] };
+const ySpan = v => typeof v === 'number' ? `period1=${Math.floor(Date.now() / 1000 - v * 365.25 * 86400)}&period2=${Math.floor(Date.now() / 1000)}` : `range=${v}`;
 const histCache = new Map();
 async function history(sym, rng) {
-  const key = sym + rng + 'v2', hit = histCache.get(key);
+  const key = sym + rng + 'v3', hit = histCache.get(key);
   if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.data;
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=${HIST_RANGES[rng][0]}&interval=${HIST_RANGES[rng][1]}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?${ySpan(HIST_RANGES[rng][0])}&interval=${HIST_RANGES[rng][1]}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!r.ok) throw new Error('yahoo ' + r.status);
   const j = (await r.json()).chart.result[0], t = [], c = [];
   j.timestamp.forEach((ts, i) => { const v = j.indicators.quote[0].close[i]; if (v != null) { t.push(ts * 1000); c.push(Math.round(v * 100) / 100); } });
-  const data = { symbol: sym, range: rng, t, c };
+  let dd = null; try { dd = await drawdowns(sym); } catch (e) { /* chart still works without markers */ }
+  const data = { symbol: sym, range: rng, t, c, dd };
   histCache.set(key, { at: Date.now(), data });
   return data;
+}
+// 10%+ drops from the running high, found once on DAILY closes over the fund's whole history, so every
+// chart range (daily, weekly or monthly points) shows the same drops with the same depth.
+const ddCache = new Map();
+async function drawdowns(sym) {
+  const hit = ddCache.get(sym); if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.data;
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?period1=0&period2=${Math.floor(Date.now() / 1000)}&interval=1d`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const j = (await r.json()).chart.result[0], q = j.indicators.quote[0].close, out = [];
+  let pk = -1, pt = 0, ep = null;
+  j.timestamp.forEach((ts, i) => { const v = q[i]; if (v == null) return; const t = ts * 1000;
+    if (v >= pk) { if (ep) { ep.end = t; out.push(ep); ep = null; } pk = v; pt = t; return; }
+    const d = v / pk - 1;
+    if (!ep && d <= -0.1) ep = { peak: pt, hit: t, trough: t, depth: Math.round(d * 1000) / 1000, end: null };
+    if (ep && d < ep.depth) { ep.depth = Math.round(d * 1000) / 1000; ep.trough = t; } });
+  if (ep) out.push(ep);
+  ddCache.set(sym, { at: Date.now(), data: out });
+  return out;
 }
 const page = path.join(__dirname, 'index.html');
 const STATIC = {
