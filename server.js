@@ -72,6 +72,7 @@ How you talk:
 - Keep the plan current. Use the snapshot and today's market to check whether the plan still fits: the mix versus targets, the cash level and what it earns, whether the daily buys are on pace for the goal, and big shifts in rates or valuations that matter for the long run. When something should change, recommend the specific change (e.g. "raise daily VXUS to $1,200", "move the goal age to 58") and why. When nothing needs to change, say the plan is on track and why staying the course is right.
 - If you notice something in the snapshot that needs attention, mention it briefly even if they didn't ask.
 - Have a real conversation. Don't repeat numbers, facts or points you already made earlier in this chat unless they ask again; build on what was said and move it forward. Vary how you say things. Only bring up a number when it matters to the question.
+- You remember the client. Their saved notes come with every request: follow standing instructions there exactly (e.g. never bring up a topic they asked you to drop), use what you know about their goals and life, and don't ask again for things you already know. When they tell you something lasting (goals, timeline, family or job changes, preferences, how they want you to work, decisions you agree on), save it with memory_save without announcing it; if they say "remember", "don't talk about", "from now on" or similar, save it and briefly confirm. Update or remove notes that change (memory_forget). Never save daily prices or balances.
 - Ask questions like a good advisor would: when the answer depends on something you don't know (their timeline, income changes, risk comfort, big upcoming expenses, what's behind the question), ask one short, specific question. End with a question only when it genuinely helps, not every time.
 - Give clear, practical recommendations when asked (how to split new money, whether the cash level fits their targets) with the reasoning. Mention big trade-offs briefly. Add a short "check with a tax pro/attorney" note only for taxes, legal questions or major life decisions.
 
@@ -105,7 +106,33 @@ async function yChart(sym, range, interval) {
   const j = await r.json(); if (!j.chart || !j.chart.result) throw new Error(`No data for ${sym}`);
   return j.chart.result[0];
 }
+// ---------- advisor memory: durable notes the AI keeps about the client across all chats ----------
+const memFile = () => path.join(DATA_DIR, 'memory.json');
+function readMemory() { try { return JSON.parse(fs.readFileSync(memFile(), 'utf8')); } catch (e) { return { notes: [] }; } }
+function writeMemory(m) { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(memFile() + '.tmp', JSON.stringify(m)); fs.renameSync(memFile() + '.tmp', memFile()); }
+function memoryText() {
+  const n = readMemory().notes; if (!n.length) return 'What you know about the client from past conversations: nothing saved yet.';
+  return 'What you know about the client from past conversations (follow any instructions here; use the ids with memory_forget):\n' + n.map(x => '- [' + x.id + '] ' + x.text + ' (' + x.at.slice(0, 10) + ')').join('\n');
+}
+const MEMORY_TOOLS = [
+  { name: 'memory_save', description: 'Save a durable note about the client for all future conversations: their goals and timeline, life events, preferences, how they want you to talk, topics to avoid, decisions you made together, and standing instructions ("don\'t bring up X again", "always show amounts in thousands"). Save when they tell you something lasting or give an instruction. Do not save prices, balances or other numbers that change daily. Write it as one short clear sentence. If it updates an existing note, forget the old one first.', strict: true,
+    input_schema: { type: 'object', properties: { note: { type: 'string', description: 'One short sentence, e.g. "Prefers not to discuss crypto." or "Plans to retire at 58 and move to Florida."' } }, required: ['note'], additionalProperties: false } },
+  { name: 'memory_forget', description: 'Delete a saved note that is wrong, outdated or that the client asks you to forget. Use the id shown in brackets.', strict: true,
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'], additionalProperties: false } },
+];
+function memoryTool(name, input) {
+  const m = readMemory();
+  if (name === 'memory_save') {
+    const text = String(input.note || '').replace(/\s+/g, ' ').trim().slice(0, 300); if (!text) throw new Error('empty note');
+    if (m.notes.some(x => x.text.toLowerCase() === text.toLowerCase())) return { ok: true, note: 'already saved' };
+    const note = { id: crypto.randomBytes(3).toString('hex'), text, at: new Date().toISOString() };
+    m.notes.push(note); if (m.notes.length > 80) m.notes = m.notes.slice(-80); writeMemory(m); console.log('memory saved'); return { ok: true, id: note.id };
+  }
+  if (name === 'memory_forget') { const before = m.notes.length; m.notes = m.notes.filter(x => x.id !== String(input.id)); writeMemory(m); console.log('memory forgot'); return { ok: m.notes.length < before }; }
+  throw new Error('unknown memory tool');
+}
 async function runAiTool(name, input) {
+  if (name === 'memory_save' || name === 'memory_forget') return memoryTool(name, input);
   if (name === 'robinhood') {
     if (!rh.connected()) throw new Error('Robinhood is not connected to this site yet.');
     console.log('ai robinhood tool', input.tool);
@@ -176,17 +203,17 @@ async function handleChat(req, res) {
         ...(voice && /haiku/.test(AI_MODEL) ? { thinking: { type: 'disabled' } } : {}), // voice: skip thinking so it starts talking sooner
         system: [
           { type: 'text', text: AI_SYSTEM, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: 'Live portfolio snapshot (synced from the Robinhood Core account):\n' + context, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: memoryText() + '\n\nLive portfolio snapshot (synced from the Robinhood Core account):\n' + context, cache_control: { type: 'ephemeral' } },
           { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\n' + mkt + (voice ? VOICE_NOTE : '') },
         ],
-        tools: [...AI_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+        tools: [...AI_TOOLS, ...MEMORY_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages,
       });
       rounds++; stream.on('text', (t) => { if (!firstAt) firstAt = Date.now(); res.write(t); });
       stream.on('streamEvent', (ev) => {
         if (ev.type === 'content_block_start' && ev.content_block) {
           if (ev.content_block.type === 'server_tool_use') res.write('\u0000S');
-          if (ev.content_block.type === 'tool_use') res.write(ev.content_block.name === 'robinhood' ? '\u0000R' : '\u0000Q');
+          if (ev.content_block.type === 'tool_use' && !/^memory_/.test(ev.content_block.name)) res.write(ev.content_block.name === 'robinhood' ? '\u0000R' : '\u0000Q');
         }
       });
       const msg = await stream.finalMessage();
@@ -412,7 +439,7 @@ let briefJob = null;
 async function makeBrief(phase) {
   const client = aiClient(); if (!client) throw new Error('no_key');
   const q = await quotes().catch(() => ({}));
-  const messages = [{ role: 'user', content: 'Write the ' + (phase === 'close' ? 'end-of-day' : phase === 'open' ? 'midday' : 'latest') + ' brief. Today (US Eastern) is ' + etNow().date + '. Site quote snapshot: ' + JSON.stringify(q).slice(0, 2000) }];
+  const messages = [{ role: 'user', content: memoryText() + '\n\nWrite the ' + (phase === 'close' ? 'end-of-day' : phase === 'open' ? 'midday' : 'latest') + ' brief. Today (US Eastern) is ' + etNow().date + '. Site quote snapshot: ' + JSON.stringify(q).slice(0, 2000) }];
   for (let round = 0; round < 8; round++) {
     const msg = await client.messages.create({ model: AI_MODEL, max_tokens: 4000, output_config: { effort: 'low' }, system: BRIEF_SYSTEM,
       tools: [...AI_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }], messages });
@@ -552,6 +579,8 @@ http.createServer(async (req, res) => {
     try { return json(res, 200, await serverSync()); } catch (e) { return json(res, 502, { error: e.message }); }
   }
   if (url.pathname === '/api/rh/disconnect' && req.method === 'POST') { rh.disconnect(); return json(res, 200, { ok: true }); }
+  if (url.pathname === '/api/memory' && req.method === 'GET') return json(res, 200, readMemory());
+  if (url.pathname.startsWith('/api/memory/') && req.method === 'DELETE') { const id = url.pathname.slice(12); const m = readMemory(); m.notes = m.notes.filter(x => x.id !== id); writeMemory(m); return json(res, 200, { ok: true }); }
   if (url.pathname === '/api/brief') {
     try { return json(res, 200, await getBrief(url.searchParams.get('force') === '1')); }
     catch (e) { console.error('brief error', e && e.status, e && e.message); return json(res, e.message === 'no_key' ? 503 : 502, { error: 'unavailable' }); }
