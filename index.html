@@ -1929,9 +1929,9 @@ async function dcaFunds(){
     let bonus=0, saleDays=0; mine.forEach(b=>{const m=maAt(k,b.d); if(m&&+b.p<m){bonus+=(+b.a)/(+b.p)-(+b.a)/m; saleDays++;}});
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
     const today=ma&&now?(now<ma?'<span class="sale">On sale today</span> Your buy gets '+((ma/now-1)*100).toFixed(1)+'% more shares than at the 200-day average.':'<span class="up">Prices are up</span> Your shares are worth more. Keep buying.'):'';
-    return '<div><div class="dh"><b class="fn">'+k+'</b><span class="dsh">'+nf(sh,1)+' <small>shares</small></span></div>'+
+    return '<div><div class="dh"><b class="fn">'+k+'</b><span class="dsh">'+nf(sh,0)+' <small>shares</small></span></div>'+
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
-      '<div class="fr"><span>Next: '+goal.toLocaleString('en-US')+' shares</span><span>'+nf(goal-sh,1)+' to go</span></div>'+
+      '<div class="fr"><span>Next: '+goal.toLocaleString('en-US')+' shares</span><span>'+nf(Math.max(1,goal-sh),0)+' to go</span></div>'+
       (added>0?'<div class="fr"><span>Added this year</span><span class="g">+'+nf(added,1)+'</span></div>':'')+
       (bonus>0?'<div class="fr"><span>Sale bonus <em>'+saleDays+' sale day'+(saleDays===1?'':'s')+'</em></span><span class="g">+'+nf(bonus,1)+'</span></div>':'')+
       (today?'<div class="fn2">'+today+'</div>':'')+'</div>'; };
