@@ -1083,8 +1083,8 @@ body.vm-on .tabs{visibility:hidden}
     <section class="card">
       <div class="head"><h2>Buy Alerts</h2><span class="muted small" id="alNow"></span></div>
       <div class="alsteps num" id="alSteps"></div>
-      <p class="pfnote">When the S&amp;P 500 falls 10%, 20% or 30% below its high, you get an alert to invest a set slice of your stocks, split to bring VTI / VXUS back to your target. Buy it in Robinhood and it's checked off automatically at the next sync. Your daily buys keep going no matter what.</p>
-      <div class="alwhy"><b>Why these steps</b><span>We tested every 10%+ S&amp;P drop since 1928. Putting half in at −10% and saving the rest for −20% and −30% earned more on average than waiting or spreading thinner, and since 1950 it was ahead 5 years later in every drop.</span></div>
+      <p class="pfnote">When the S&amp;P 500 falls 10%, 20% or 30% below its high, you get an alert to raise your daily buys, with the exact VTI and VXUS amounts to set in Robinhood. When it's back within 5% of its high, you get one to set them back. Each alert checks itself off once Robinhood is buying the new amounts.</p>
+      <div class="alwhy"><b>Why raise daily buys in a drop</b><span>Since 1950, a dollar invested when the S&amp;P was 20–30% below its high grew a median 44% over 3 years, versus 36% on an average day. 30%+ below, it averaged +99% over 5 years, versus +69%. So the raise is small at −10% and bigger in deeper drops.</span></div>
     </section>
     <div id="alList"></div>
   <section class="card">
@@ -1650,12 +1650,13 @@ async function spxCard(){
 // Buy Alerts (server-owned, see /api/alerts): Home shows a compact banner; the Alerts tab holds the full list.
 let ALS=null, alsAt=0;
 async function loadAlerts(force){ if(!force&&ALS&&Date.now()-alsAt<60e3)return ALS; try{const r=await fetch('/api/alerts',{cache:'no-store'});if(r.ok){ALS=await r.json();alsAt=Date.now();}}catch(e){} return ALS; }
+const dayAmt=v=>usd(v)+'/day';
 async function dipAlert(){
   const el=$('dipAlert'), A=await loadAlerts(); if(!A){el.hidden=true;return;}
-  const pend=A.alerts.filter(a=>a.status==='pending'), b=$('alBadge'); b.hidden=!pend.length; b.textContent=pend.length;
+  const pend=A.alerts.filter(a=>a.status==='pending'&&a.type), b=$('alBadge'); b.hidden=!pend.length; b.textContent=pend.length;
   if(!pend.length){el.hidden=true;return;}
-  const tot=pend.reduce((t,a)=>t+a.amtVTI+a.amtVXUS-a.gotVTI-a.gotVXUS,0);
-  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">🛒 Buy Alert</span><span><b>Invest '+usd(Math.max(0,tot))+'</b> · '+pend.length+' pending</span><span class="che">View ›</span></button>';
+  const a=pend[pend.length-1], tgt=a.type==='boost'?a.tgtVTI+a.tgtVXUS:a.baseVTI+a.baseVXUS;
+  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">'+(a.type==='boost'?'🛒 Buy Alert':'✓ Back to Normal')+'</span><span><b>'+(a.type==='boost'?'Raise daily buys to ':'Set daily buys to ')+dayAmt(tgt)+'</b></span><span class="che">View ›</span></button>';
   $('dipGo').onclick=()=>showTab('alerts');
 }
 // Phone notifications (Web Push). iPhone needs the app added to the Home Screen first (iOS 16.4+).
@@ -1682,20 +1683,28 @@ async function pushUI(){
 async function alertsTab(){
   const A=await loadAlerts(true); if(!A){$('alList').innerHTML='<section class="card"><div class="muted small">Alerts are unavailable right now.</div></section>';return;}
   const x=A.spx, fd=v=>new Date(v).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), n=v=>Math.round(v).toLocaleString('en-US');
+  const nowD=A.daily||{vti:0,vxus:0}, epBase=A.alerts.filter(a=>a.type==='boost'&&a.status!=='skipped').slice(-1)[0], base=epBase?{vti:epBase.baseVTI,vxus:epBase.baseVXUS}:nowD, bt=base.vti+base.vxus;
   if(x){ const dd=(1-x.last/x.peak)*100;
     $('alNow').textContent='S&P 500 '+n(x.last)+(dd>=0.5?' · '+dd.toFixed(1)+'% below its high':' · at its high');
-    $('alSteps').innerHTML=A.steps.map(([l,p])=>{const hit=dd>=l, lvl=x.peak*(1-l/100); return '<div class="als'+(hit?' hit':'')+'"><b>−'+l+'%</b><span>'+(hit?'Reached':'At '+n(lvl))+'</span><em>Invest '+(Math.round(p*1000)/10)+'% of stocks</em></div>';}).join(''); }
-  const card=a=>{ const tot=a.amtVTI+a.amtVXUS, got=a.gotVTI+a.gotVXUS, row=(k,need,have)=>'<div class="alr"><span><b>'+k+'</b> '+usd(need)+'</span><span class="'+(have>=need*.95?'g':'')+'">'+(have>0?usd(have)+' bought':'Not yet')+'</span></div><div class="kbar sm"><div style="width:'+Math.min(100,Math.max(2,have/need*100)).toFixed(1)+'%"></div></div>';
-    const since=x&&x.last>a.spx?' · S&amp;P is up '+((x.last/a.spx-1)*100).toFixed(1)+'% since':'';
-    if(a.status==='pending') return '<section class="card alc pend"><div class="alh"><span class="dab">−'+a.level+'% Buy Alert</span><span class="muted small">'+fd(a.at)+' · S&amp;P '+n(a.spx)+'</span></div>'+
-      '<div class="dam">Invest <b>'+usd(tot)+'</b></div><div class="das">Buy these in Robinhood. We\'ll check it off when the buys show up.</div>'+row('VTI',a.amtVTI,a.gotVTI)+row('VXUS',a.amtVXUS,a.gotVXUS)+
+    $('alSteps').innerHTML=A.steps.map(([l,p])=>{const hit=dd>=l; return '<div class="als'+(hit?' hit':'')+'"><b>−'+l+'%</b><span>'+(hit?'Reached':'At '+n(x.peak*(1-l/100)))+'</span><em>Daily buys +'+Math.round(p*100)+'%'+(bt?' → '+usd(Math.round(bt*(1+p))):'')+'</em></div>';}).join(''); }
+  const rowA=(k,from,to)=>'<div class="alr"><span><b>'+k+'</b> '+usd(from)+' → <b class="g">'+usd(to)+'</b> a day</span></div>';
+  const card=a=>{
+    if(!a.type) return a.status==='replaced'?'':'<section class="card alc skip"><div class="alh"><span class="muted small">Older one-time alert · '+fd(a.at)+'</span></div></section>';
+    const isB=a.type==='boost', fv=isB?a.baseVTI:a.tgtVTI||a.baseVTI, tv=isB?a.tgtVTI:a.baseVTI, fx=isB?a.baseVXUS:a.baseVXUS, tx=isB?a.tgtVXUS:a.baseVXUS;
+    const title=isB?'−'+a.level+'% Buy Alert':'Back Near the High';
+    if(a.status==='pending') return '<section class="card alc pend"><div class="alh"><span class="dab">'+title+'</span><span class="muted small">'+fd(a.at)+' · S&amp;P '+n(a.spx)+'</span></div>'+
+      '<div class="dam">'+(isB?'Raise daily buys to ':'Set daily buys back to ')+'<b>'+dayAmt(isB?a.tgtVTI+a.tgtVXUS:a.baseVTI+a.baseVXUS)+'</b></div>'+
+      '<div class="das">In Robinhood, change your recurring buys to:</div>'+
+      (isB?rowA('VTI',a.baseVTI,a.tgtVTI)+rowA('VXUS',a.baseVXUS,a.tgtVXUS):'<div class="alr"><span><b>VTI</b> <b class="g">'+usd(a.baseVTI)+'</b> a day</span></div><div class="alr"><span><b>VXUS</b> <b class="g">'+usd(a.baseVXUS)+'</b> a day</span></div>')+
+      '<div class="das">Robinhood is buying <b>'+dayAmt(nowD.vti+nowD.vxus)+'</b> now ('+usd(nowD.vti)+' VTI · '+usd(nowD.vxus)+' VXUS). This checks off after the next buy at the new amounts.'+(isB?' Extra about '+usd((a.tgtVTI+a.tgtVXUS-a.baseVTI-a.baseVXUS)*21)+'/mo.':'')+'</div>'+
       '<div class="dab2"><button type="button" class="btn" data-al="'+a.id+'" data-act="done">Mark Done</button><button type="button" class="btn ghost" data-al="'+a.id+'" data-act="skip">Skip</button></div></section>';
-    if(a.status==='done') return '<section class="card alc done"><div class="alh"><span class="okb">✓ Done</span><span class="muted small">−'+a.level+'% alert · '+fd(a.at)+'</span></div>'+
-      '<div class="das">'+(got>0?'Invested <b>'+usd(got)+'</b> ('+usd(a.gotVTI)+' VTI · '+usd(a.gotVXUS)+' VXUS)':'Marked done')+(a.doneAt?' on '+fd(a.doneAt):'')+since+'</div></section>';
-    return '<section class="card alc skip"><div class="alh"><span class="muted small">Skipped · −'+a.level+'% alert · '+fd(a.at)+'</span><button type="button" class="rlink" data-al="'+a.id+'" data-act="reopen">Reopen</button></div></section>'; };
-  const all=A.alerts.slice().sort((p,q)=>q.at.localeCompare(p.at)), pend=all.filter(a=>a.status==='pending'), rest=all.filter(a=>a.status!=='pending');
-  $('alList').innerHTML=(pend.length?'<h3 class="alsec">Pending</h3>'+pend.map(card).join(''):'')+(rest.length?'<h3 class="alsec">History</h3>'+rest.map(card).join(''):'')+
-    (!all.length?'<section class="card"><div class="muted">No alerts yet. You\'ll get one when the S&amp;P 500 falls 10% below its high.</div></section>':'');
+    if(a.status==='done') return '<section class="card alc done"><div class="alh"><span class="okb">✓ Done</span><span class="muted small">'+title+' · '+fd(a.at)+'</span></div>'+
+      '<div class="das">'+(isB?'Daily buys raised to ':'Daily buys back to ')+'<b>'+dayAmt(isB?a.tgtVTI+a.tgtVXUS:a.baseVTI+a.baseVXUS)+'</b>'+(a.doneAt?' on '+fd(a.doneAt):'')+(x&&x.last>a.spx&&isB?' · S&amp;P is up '+((x.last/a.spx-1)*100).toFixed(1)+'% since':'')+'</div></section>';
+    if(a.status==='replaced') return '<section class="card alc skip"><div class="alh"><span class="muted small">'+title+' · '+fd(a.at)+' · replaced by a later step</span></div></section>';
+    return '<section class="card alc skip"><div class="alh"><span class="muted small">Skipped · '+title+' · '+fd(a.at)+'</span><button type="button" class="rlink" data-al="'+a.id+'" data-act="reopen">Reopen</button></div></section>'; };
+  const all=A.alerts.slice().sort((p,q)=>q.at.localeCompare(p.at)), pend=all.filter(a=>a.status==='pending'&&a.type), rest=all.filter(a=>!(a.status==='pending'&&a.type)).map(card).filter(Boolean);
+  $('alList').innerHTML=(pend.length?'<h3 class="alsec">Pending</h3>'+pend.map(card).join(''):'')+(rest.length?'<h3 class="alsec">History</h3>'+rest.join(''):'')+
+    (!all.filter(a=>a.type).length&&!pend.length?'<section class="card"><div class="muted">No alerts yet. You\'ll get one when the S&amp;P 500 falls 10% below its high.</div></section>':'');
   $('alList').querySelectorAll('[data-al]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{await fetch('/api/alerts/'+b.dataset.al+'/'+b.dataset.act,{method:'POST'});}catch(e){} await loadAlerts(true); alertsTab(); dipAlert(); });
 }
 // Keep It Going: a streak, milestones and badges that only go up. Up days and down days are both wins.

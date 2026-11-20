@@ -665,20 +665,10 @@ async function recordNetWorth() {
 }
 setTimeout(recordNetWorth, 15e3); setInterval(recordNetWorth, 30 * 60e3);
 async function serverSync() {
-  const pend = readAlerts().filter(a => a.status === 'pending'), since = pend.length ? pend.map(a => a.at).sort()[0] : null;
-  const p = await rh.syncPayload({ manualSince: since });
-  const out = applySync(p); if (since) matchAlerts(p.manual || []);
+  const p = await rh.syncPayload({});
+  const out = applySync(p);
   console.log('Robinhood sync ok', out.shVTI, out.shVXUS); checkAlerts().catch(() => {}); return out;
 }
-// ---------- Buy Alerts ----------
-// When the S&P 500 falls 10/15/20/30% below its high (highest close in 2 years), create an alert to invest a set slice of
-// the stocks you own, split by your US/International target. Your own (non-recurring) VTI/VXUS buys after the alert are
-// matched to it at each sync; when about the full amount is in, it's marked done. Kept in their own file so app saves never overwrite them.
-// Sized from a backtest of every 10%+ S&P 500 drop since 1928 (daily closes, ~2%/yr dividends, 3%/yr on cash not yet used):
-// putting half the dip budget in at -10% and keeping a quarter each for -20% and -30% beat the earlier 5/5/10/10 ladder on
-// average at 1, 3 and 5 years, and since 1950 was still ahead 5 years after the first -10% day in every drop.
-// The budget is 30% of the stocks you own: 15% / 7.5% / 7.5%.
-const DIP_STEPS = [[10, 0.15], [20, 0.075], [30, 0.075]];
 // ---------- Phone notifications (Web Push) ----------
 // VAPID keys are made on first use and kept with the subscribed devices in DATA_DIR/push.json.
 const webpush = require('web-push');
@@ -696,44 +686,53 @@ async function notify(title, body, url, tag) {
   return sent;
 }
 const money = v => '$' + Math.round(v).toLocaleString('en-US');
+// ---------- Buy Alerts: raise the daily buys while the S&P 500 is down ----------
+// Lump sums need cash most people don't have sitting around, so drops raise the recurring daily buys instead, until the
+// S&P is back within 5% of its high. Backtest (S&P daily closes since 1950, ~2%/yr dividends): a dollar invested 20-30%
+// below the high grew a median 44% over 3 years vs 36% on an average day, and 30%+ below averaged +99% over 5 years vs
+// +69%; 10-20% below was about the same as any day, so the first step is small. The app reads the daily amounts from
+// your recurring orders, so an alert checks itself off once Robinhood is buying the new amounts.
+const BOOST_STEPS = [[10, 0.25], [20, 0.5], [30, 1.0]];
+const RESTORE_WITHIN = 5;
 const alertsFile = () => path.join(DATA_DIR, 'alerts.json');
 function readAlerts() { try { return JSON.parse(fs.readFileSync(alertsFile(), 'utf8')); } catch (e) { return []; } }
 function writeAlerts(a) { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(alertsFile() + '.tmp', JSON.stringify(a)); fs.renameSync(alertsFile() + '.tmp', alertsFile()); }
+function dailyNow(st) {
+  const r = ((st.rh || {}).recurring || []).filter(x => !x.stopped && x.freq === 'daily');
+  const g = sym => Math.round(r.filter(x => x.symbol === sym).reduce((t, x) => t + (+x.amount || 0), 0));
+  return { vti: g('VTI'), vxus: g('VXUS') };
+}
 async function checkAlerts() {
   const x = await spxSnapshot(); if (!x || !x.peak || !x.last) return;
-  const dd = (1 - x.last / x.peak) * 100, peak = Math.round(x.peak), st = readState(), alerts = readAlerts();
-  const q = await quotes().catch(() => ({})), pv = s => (q[s] && q[s].price) || (st.px && st.px[s]) || 0;
-  const stocks = (+st.shVTI || 0) * pv('VTI') + (+st.shVXUS || 0) * pv('VXUS'); if (!(stocks > 0)) return;
-  const us = (st.us != null ? +st.us : 70) / 100, vtiNow = (+st.shVTI || 0) * pv('VTI'); let added = 0; const fresh = [];
-  // Split each buy to move VTI/VXUS back toward the US/International target (buy whichever fell further behind first).
-  const split = total => { const want = us * (stocks + total) - vtiNow, v = Math.max(0, Math.min(total, want)); return Math.round(v / 100) * 100; };
-  for (const a of alerts) { // resize pending alerts from an older ladder that nothing has been bought against yet
-    const step = DIP_STEPS.find(s => s[0] === a.level);
-    if (a.status === 'pending' && !(a.gotVTI + a.gotVXUS) && a.peak === peak && step && a.pct !== step[1]) {
-      const total = Math.round(stocks * step[1] / 100) * 100, v = split(total); Object.assign(a, { pct: step[1], amtVTI: v, amtVXUS: total - v }); added++; }
+  const dd = (1 - x.last / x.peak) * 100, peak = Math.round(x.peak), st = readState(), alerts = readAlerts(), now = dailyNow(st);
+  const id = () => crypto.randomBytes(4).toString('hex'), at = new Date().toISOString(), notes = []; let changed = false;
+  for (const a of alerts) if (!a.type && a.status === 'pending') { a.status = 'replaced'; changed = true; } // retire the old lump-sum alerts
+  // 1. A new step in this drop: raise the daily buys (relative to the normal amounts from before the drop).
+  const ep = alerts.filter(a => a.type === 'boost' && a.peak === peak), step = BOOST_STEPS.slice().reverse().find(s2 => dd >= s2[0]);
+  const base = ep.length ? { vti: ep[0].baseVTI, vxus: ep[0].baseVXUS } : now;
+  if (step && base.vti + base.vxus > 0 && !ep.some(a => a.level === step[0]) && !alerts.some(a => a.type === 'restore' && a.peak === peak)) {
+    ep.filter(a => a.status === 'pending').forEach(a => { a.status = 'replaced'; });
+    const tv = Math.round(base.vti * (1 + step[1])), tx = Math.round(base.vxus * (1 + step[1]));
+    alerts.push({ id: id(), type: 'boost', level: step[0], boost: step[1], peak, spx: Math.round(x.last), at, baseVTI: base.vti, baseVXUS: base.vxus, tgtVTI: tv, tgtVXUS: tx, status: 'pending' });
+    notes.push(['S&P 500 down ' + step[0] + '%: raise your daily buys', 'Set your recurring buys to ' + money(tv) + ' VTI + ' + money(tx) + ' VXUS a day (was ' + money(base.vti + base.vxus) + ').', 'alert-' + step[0]]);
+    changed = true;
   }
-  for (const [lvl, pct] of DIP_STEPS) {
-    if (dd < lvl || alerts.some(a => a.peak === peak && a.level === lvl)) continue;
-    const total = Math.round(stocks * pct / 100) * 100, vti = split(total);
-    alerts.push({ id: crypto.randomBytes(4).toString('hex'), level: lvl, pct, peak, spx: Math.round(x.last), at: new Date().toISOString(),
-      amtVTI: vti, amtVXUS: total - vti, gotVTI: 0, gotVXUS: 0, orders: [], status: 'pending' });
-    added++; fresh.push([lvl, total, vti]);
+  // 2. Back within 5% of the high: return to the normal daily amounts (only if a raise was actually made).
+  if (dd < RESTORE_WITHIN) for (const p of [...new Set(alerts.filter(a => a.type === 'boost').map(a => a.peak))]) {
+    if (alerts.some(a => a.type === 'restore' && a.peak === p)) continue;
+    const eps = alerts.filter(a => a.type === 'boost' && a.peak === p); eps.filter(a => a.status === 'pending').forEach(a => { a.status = 'replaced'; changed = true; });
+    if (!eps.some(a => a.status === 'done')) continue;
+    alerts.push({ id: id(), type: 'restore', peak: p, spx: Math.round(x.last), at, baseVTI: eps[0].baseVTI, baseVXUS: eps[0].baseVXUS, status: 'pending' });
+    notes.push(['S&P 500 is back near its high', 'Set your daily buys back to ' + money(eps[0].baseVTI) + ' VTI + ' + money(eps[0].baseVXUS) + ' VXUS.', 'restore-' + p]); changed = true;
   }
-  if (added) { writeAlerts(alerts); console.log('Buy Alerts written', added); }
-  for (const [lvl, total, vti] of fresh) notify('Buy Alert: S&P 500 down ' + lvl + '%', 'Invest ' + money(total) + ' now: ' + money(vti) + ' VTI + ' + money(total - vti) + ' VXUS.', '/?tab=alerts', 'alert-' + lvl).catch(() => {});
-}
-function matchAlerts(manual) {
-  const alerts = readAlerts(), used = new Set(alerts.flatMap(a => a.orders || [])); let changed = false;
-  for (const a of alerts.filter(a => a.status === 'pending').sort((p, q) => p.at.localeCompare(q.at))) {
-    for (const o of manual.filter(o => !used.has(o.id) && o.at >= a.at && o.amount > 0).sort((p, q) => p.at.localeCompare(q.at))) {
-      const need = a.amtVTI + a.amtVXUS - a.gotVTI - a.gotVXUS; if (need <= a.amtVTI * 0.05 + a.amtVXUS * 0.05) break;
-      if (o.symbol === 'VTI') a.gotVTI = Math.round((a.gotVTI + o.amount) * 100) / 100; else a.gotVXUS = Math.round((a.gotVXUS + o.amount) * 100) / 100;
-      a.orders.push(o.id); used.add(o.id); a.lastBuy = o.at; changed = true;
-    }
-    if (a.gotVTI + a.gotVXUS >= (a.amtVTI + a.amtVXUS) * 0.95) { a.status = 'done'; a.doneAt = a.lastBuy || new Date().toISOString(); a.auto = true; changed = true;
-      notify('✓ Buy Alert done', 'You invested ' + money(a.gotVTI + a.gotVXUS) + ' in the −' + a.level + '% drop. Nice work.', '/?tab=alerts', 'done-' + a.id).catch(() => {}); }
+  // 3. Check off alerts once Robinhood's recurring buys match.
+  for (const a of alerts.filter(a => a.status === 'pending' && a.type)) {
+    const hit = a.type === 'boost' ? now.vti >= a.tgtVTI * 0.98 && now.vxus >= a.tgtVXUS * 0.98 : now.vti <= a.baseVTI * 1.02 && now.vxus <= a.baseVXUS * 1.02 && now.vti + now.vxus > 0;
+    if (hit) { a.status = 'done'; a.doneAt = at; a.seen = now; changed = true;
+      notes.push([a.type === 'boost' ? '✓ Daily buys raised' : '✓ Daily buys back to normal', 'Robinhood is buying ' + money(now.vti + now.vxus) + ' a day now. Nice work.', 'done-' + a.id]); }
   }
   if (changed) writeAlerts(alerts);
+  for (const [t, b, tag] of notes) notify(t, b, '/?tab=alerts', tag).catch(() => {});
 }
 setTimeout(() => checkAlerts().catch(() => {}), 30e3); setInterval(() => checkAlerts().catch(() => {}), 30 * 60e3);
 // Automatic sync every hour (a few small Robinhood data requests; no AI involved). Page loads and Refresh sync too.
@@ -846,7 +845,7 @@ http.createServer(async (req, res) => {
   }
   if (url.pathname === '/api/alerts' && req.method === 'GET') {
     let x = null; try { x = await spxSnapshot(); } catch (e) { /* show alerts without the S&P line */ }
-    return json(res, 200, { alerts: readAlerts(), steps: DIP_STEPS, spx: x ? { last: x.last, peak: x.peak } : null });
+    return json(res, 200, { alerts: readAlerts(), steps: BOOST_STEPS, restoreWithin: RESTORE_WITHIN, daily: dailyNow(readState()), spx: x ? { last: x.last, peak: x.peak } : null });
   }
   { const m = url.pathname.match(/^\/api\/alerts\/([0-9a-f]{8})\/(skip|done|reopen)$/);
     if (m && req.method === 'POST') { const all = readAlerts(), a = all.find(z => z.id === m[1]); if (!a) return json(res, 404, { error: 'not found' });
