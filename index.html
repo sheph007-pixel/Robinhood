@@ -1988,8 +1988,8 @@ function dcaSched(){
   if(!r.length){el.innerHTML='<div class="muted small">No active recurring buys found in Robinhood.</div>';return;}
   const per=x=>x.freq==='daily'?'day':x.freq==='weekly'?'week':'month', tot=r.reduce((t,x)=>t+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily').reduce((t,x)=>t+(+x.amount),0);
   const now=new Date(), et=now.toLocaleDateString('en-CA',{timeZone:'America/New_York'}), hm=+now.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:false,hour:'2-digit',minute:'2-digit'}).replace(':',''), wd=new Date(et+'T12:00:00Z').getUTCDay();
-  const boughtToday=((S.rh||{}).buys||[]).some(b=>b.d===et);
-  const today=boughtToday?'<span class="ok">✓ Today\'s Buys Are In</span>':(wd>0&&wd<6&&hm<1230?'<span>Today\'s buys go in around 11:20 AM ET</span>':'');
+  const tb=((S.rh||{}).buys||[]).filter(b=>b.d===et), mkt=wd>0&&wd<6;
+  const today=tb.length&&tb.every(b=>+b.p>0)?'<span class="ok">✓ Today\'s Buys Are In</span>':tb.length?'<span>Today\'s buys are placed and filling</span>':(mkt&&hm<1700?'<span>Today\'s buys are placed around 11 AM ET and usually fill by early afternoon</span>':'');
   el.innerHTML='<div class="dsh2">Your Schedule</div><div class="dsr">'+r.map(x=>'<span><b>'+x.symbol+'</b> '+usd(+x.amount)+'/'+per(x)+'</span>').join('')+'</div>'+
     '<div class="dsr sub"><span>'+(dly?usd(dly)+' every market day · ':'')+'about '+usd(tot)+'/mo</span>'+today+'</div>';
 }
@@ -2003,7 +2003,7 @@ function dcaBuys(){
   const tile=(k,v,sub)=>'<div><span class="k">'+k+'</span><span class="v">'+usd(v)+'</span><span class="s">'+sub+'</span></div>';
   $('dbSum').innerHTML=tile('This Month',sum(b=>b.d.startsWith(m)),bd(days(b=>b.d.startsWith(m))))+tile('Last 30 Days',sum(b=>b.d>=d30),bd(days(b=>b.d>=d30)))+tile('This Year',sum(b=>b.d.startsWith(y)),bd(days(b=>b.d.startsWith(y))));
   const fd=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  $('dbList').innerHTML=buys.slice(0,40).map(b=>'<div><span>'+fd(b.d)+'</span><span><b>'+b.s+'</b></span><span>'+usd(+b.a)+'</span><span class="muted">'+(b.p?'@ '+usd(b.p,true):'')+'</span></div>').join('');
+  $('dbList').innerHTML=buys.slice(0,40).map(b=>'<div><span>'+fd(b.d)+'</span><span><b>'+b.s+'</b></span><span>'+usd(+b.a)+'</span><span class="muted">'+(b.p?'@ '+usd(b.p,true):'Pending')+'</span></div>').join('');
 }
 $('onTrack').addEventListener('click',function(){const ed=$('goalEd'), open=ed.hidden; ed.hidden=!open; this.setAttribute('aria-expanded',String(open)); if(open)$('gAmt').focus();});
 $('ftInfo').addEventListener('click',e=>{e.stopPropagation();const f=document.querySelector('.ft'),o=!f.classList.contains('open');f.classList.toggle('open',o);$('ftInfo').setAttribute('aria-expanded',o);});
