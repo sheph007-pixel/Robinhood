@@ -775,6 +775,12 @@ body.vm-on .tabs{visibility:hidden}
 .alsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .edtg{border-top:1px solid var(--line);padding-top:10px} .edtg summary{cursor:pointer;color:var(--gt);font-weight:700;font-size:14px;list-style:none} .edtg summary::-webkit-details-marker{display:none} .edtg[open] summary{margin-bottom:12px}
 .pushbox{display:flex;flex-direction:column;gap:8px} .pon{color:var(--gt);font-weight:700}
+.fundt{display:flex;flex-direction:column} .fundt .fr{display:grid;grid-template-columns:.8fr 1fr 1fr 1.6fr;gap:8px;padding:9px 0;border-top:1px solid var(--line);font-size:14px;align-items:baseline}
+.fundt .fr.hd{border-top:0;font-size:12px;color:var(--ink2);font-weight:600;padding-top:0} .fundt .fr span:not(:first-child){text-align:right} .fundt .g{color:var(--gt)}
+.flexl{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.fb{background:var(--soft);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;font-size:12px;color:var(--ink2)} .fb b{font-size:13px;color:var(--ink)} .fb em{font-style:normal;font-weight:700;color:var(--gt)}
+.fb.on{box-shadow:inset 0 0 0 1px var(--g)}
+@media (max-width:560px){.flexl{grid-template-columns:repeat(3,1fr)} .fundt .fr{font-size:13px;grid-template-columns:.7fr .9fr 1fr 1.5fr}}
 .alwhy{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink2);line-height:1.45} .alwhy b{color:var(--ink)}
 .als{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--ink2)} .als b{font-size:18px;color:var(--ink)} .als em{font-style:normal}
 .als.hit{box-shadow:inset 0 0 0 1px var(--g)} .als.hit b,.als.hit span{color:var(--gt)}
@@ -1082,9 +1088,10 @@ body.vm-on .tabs{visibility:hidden}
   <div id="tab-alerts" class="panel" hidden>
     <section class="card">
       <div class="head"><h2>Buy Alerts</h2><span class="muted small" id="alNow"></span></div>
-      <div class="alsteps num" id="alSteps"></div>
-      <p class="pfnote">When the S&amp;P 500 falls 10%, 20% or 30% below its high, you get an alert to raise your daily buys, with the exact VTI and VXUS amounts to set in Robinhood. When it's back within 5% of its high, you get one to set them back. Each alert checks itself off once Robinhood is buying the new amounts.</p>
-      <div class="alwhy"><b>Why raise daily buys in a drop</b><span>Since 1950, a dollar invested when the S&amp;P was 20–30% below its high grew a median 44% over 3 years, versus 36% on an average day. 30%+ below, it averaged +99% over 5 years, versus +69%. So the raise is small at −10% and bigger in deeper drops.</span></div>
+      <div class="fundt num" id="alSteps"></div>
+      <div class="flexl num" id="alBands"></div>
+      <p class="pfnote">Each fund's daily buy flexes with how far that fund is below its own high, and goes back to normal as it recovers. "Normal" is your usual recurring amount. When the amounts should change, you get one alert with the exact numbers to set in Robinhood, and it checks itself off once Robinhood is buying them.</p>
+      <div class="alwhy"><b>Why buy more in a drop</b><span>Since 1950, a dollar invested when the S&amp;P was 20–30% below its high grew a median 44% over 3 years, versus 36% on an average day. 30%+ below, it averaged +99% over 5 years, versus +69%. Small drops were about average, so the early steps are small.</span></div>
     </section>
     <div id="alList"></div>
   <section class="card">
@@ -1653,10 +1660,10 @@ async function loadAlerts(force){ if(!force&&ALS&&Date.now()-alsAt<60e3)return A
 const dayAmt=v=>usd(v)+'/day';
 async function dipAlert(){
   const el=$('dipAlert'), A=await loadAlerts(); if(!A){el.hidden=true;return;}
-  const pend=A.alerts.filter(a=>a.status==='pending'&&a.type), b=$('alBadge'); b.hidden=!pend.length; b.textContent=pend.length;
+  const pend=A.alerts.filter(a=>a.status==='pending'&&a.type==='dca'), b=$('alBadge'); b.hidden=!pend.length; b.textContent=pend.length;
   if(!pend.length){el.hidden=true;return;}
-  const a=pend[pend.length-1], tgt=a.type==='boost'?a.tgtVTI+a.tgtVXUS:a.baseVTI+a.baseVXUS;
-  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">'+(a.type==='boost'?'🛒 Buy Alert':'✓ Back to Normal')+'</span><span><b>'+(a.type==='boost'?'Raise daily buys to ':'Set daily buys to ')+dayAmt(tgt)+'</b></span><span class="che">View ›</span></button>';
+  const a=pend[pend.length-1], up=a.to.VTI+a.to.VXUS>(a.base.VTI||0)+(a.base.VXUS||0);
+  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">'+(up?'🛒 Buy Alert':'✓ Back to Normal')+'</span><span><b>Set daily buys to '+dayAmt(a.to.VTI+a.to.VXUS)+'</b></span><span class="che">View ›</span></button>';
   $('dipGo').onclick=()=>showTab('alerts');
 }
 // Phone notifications (Web Push). iPhone needs the app added to the Home Screen first (iOS 16.4+).
@@ -1682,29 +1689,28 @@ async function pushUI(){
 }
 async function alertsTab(){
   const A=await loadAlerts(true); if(!A){$('alList').innerHTML='<section class="card"><div class="muted small">Alerts are unavailable right now.</div></section>';return;}
-  const x=A.spx, fd=v=>new Date(v).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), n=v=>Math.round(v).toLocaleString('en-US');
-  const nowD=A.daily||{vti:0,vxus:0}, epBase=A.alerts.filter(a=>a.type==='boost'&&a.status!=='skipped').slice(-1)[0], base=epBase?{vti:epBase.baseVTI,vxus:epBase.baseVXUS}:nowD, bt=base.vti+base.vxus;
-  if(x){ const dd=(1-x.last/x.peak)*100;
-    $('alNow').textContent='S&P 500 '+n(x.last)+(dd>=0.5?' · '+dd.toFixed(1)+'% below its high':' · at its high');
-    $('alSteps').innerHTML=A.steps.map(([l,p])=>{const hit=dd>=l; return '<div class="als'+(hit?' hit':'')+'"><b>−'+l+'%</b><span>'+(hit?'Reached':'At '+n(x.peak*(1-l/100)))+'</span><em>Daily buys +'+Math.round(p*100)+'%'+(bt?' → '+usd(Math.round(bt*(1+p))):'')+'</em></div>';}).join(''); }
-  const rowA=(k,from,to)=>'<div class="alr"><span><b>'+k+'</b> '+usd(from)+' → <b class="g">'+usd(to)+'</b> a day</span></div>';
+  const x=A.spx, F=A.flex, B=A.bands, fd=v=>new Date(v).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), n=v=>Math.round(v).toLocaleString('en-US');
+  if(x){const dd=(1-x.last/x.peak)*100; $('alNow').textContent='S&P 500 '+n(x.last)+(dd>=0.5?' · '+dd.toFixed(1)+'% below its high':' · at its high');}
+  if(F){
+    $('alSteps').innerHTML='<div class="fr hd"><span>Fund</span><span>Below High</span><span>Normal</span><span>Now Recommended</span></div>'+
+      ['VTI','VXUS'].map(f=>{const bi=F.flex.band[f]||0, bs=F.flex.base[f]||0; return '<div class="fr"><span><b>'+f+'</b></span><span>'+F.drops[f].dd.toFixed(1)+'%</span><span>'+dayAmt(bs)+'</span><span class="'+(bi?'g':'')+'"><b>'+dayAmt(F.target[f])+'</b>'+(bi?' · '+B[bi][1]+'×':'')+'</span></div>';}).join('');
+    $('alBands').innerHTML=B.map((b,i)=>{const on=['VTI','VXUS'].filter(f=>(F.flex.band[f]||0)===i); return '<div class="fb'+(on.length?' on':'')+'"><b>'+(i?b[0]+(B[i+1]?'–'+(B[i+1][0])+'%':'%+'):'Under 10%')+'</b><span>'+(i?b[1]+'× normal':'Normal')+'</span>'+(on.length?'<em>'+on.join(' · ')+'</em>':'')+'</div>';}).join('');
+  }
+  const amt=(k,from,to)=>'<div class="alr"><span><b>'+k+'</b> '+usd(from)+' → <b class="'+(to!==from?'g':'')+'">'+usd(to)+'</b> a day'+(to===from?' <span class="muted small">(no change)</span>':'')+'</span></div>';
   const card=a=>{
-    if(!a.type) return a.status==='replaced'?'':'<section class="card alc skip"><div class="alh"><span class="muted small">Older one-time alert · '+fd(a.at)+'</span></div></section>';
-    const isB=a.type==='boost', fv=isB?a.baseVTI:a.tgtVTI||a.baseVTI, tv=isB?a.tgtVTI:a.baseVTI, fx=isB?a.baseVXUS:a.baseVXUS, tx=isB?a.tgtVXUS:a.baseVXUS;
-    const title=isB?'−'+a.level+'% Buy Alert':'Back Near the High';
-    if(a.status==='pending') return '<section class="card alc pend"><div class="alh"><span class="dab">'+title+'</span><span class="muted small">'+fd(a.at)+' · S&amp;P '+n(a.spx)+'</span></div>'+
-      '<div class="dam">'+(isB?'Raise daily buys to ':'Set daily buys back to ')+'<b>'+dayAmt(isB?a.tgtVTI+a.tgtVXUS:a.baseVTI+a.baseVXUS)+'</b></div>'+
-      '<div class="das">In Robinhood, change your recurring buys to:</div>'+
-      (isB?rowA('VTI',a.baseVTI,a.tgtVTI)+rowA('VXUS',a.baseVXUS,a.tgtVXUS):'<div class="alr"><span><b>VTI</b> <b class="g">'+usd(a.baseVTI)+'</b> a day</span></div><div class="alr"><span><b>VXUS</b> <b class="g">'+usd(a.baseVXUS)+'</b> a day</span></div>')+
-      '<div class="das">Robinhood is buying <b>'+dayAmt(nowD.vti+nowD.vxus)+'</b> now ('+usd(nowD.vti)+' VTI · '+usd(nowD.vxus)+' VXUS). This checks off after the next buy at the new amounts.'+(isB?' Extra about '+usd((a.tgtVTI+a.tgtVXUS-a.baseVTI-a.baseVXUS)*21)+'/mo.':'')+'</div>'+
+    if(a.type!=='dca') return '';
+    const up=a.to.VTI+a.to.VXUS>(a.base.VTI||0)+(a.base.VXUS||0), title=up?'Buy Alert':'Back to Normal', why='VTI '+a.dd.VTI+'% · VXUS '+a.dd.VXUS+'% below high';
+    if(a.status==='pending') return '<section class="card alc pend"><div class="alh"><span class="dab">'+title+'</span><span class="muted small">'+fd(a.at)+' · '+why+'</span></div>'+
+      '<div class="dam">Set daily buys to <b>'+dayAmt(a.to.VTI+a.to.VXUS)+'</b></div><div class="das">In Robinhood, change your recurring buys to:</div>'+
+      amt('VTI',a.from.VTI,a.to.VTI)+amt('VXUS',a.from.VXUS,a.to.VXUS)+
+      '<div class="das">Checks off after the next buy at the new amounts.'+(up?' Extra about '+usd((a.to.VTI+a.to.VXUS-(a.base.VTI||0)-(a.base.VXUS||0))*21)+'/mo over normal.':'')+'</div>'+
       '<div class="dab2"><button type="button" class="btn" data-al="'+a.id+'" data-act="done">Mark Done</button><button type="button" class="btn ghost" data-al="'+a.id+'" data-act="skip">Skip</button></div></section>';
-    if(a.status==='done') return '<section class="card alc done"><div class="alh"><span class="okb">✓ Done</span><span class="muted small">'+title+' · '+fd(a.at)+'</span></div>'+
-      '<div class="das">'+(isB?'Daily buys raised to ':'Daily buys back to ')+'<b>'+dayAmt(isB?a.tgtVTI+a.tgtVXUS:a.baseVTI+a.baseVXUS)+'</b>'+(a.doneAt?' on '+fd(a.doneAt):'')+(x&&x.last>a.spx&&isB?' · S&amp;P is up '+((x.last/a.spx-1)*100).toFixed(1)+'% since':'')+'</div></section>';
-    if(a.status==='replaced') return '<section class="card alc skip"><div class="alh"><span class="muted small">'+title+' · '+fd(a.at)+' · replaced by a later step</span></div></section>';
+    if(a.status==='done') return '<section class="card alc done"><div class="alh"><span class="okb">✓ Done</span><span class="muted small">'+title+' · '+fd(a.at)+'</span></div><div class="das">Daily buys set to <b>'+usd(a.to.VTI)+' VTI + '+usd(a.to.VXUS)+' VXUS</b>'+(a.doneAt?' on '+fd(a.doneAt):'')+' · '+why+'</div></section>';
+    if(a.status==='replaced') return '<section class="card alc skip"><div class="alh"><span class="muted small">'+title+' · '+fd(a.at)+' · replaced by a newer change</span></div></section>';
     return '<section class="card alc skip"><div class="alh"><span class="muted small">Skipped · '+title+' · '+fd(a.at)+'</span><button type="button" class="rlink" data-al="'+a.id+'" data-act="reopen">Reopen</button></div></section>'; };
-  const all=A.alerts.slice().sort((p,q)=>q.at.localeCompare(p.at)), pend=all.filter(a=>a.status==='pending'&&a.type), rest=all.filter(a=>!(a.status==='pending'&&a.type)).map(card).filter(Boolean);
-  $('alList').innerHTML=(pend.length?'<h3 class="alsec">Pending</h3>'+pend.map(card).join(''):'')+(rest.length?'<h3 class="alsec">History</h3>'+rest.join(''):'')+
-    (!all.filter(a=>a.type).length&&!pend.length?'<section class="card"><div class="muted">No alerts yet. You\'ll get one when the S&amp;P 500 falls 10% below its high.</div></section>':'');
+  const all=A.alerts.filter(a=>a.type==='dca').sort((p,q)=>q.at.localeCompare(p.at)), pend=all.filter(a=>a.status==='pending'), rest=all.filter(a=>a.status!=='pending');
+  $('alList').innerHTML=(pend.length?'<h3 class="alsec">Pending</h3>'+pend.map(card).join(''):'')+(rest.length?'<h3 class="alsec">History</h3>'+rest.map(card).join(''):'')+
+    (!all.length?'<section class="card"><div class="muted">No changes needed. You\'ll get an alert when VTI or VXUS falls 10% below its high.</div></section>':'');
   $('alList').querySelectorAll('[data-al]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{await fetch('/api/alerts/'+b.dataset.al+'/'+b.dataset.act,{method:'POST'});}catch(e){} await loadAlerts(true); alertsTab(); dipAlert(); });
 }
 // Keep It Going: a streak, milestones and badges that only go up. Up days and down days are both wins.
