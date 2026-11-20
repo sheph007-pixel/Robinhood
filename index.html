@@ -1481,7 +1481,7 @@ function vmListen(){
   if(VM.muted||!micAvail()){vmSet('paused',micAvail()?'Tap the mic to talk':null);return;}
   vmSet('listening','');
   VM.tx=false;
-  VM.ctl=listenAny(t=>{if(!VM)return; if(t==='…'){VM.tx=true;vmSet('thinking','');} else $('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening'&&!VM.tx)return; VM.tx=false; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},750,
+  VM.ctl=listenAny(t=>{if(!VM)return; if(t==='…'){VM.tx=true;vmSet('thinking','');} else $('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening'&&!VM.tx)return; VM.tx=false; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},650,
     err=>{if(!VM)return;VM.ctl=null;VM.muted=true;$('vmMute').setAttribute('aria-pressed','true');vmSet('paused',micHelp(err));});
 }
 async function vmAsk(q){
@@ -1496,6 +1496,7 @@ async function vmAsk(q){
       vmSet('speaking',it.text); VA.onended=()=>{URL.revokeObjectURL(u);next();}; VA.onerror=()=>{URL.revokeObjectURL(u);sayBrowser(it.text,v,next);};
       VA.src=u; VA.playbackRate=1.12; try{VA.preservesPitch=true;VA.webkitPreservesPitch=true;}catch(e){} const p=VA.play(); if(p)p.catch(()=>{VA.onended=VA.onerror=null;sayBrowser(it.text,v,next);}); }); };
   const take=(full,final)=>{ let rest=full.slice(used), m;
+    if(!used&&!queue.length&&!busy){const c=/^[^.!?]{25,}?[,;:—]\s+/.exec(rest); if(c){used+=c[0].length;rest=rest.slice(c[0].length);const t=plain(c[0]);if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});}}
     while((m=/[.!?]["')\]]?\s+/.exec(rest))){const seg=rest.slice(0,m.index+m[0].length); used+=seg.length; rest=rest.slice(seg.length); const t=plain(seg); if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});}
     if(final&&rest.trim()){used=full.length;const t=plain(rest);if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});} pump(); };
   const ans=await aiAsk(q,{voice:true,onChunk:(full,status)=>{ if(!VM||VM.gen!==g)return; if(!full&&status)vmSet('thinking',status); take(full,false); }});

@@ -71,6 +71,8 @@ How you talk:
 - Be a real advisor, not a yes-man. Your job is what is best for them, not agreeing with them. If an idea works against their plan or goal (chasing a hot stock, pausing buys after a drop, piling into cash, an unrealistic goal), say so plainly and kindly, explain why, and offer a better option.
 - Keep the plan current. Use the snapshot and today's market to check whether the plan still fits: the mix versus targets, the cash level and what it earns, whether the daily buys are on pace for the goal, and big shifts in rates or valuations that matter for the long run. When something should change, recommend the specific change (e.g. "raise daily VXUS to $1,200", "move the goal age to 58") and why. When nothing needs to change, say the plan is on track and why staying the course is right.
 - If you notice something in the snapshot that needs attention, mention it briefly even if they didn't ask.
+- Have a real conversation. Don't repeat numbers, facts or points you already made earlier in this chat unless they ask again; build on what was said and move it forward. Vary how you say things. Only bring up a number when it matters to the question.
+- Ask questions like a good advisor would: when the answer depends on something you don't know (their timeline, income changes, risk comfort, big upcoming expenses, what's behind the question), ask one short, specific question. End with a question only when it genuinely helps, not every time.
 - Give clear, practical recommendations when asked (how to split new money, whether the cash level fits their targets) with the reasoning. Mention big trade-offs briefly. Add a short "check with a tax pro/attorney" note only for taxes, legal questions or major life decisions.
 
 Facts (get them before answering):
@@ -142,7 +144,7 @@ async function runAiTool(name, input) {
   throw new Error('Unknown tool');
 }
 
-const VOICE_NOTE = '\n\nThis turn is a live voice conversation. Speak like you are on a phone call with your client: relaxed, warm and natural, 1 to 3 short sentences (up to 5 only if they ask for detail). Make the first sentence very short so you can start talking right away. No markdown, lists, symbols or jargon; say amounts the way people say them ("about 1.3 million", "two thousand a day"). Answer from the snapshot whenever it covers the question; look things up only for news or data the snapshot does not have, and then just say what you found.';
+const VOICE_NOTE = '\n\nThis turn is a live voice conversation. Talk like a real person on a phone call with a client you know well: relaxed, warm, natural, 1 to 3 short sentences. Make the first sentence very short. No markdown, lists, symbols or jargon; say amounts the way people say them ("about 1.3 million", "two thousand a day"). Answer from the snapshot whenever it covers the question; look things up only for news or data it does not have. When you use a tool, you may say a brief sentence first.';
 async function handleChat(req, res) {
   const client = aiClient();
   if (!client) return json(res, 503, { error: 'no_key' });
@@ -160,6 +162,7 @@ async function handleChat(req, res) {
         model: AI_MODEL,
         max_tokens: 16000,
         output_config: { effort: voice ? 'low' : 'medium' },
+        ...(voice && /haiku/.test(AI_MODEL) ? { thinking: { type: 'disabled' } } : {}), // voice: skip thinking so it starts talking sooner
         system: [
           { type: 'text', text: AI_SYSTEM, cache_control: { type: 'ephemeral' } },
           { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot (synced from the Robinhood Core account):\n' + context + (voice ? VOICE_NOTE : '') },
