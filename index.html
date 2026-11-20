@@ -750,6 +750,27 @@ body.vm-on .tabs{visibility:hidden}
 #vmType{padding:0!important;margin:0!important;text-indent:0!important}
 @media (prefers-reduced-motion:reduce){.vmorb,.vmorb .cl{animation:none!important}}
 .gone{display:none!important}
+
+.gopts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.gopts>div{background:var(--soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.gopts .gl{font-size:12px;color:var(--ink2)} .gopts .gv{font-size:20px;font-weight:800;color:var(--gt);white-space:nowrap} .gopts .gv em{font-style:normal;font-size:13px;font-weight:500;color:var(--ink2)} .gopts .gm{font-size:12px;color:var(--ink2)}
+.gplan{background:var(--soft);border-radius:14px;padding:12px 14px} .gplan.ok b{color:var(--gt)}
+@media (max-width:640px){.gopts{grid-template-columns:1fr 1fr}.gopts>div:last-child:nth-child(3){grid-column:1 / -1}.gopts .gv{font-size:18px}}
+
+/* net worth */
+.nw .nwk{font-size:14px;font-weight:600;color:var(--ink2)}
+.nw .nwv{font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.nw .nwchg{font-size:14px;margin-top:2px} .nw .nwchg .up{color:var(--gt);font-weight:700} .nw .nwchg .dn{color:var(--ink);font-weight:700}
+.nwchart{margin:10px -4px 4px;min-height:150px}
+.nwr{display:flex;justify-content:space-between;gap:4px;margin:4px 0 12px}
+.nwr button{flex:1;border:0;background:none;color:var(--ink2);font:inherit;font-weight:700;font-size:14px;padding:8px 0;border-radius:10px;cursor:pointer}
+.nwr button[aria-pressed="true"]{background:var(--soft);color:var(--gt)}
+.nwlist{display:flex;flex-direction:column}
+.nwrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.nwrow .nn{flex:1;display:flex;flex-direction:column;min-width:0} .nwrow .nn small{color:var(--ink2);font-size:12px}
+.nwrow .na{font-weight:700;font-size:16px;text-align:right}
+.nwrow input.na{width:130px;background:var(--soft)!important;border:1px solid transparent!important;border-radius:10px;padding:6px 10px!important;color:var(--ink)}
+.nwadd{display:flex;gap:8px;margin-top:10px} .nwadd input{flex:1;min-width:0} .nwadd #nwAmt{max-width:130px} .nwadd .btn{width:auto;padding:10px 16px}
 </style>
 </head>
 <body>
@@ -780,7 +801,7 @@ body.vm-on .tabs{visibility:hidden}
   <nav class="tabs" role="tablist">
     <span class="brand">Hood Investing</span>
     <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
-    <button role="tab" data-tab="hold"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Holdings</span></button>
+    <button role="tab" data-tab="hold"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Net Worth</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
     <button role="tab" data-tab="invest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>Invest</span></button>
     <button role="tab" data-tab="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
@@ -832,6 +853,15 @@ body.vm-on .tabs{visibility:hidden}
   </div>
 
   <div id="tab-hold" class="panel">
+  <section class="card nw">
+    <div class="nwk">Net Worth</div>
+    <div class="nwv num" id="nwTotal">$0</div>
+    <div class="nwchg num" id="nwChg"></div>
+    <div class="nwchart" id="nwChart"></div>
+    <div class="nwr" id="nwRange" role="group" aria-label="Range"><button data-r="7">1W</button><button data-r="30">1M</button><button data-r="91">3M</button><button data-r="ytd">YTD</button><button data-r="365">1Y</button><button data-r="all">ALL</button></div>
+    <div class="nwlist num" id="nwList"></div>
+    <form class="nwadd" id="nwAdd" autocomplete="off"><input type="text" id="nwName" placeholder="Account name" aria-label="Account name"><input type="text" id="nwAmt" inputmode="decimal" placeholder="$ Amount" aria-label="Amount"><button type="submit" class="btn">Add</button></form>
+  </section>
   <!-- 2. Holdings -->
   <section class="card">
     <div class="head"><h2>Holdings</h2><span class="rhbadge" id="rhBadge" hidden>From Robinhood · Core ••8555</span></div>
@@ -1062,23 +1092,33 @@ function REC(){return {a1:0,a2:0,daily:0,list:[]};}
 function REC_SYNCED(){const r=(S.rh&&S.rh.recurring)||[], g=sym=>r.filter(x=>x.symbol===sym).reduce((a,x)=>a+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily').reduce((a,x)=>a+(+x.amount||0),0);
   return {a1:g('VTI'),a2:g('VXUS'),daily:dly,list:r};}
 // Final values at month m for a given daily buy (split by target US/Intl), small sample for speed.
-function goalVals(daily,m){
+function goalVals(daily,m,L=0){
   const h=holdings(), w=weights(), o=OUT[S.outlook], N=1500, r=rng(7);
   const mu1=Math.log(1+o.us-FEE.us)/12, mu2=Math.log(1+o.intl-FEE.intl)/12, s1=VOL.us/Math.sqrt(12), s2=VOL.intl/Math.sqrt(12), cm=Math.pow(1+S.apy/100,1/12)-1, k2=Math.sqrt(1-RHO*RHO);
   const add=daily*21, u=S.us/100, out=new Float64Array(N), R=REC();
   const gauss=()=>{let x=0;while(x===0)x=r();return Math.sqrt(-2*Math.log(x))*Math.cos(2*Math.PI*r());};
-  for(let i=0;i<N;i++){let a=h.vti,b=h.vxus,c=h.cash;
-    for(let t=1;t<=m;t++){const z1=gauss(),z2=RHO*z1+k2*gauss();a*=Math.exp(mu1+s1*z1);b*=Math.exp(mu2+s2*z2);c*=1+cm;a+=add*u+R.a1;b+=add*(1-u)+R.a2;
-      if(t%12===0){const T=a+b+c;a=T*w.vti;b=T*w.vxus;c=T*w.cash;}}
+  for(let i=0;i<N;i++){let a=h.vti+L*w.vti,b=h.vxus+L*w.vxus,c=h.cash+L*w.cash;
+    for(let t=1;t<=m;t++){const z1=gauss(),z2=RHO*z1+k2*gauss();a*=Math.exp(mu1+s1*z1);b*=Math.exp(mu2+s2*z2);c*=1+cm;a+=add*u+R.a1;b+=add*(1-u)+R.a2;}
     out[i]=a+b+c;}
   return out.sort();
 }
 const GN={};
-function goalNeed(p){ // daily amount so that P(value >= goal) >= p
-  const m=Math.max(1,monthsTo(S.goalAge)), key=[realOn(),REC().a1,REC().a2,p,S.goal,S.goalAge,S.shVTI,S.shVXUS,S.cash,S.apy,S.eq,S.us,Math.round(price('VTI')),Math.round(price('VXUS'))].join('|');
+function outsideTotal(){return (S.accts||[]).reduce((t,a)=>t+(+a.amt||0),0);}
+function outsideAt(m){return outsideTotal()*Math.pow(1+S.apy/100,m/12);} // other accounts grow like cash
+function goalNeedFor(m){return S.goal-outsideAt(m);}
+const GL={};
+function lumpNeed(p,daily){ // one-time deposit today so that P(value >= goal) >= p, with an optional daily buy
+  const m=Math.max(1,monthsTo(S.goalAge)), key=[p,daily,S.goal,S.goalAge,S.shVTI,S.shVXUS,S.cash,S.apy,S.eq,S.us,outsideTotal(),Math.round(price('VTI')),Math.round(price('VXUS'))].join('|');
+  if(key in GL)return GL[key]; const need=goalNeedFor(m);
+  const ok=L=>{const v=goalVals(daily,m,L);return v[Math.floor((1-p)*(v.length-1))]>=need;};
+  let res; if(ok(0))res=0; else{let lo=0,hi=50000; while(!ok(hi)&&hi<1e9)hi*=2; if(hi>=1e9)res=null; else{for(let k=0;k<16;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi/1000)*1000;}}
+  return GL[key]=res;
+}
+function goalNeed(p,L=0){ // daily amount so that P(value >= goal) >= p (with an optional one-time deposit L)
+  const m=Math.max(1,monthsTo(S.goalAge)), key=[L,outsideTotal(),realOn(),REC().a1,REC().a2,p,S.goal,S.goalAge,S.shVTI,S.shVXUS,S.cash,S.apy,S.eq,S.us,Math.round(price('VTI')),Math.round(price('VXUS'))].join('|');
   if(key in GN)return GN[key];
-  const need=S.goal*(realOn()?Math.pow(1+INFL,m/12):1);
-  const ok=d=>{const v=goalVals(d,m);return v[Math.floor((1-p)*(v.length-1))]>=need;};
+  const need=goalNeedFor(m);
+  const ok=d=>{const v=goalVals(d,m,L);return v[Math.floor((1-p)*(v.length-1))]>=need;};
   let res;
   if(ok(0))res=0; else{let lo=0,hi=50; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi);}}
   return GN[key]=res;
@@ -1095,7 +1135,6 @@ function sim(a1,a2,L,full){
       const z1=gauss(), z2=RHO*z1+k2*gauss();
       a*=Math.exp(mu1+s1*z1); b*=Math.exp(mu2+s2*z2); c*=1+cm;
       a+=a1; b+=a2;
-      if(t%12===0){const T=a+b+c;a=T*w.vti;b=T*w.vxus;c=T*w.cash;}
       cols[t][i]=a+b+c;
     }
   }
@@ -1162,6 +1201,7 @@ function render(reproject){
     $('planNote').innerHTML='After this you\'ll be at <b>'+pc(H.vti/TT)+' VTI · '+pc(H.vxus/TT)+' VXUS · '+pc(H.cash/TT)+' cash</b>'+(on?', right on target.':', closer to your '+pc(w.vti)+' / '+pc(w.vxus)+' / '+pc(w.cash)+' target. The rest evens out with future deposits.')+fut;}
   else $('planNote').textContent='Type an amount above. For every $1,000 at your target mix: '+usd(1000*w.vti)+' VTI, '+usd(1000*w.vxus)+' VXUS, '+usd(1000*w.cash)+' cash. If something is underweight, it gets filled first.';
 
+  if(typeof nwRender==='function')nwRender();
   if(reproject){proj=null;setTimeout(()=>{project();draw();},0);}
 }
 
@@ -1235,18 +1275,25 @@ function draw(){
   let tb='<thead><tr><th>Age</th><th>What You Put In</th><th>Poor Market</th><th>Average</th><th>Strong Market</th></tr></thead><tbody>';
   AG.forEach(a=>{const t=monthsTo(a);tb+='<tr'+(a===S.age?' class="sel"':'')+'><td>'+a+' <span class="muted small">in '+Math.round(t/12)+' yrs</span></td><td>'+big(put[t])+'</td><td>'+big(lo[t])+'</td><td class="exp">'+big(md[t])+'</td><td>'+big(hi[t])+'</td></tr>';});
   $('tbl').innerHTML=tb+'</tbody>';
-  { const gm=Math.min(Mh,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], need=S.goal*d(gm);
+  { const gm=Math.min(Mh,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], need=goalNeedFor(gm)*d(gm);
     let lo2=0,hi2=col.length; while(lo2<hi2){const mid=(lo2+hi2)>>1; if(col[mid]<need)lo2=mid+1; else hi2=mid;}
-    const pct=Math.round((col.length-lo2)/col.length*100), when=md.findIndex(v=>v>=S.goal);
+    const pct=Math.round((col.length-lo2)/col.length*100), when=md.findIndex((v,t)=>v+outsideAt(t)>=S.goal);
     $('gPct').textContent=pct+'%'; GOALPCT=pct;
     { const ot=$('onTrack'), st=pct>=70?['ok','On Track']:pct>=40?['mid','Getting Close']:['low','Not on Track Yet'];
       ot.className='ontrack '+st[0]; ot.innerHTML='<span class="otl"><b>'+st[1]+'</b><span class="ots">'+big(S.goal)+' by age '+S.goalAge+'</span></span><span class="otr"><b>'+(pct>=99?'99%+':pct+'%')+'</b><span class="ots">chance</span></span><span class="chev">›</span>'; ot.hidden=false; }
     $('gTxt').textContent='chance of '+big(S.goal)+' by '+S.goalAge;
     $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
-    const T0=md[0]; $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
-    { const n50=goalNeed(.5), n75=goalNeed(.75), tile=(lab,v)=>'<div class="gt"><span class="gl">'+lab+'</span><span class="gv">'+(v===0?'On Track':v==null?'Out of Reach':usd(v)+'<em>/day</em>')+'</span><span class="gm">'+(v?'≈ '+usd(v*21)+'/mo':v===0?'No extra buys needed':'Try a later age')+'</span></div>';
-      const RD=REC().daily; $('gNeed').innerHTML='<div class="gnh">'+(RD?'Extra Daily Buys Needed':'Buy Daily to Reach It')+(RD?'<span class="gns"> on top of your '+usd(RD)+'/day</span>':'')+'</div><div class="gtiles">'+tile('Average Market',n50)+tile('75% Chance',n75)+'</div>'; }
-    $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%). '+(when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
+    const T0=md[0]+outsideTotal(); $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
+    { const P=.75, D=goalNeed(P), L=lumpNeed(P,0), half=L?Math.round(L/2000)*1000:0, Dm=half?goalNeed(P,half):0;
+      let h;
+      if(D===0) h='<div class="gnh">Your Plan</div><div class="gplan ok"><b>On track.</b> No extra money needed to reach '+big(S.goal)+' by '+S.goalAge+' (75% chance).</div>';
+      else if(D==null&&L==null) h='<div class="gnh">Your Plan</div><div class="gplan">That goal is out of reach by '+S.goalAge+'. Try a later age or a smaller goal.</div>';
+      else h='<div class="gnh">To reach '+big(S.goal)+' by '+S.goalAge+' <span class="gns">(75% chance)</span></div><div class="gopts">'+
+        (D!=null?'<div><span class="gl">Invest daily</span><span class="gv">'+usd(D)+'<em>/day</em></span><span class="gm">≈ '+usd(D*21)+'/mo</span></div>':'')+
+        (L!=null?'<div><span class="gl">Or add once, today</span><span class="gv">'+big(L)+'</span><span class="gm">one-time deposit</span></div>':'')+
+        (half&&Dm!=null?'<div><span class="gl">Or a mix</span><span class="gv">'+big(half)+'</span><span class="gm">today + '+usd(Dm)+'/day</span></div>':'')+'</div>';
+      $('gNeed').innerHTML=h; }
+    $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%'+(outsideTotal()?', incl. '+big(outsideTotal())+' outside Robinhood':'')+'). '+(T0>=S.goal?'You\'re already there. Now it\'s about keeping it.':when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
   wrap.onpointermove=wrap.onpointerdown=function(ev){
@@ -1295,7 +1342,7 @@ function scroller(){return phoneScroll()?document.querySelector('main'):null;}
 function scrollTop0(){const m=scroller(); if(m)m.scrollTop=0; else window.scrollTo(0,0);}
 function scrollPos(){const m=scroller(); return m?m.scrollTop:window.scrollY;}
 function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='home')draw(); if(changed)scrollTop0();}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 let BRIEF=null, briefAt=0;
@@ -1382,6 +1429,7 @@ function aiContext(){
   lines.push('Account: Robinhood Core ••8555 only (equities and cash; margin ignored).'+(S.rh?' Last synced '+S.rh.syncedAt+'.':''));
   { const R=REC(); if(R.list.length)lines.push('Recurring investments (from Robinhood, included in projections): '+R.list.map(x=>x.symbol+' $'+x.amount+' '+x.freq+' (~$'+x.perMonth+'/mo, last '+x.lastDate+')').join('; '));
     if(S.rh&&S.rh.recent)lines.push('Recent recurring buys: '+S.rh.recent.slice(0,10).map(o=>o.date+' '+o.symbol+' $'+o.amount+(o.price?' @ $'+o.price:'')).join('; ')); }
+  if((S.accts||[]).length)lines.push('Other accounts the user added by hand (outside Robinhood, treated as cash): '+S.accts.map(a=>a.name+' $'+f(+a.amt||0)).join('; ')+'. Total net worth: $'+f(nwTotal())+'. The goal counts these too.');
   lines.push('Projections use only what is in the account today and assume no future deposits or buys.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
   lines.push('Goal: $'+f(S.goal)+' by age '+S.goalAge+(GOALPCT!=null?' ('+GOALPCT+'% chance per simulation)':''));
   if(proj){lines.push('Projection values below are in future (nominal) dollars. The app shows them '+(realOn()?'in today\'s dollars (divided by 1.025^years for 2.5% inflation)':'in future dollars')+'; the goal amount is '+(realOn()?'in today\'s dollars':'in future dollars')+'.');lines.push('Projection (Monte Carlo, 4,000 paths, stocks ~7%/yr avg, 16-17% volatility, yearly rebalance to target, includes deposits): age -> poor (10th pct) / average (median) / strong (90th pct)');
@@ -1647,6 +1695,33 @@ function tabGap(){const t=document.querySelector('.tabs'); if(!t)return; const b
   const standalone=window.navigator.standalone||matchMedia('(display-mode: standalone)').matches;
   document.documentElement.classList.toggle('tabgap', !!standalone && screen.height-b>8 && H<screen.height-8);}
 tabGap(); addEventListener('resize',tabGap); addEventListener('orientationchange',()=>setTimeout(tabGap,300));
+// ---------- net worth: Robinhood (live) + accounts added by hand, with a daily history chart ----------
+var NWH=null, NWAT=0; // var: render() runs before this line on startup
+function nwTotal(){return holdings().total+outsideTotal();}
+async function nwLoad(force){ if(!force&&NWH&&Date.now()-NWAT<5*60e3)return; try{NWH=(await (await fetch('/api/networth',{cache:'no-store'})).json()).history||[];NWAT=Date.now();}catch(e){NWH=NWH||[];} nwRender(); }
+function nwRender(){
+  if(!$('nwTotal'))return; const T=nwTotal(); $('nwTotal').textContent=usd(T);
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+  let pts=(NWH||[]).filter(x=>x.d!==today).map(x=>({d:x.d,v:x.v})); pts.push({d:today,v:Math.round(T)});
+  const r=S.nwr||'all'; document.querySelectorAll('#nwRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
+  let from='0000'; if(r==='ytd')from=today.slice(0,4)+'-01-01'; else if(r!=='all'){const d=new Date(Date.now()-(+r)*864e5);from=d.toLocaleDateString('en-CA',{timeZone:'America/New_York'});}
+  const sel=pts.filter(x=>x.d>=from); const base=sel.length?sel[0].v:T, ch=T-base, pc=base?ch/base*100:0;
+  $('nwChg').innerHTML=sel.length>1?'<span class="'+(ch>=0?'up':'dn')+'">'+(ch>=0?'+':'−')+usd(Math.abs(ch))+' ('+(ch>=0?'+':'−')+Math.abs(pc).toFixed(1)+'%)</span> <span class="muted">'+({7:'past week',30:'past month',91:'past 3 months',ytd:'this year',365:'past year',all:'since tracking began'}[r])+'</span>':'<span class="muted">Tracking started today. The chart fills in day by day.</span>';
+  const W=Math.max(280,$('nwChart').clientWidth||320), H=150, P=10, vs=sel.map(x=>x.v), lo=Math.min(...vs), hi=Math.max(...vs), sp=(hi-lo)||Math.max(1,hi*0.01);
+  const X=i=>sel.length<2?W-P:P+i/(sel.length-1)*(W-2*P), Y=v=>H-P-(v-lo)/sp*(H-2*P);
+  const path=sel.map((x,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(x.v).toFixed(1)).join(''), lx=X(sel.length-1), ly=Y(sel[sel.length-1].v);
+  $('nwChart').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" aria-label="Net worth over time"><defs><radialGradient id="nwg"><stop offset="0" stop-color="var(--g)" stop-opacity=".55"/><stop offset="1" stop-color="var(--g)" stop-opacity="0"/></radialGradient></defs>'+
+    (sel.length>1?'<path d="'+path+'" fill="none" stroke="var(--g)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>':'<line x1="'+P+'" x2="'+(W-P)+'" y1="'+(H/2)+'" y2="'+(H/2)+'" stroke="var(--g)" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round"/>')+
+    '<circle cx="'+lx+'" cy="'+(sel.length>1?ly:H/2)+'" r="16" fill="url(#nwg)"/><circle cx="'+lx+'" cy="'+(sel.length>1?ly:H/2)+'" r="5" fill="#fff"/></svg>';
+  const rows=['<div class="nwrow"><span class="nn"><b>Robinhood</b><small>Core ••8555 · automatic</small></span><span class="na">'+usd(holdings().total)+'</span></div>'].concat((S.accts||[]).map(a=>
+    '<div class="nwrow"><span class="nn"><b>'+esc(a.name)+'</b><small>added by you</small></span><input type="text" inputmode="decimal" class="na" data-amt="'+a.id+'" value="'+usd(+a.amt||0)+'" aria-label="'+esc(a.name)+' amount"><button type="button" class="aidel" data-nwdel="'+a.id+'" aria-label="Remove '+esc(a.name)+'">×</button></div>'));
+  $('nwList').innerHTML=rows.join('');
+}
+$('nwRange').addEventListener('click',e=>{const b=e.target.closest('[data-r]');if(!b)return;S.nwr=b.dataset.r;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(err){} nwRender();});
+$('nwAdd').addEventListener('submit',e=>{e.preventDefault();const name=$('nwName').value.trim().slice(0,40), amt=parseAmt($('nwAmt').value);
+  if(!name||!(amt>0))return; S.accts=(S.accts||[]).concat([{id:Math.random().toString(36).slice(2,8),name,amt:Math.round(amt)}]); $('nwName').value='';$('nwAmt').value=''; save(); render(true); nwRender();});
+$('nwList').addEventListener('change',e=>{const i=e.target.closest('[data-amt]');if(!i)return;const a=(S.accts||[]).find(x=>x.id===i.dataset.amt);if(!a)return;const v=parseAmt(i.value);if(v>=0&&i.value.trim()!=='')a.amt=Math.round(v);save();render(true);nwRender();});
+$('nwList').addEventListener('click',e=>{const b=e.target.closest('[data-nwdel]');if(!b)return;if(!confirm('Remove this account?'))return;S.accts=(S.accts||[]).filter(x=>x.id!==b.dataset.nwdel);save();render(true);nwRender();});
 $('onTrack').addEventListener('click',()=>document.querySelector('.goal').scrollIntoView({behavior:'smooth',block:'start'}));
 $('ftInfo').addEventListener('click',e=>{e.stopPropagation();const f=document.querySelector('.ft'),o=!f.classList.contains('open');f.classList.toggle('open',o);$('ftInfo').setAttribute('aria-expanded',o);});
 document.addEventListener('click',e=>{const f=document.querySelector('.ft');if(f&&f.classList.contains('open')&&!e.target.closest('.ftpop')){f.classList.remove('open');$('ftInfo').setAttribute('aria-expanded','false');}});

@@ -321,7 +321,9 @@ function readBody(req, limit = 100 * 1024) {
 }
 // ---- Robinhood sync: raw positions/cash/recurring orders in, saved state updated ----
 function readState() { try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch (e) { return {}; } }
-function writeState(obj) { fs.mkdirSync(DATA_DIR, { recursive: true }); const tmp = STATE_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(obj)); fs.renameSync(tmp, STATE_FILE); }
+let nwTimer = null;
+function writeState(obj) { fs.mkdirSync(DATA_DIR, { recursive: true }); const tmp = STATE_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(obj)); fs.renameSync(tmp, STATE_FILE);
+  clearTimeout(nwTimer); nwTimer = setTimeout(() => recordNetWorth(), 1500); } // keep today's net worth current after edits and syncs
 const NYSE_HOLIDAYS = new Set(['2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25','2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
   '2027-01-01','2027-01-18','2027-02-15','2027-03-26','2027-05-31','2027-06-18','2027-07-05','2027-09-06','2027-11-25','2027-12-24',
   '2028-01-17','2028-02-21','2028-04-14','2028-05-29','2028-06-19','2028-07-04','2028-09-04','2028-11-23','2028-12-25']);
@@ -548,6 +550,24 @@ async function handleTts(req, res, url) {
     return json(res, 502, { error: 'tts failed' });
   } catch (e) { console.error('tts error', e.message); if (!res.headersSent) return json(res, 502, { error: 'tts failed' }); res.end(); }
 }
+// ---------- net worth history: one snapshot per day (Robinhood value at live prices + accounts added by hand) ----------
+const nwFile = () => path.join(DATA_DIR, 'networth.json');
+function readNW() { try { return JSON.parse(fs.readFileSync(nwFile(), 'utf8')); } catch (e) { return { history: [] }; } }
+async function recordNetWorth() {
+  try {
+    const st = readState(); const q = await quotes();
+    const pv = s => (q[s] && q[s].price) || (st.px && st.px[s]) || 0;
+    const rh = (+st.shVTI || 0) * pv('VTI') + (+st.shVXUS || 0) * pv('VXUS') + (+st.cash || 0);
+    const other = (Array.isArray(st.accts) ? st.accts : []).reduce((t, a) => t + (+a.amt || 0), 0);
+    if (!(rh + other > 0)) return;
+    const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const nw = readNW(); const row = { d, v: Math.round(rh + other), rh: Math.round(rh), other: Math.round(other) };
+    const k = nw.history.findIndex(x => x.d === d); if (k >= 0) nw.history[k] = row; else nw.history.push(row);
+    nw.history.sort((a, b) => a.d.localeCompare(b.d)); if (nw.history.length > 4000) nw.history = nw.history.slice(-4000);
+    fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(nwFile() + '.tmp', JSON.stringify(nw)); fs.renameSync(nwFile() + '.tmp', nwFile());
+  } catch (e) { console.error('net worth snapshot failed', e.message); }
+}
+setTimeout(recordNetWorth, 15e3); setInterval(recordNetWorth, 30 * 60e3);
 async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
 // Daily sync after the close: weekdays 4:20 PM ET.
 let lastAutoSync = '';
@@ -610,6 +630,7 @@ http.createServer(async (req, res) => {
     try { return json(res, 200, await serverSync()); } catch (e) { return json(res, 502, { error: e.message }); }
   }
   if (url.pathname === '/api/rh/disconnect' && req.method === 'POST') { rh.disconnect(); return json(res, 200, { ok: true }); }
+  if (url.pathname === '/api/networth') return json(res, 200, readNW());
   if (url.pathname === '/api/memory' && req.method === 'GET') return json(res, 200, readMemory());
   if (url.pathname.startsWith('/api/memory/') && req.method === 'DELETE') { const id = url.pathname.slice(12); const m = readMemory(); m.notes = m.notes.filter(x => x.id !== id); writeMemory(m); return json(res, 200, { ok: true }); }
   if (url.pathname === '/api/brief') {
