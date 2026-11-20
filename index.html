@@ -766,6 +766,17 @@ body.vm-on .tabs{visibility:hidden}
 #vmType{padding:0!important;margin:0!important;text-indent:0!important}
 @media (prefers-reduced-motion:reduce){.vmorb,.vmorb .cl{animation:none!important}}
 .gone{display:none!important}
+.kp{display:flex;flex-direction:column;gap:12px}
+.kst{display:flex;align-items:center;gap:12px} .kst .kf{font-size:34px;line-height:1} .kst>div{display:flex;flex-direction:column}
+.kst b{font-size:30px;font-weight:800;line-height:1;color:var(--gt)} .kst>div span{font-size:13px;color:var(--ink2)}
+.kst .kmsg{margin-left:auto;font-size:14px;font-weight:600;text-align:right;max-width:55%;display:block;color:var(--ink)}
+.kchip{display:inline-block;font-size:12px;font-weight:700;color:#000;background:var(--g);border-radius:99px;padding:3px 10px}
+.kbar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden} .kbar div{height:100%;background:var(--g);border-radius:4px}
+.ksub{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--ink2)}
+.kbadges{display:flex;flex-wrap:wrap;gap:8px}
+.kb{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:6px 10px;border-radius:99px;background:var(--soft);color:var(--ink2);opacity:.45;filter:grayscale(1)}
+.kb.on{opacity:1;filter:none;color:var(--ink);box-shadow:inset 0 0 0 1px var(--g)} .kb i{font-style:normal}
+@media (max-width:560px){.kst .kmsg{font-size:13px} .ksub{flex-direction:column}}
 .spxg{display:flex;flex-direction:column;gap:14px}
 .spx3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .spx3 .sc{background:var(--soft);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -943,6 +954,11 @@ body.vm-on .tabs{visibility:hidden}
   <div hidden><span id="mileT"></span><span id="mileR"></span><div id="mileB"></div><div id="saleHome"></div><div id="saleMoney"></div></div>
 
 
+  <!-- Keep It Going: rewards for sticking with daily buys (never for price moves) -->
+  <section class="card keep" id="keep" hidden>
+    <div class="head"><h2>Keep It Going</h2><span id="kpToday"></span></div>
+    <div class="kp num" id="kpBody"></div>
+  </section>
   <!-- Your Mix: what you hold vs. your targets (Invest tab) -->
   <section class="card mix">
     <div class="head"><h2>Your Mix</h2></div>
@@ -1338,6 +1354,7 @@ function render(reproject){
 
   if(typeof nwRender==='function')nwRender();
   if(S.tab==='port'&&!$('tab-port').hidden)portfolio();
+  keepGoing();
   if(S.tab==='dca2'&&!$('tab-dca2').hidden)dcaBuys();
   if(reproject){proj=null;setTimeout(()=>{project();draw();},0);}
 }
@@ -1578,6 +1595,25 @@ async function spxCard(){
     cell('52-Week High',n(x.hi52),offHi<.01?'At its high':(offHi*100).toFixed(1)+'% below the high')+'</div>'+
     '<div class="spxf"><div class="spxh">Wall Street Forecast · End of '+T.year+'</div>'+fc+'<p class="pfnote">Published targets as of '+T.asOf+'. Forecasts are opinions, not promises.</p></div>';
   $('spxAt').textContent=new Date(x.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+// Keep It Going: a streak, milestones and badges that only go up. Up days and down days are both wins.
+let KDD=null;
+async function keepGoing(){
+  const rh=S.rh||{}, buys=rh.buys||[], el=$('keep'); if(!buys.length&&!rh.streak){el.hidden=true;return;} el.hidden=false;
+  const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4), mine=buys.filter(b=>b.d.startsWith(y));
+  const days=new Set(mine.map(b=>b.d)).size, inv=mine.reduce((t,b)=>t+(+b.a||0),0), streak=+rh.streak||0;
+  if(!KDD){ KDD={}; await Promise.all(['VTI','VXUS'].map(async k=>{ try{const h=HC[k+'1y']||await (await fetch('/api/history?s='+k+'&r=1y')).json(); HC[k+'1y']=h; KDD[k]=h.dd||[];}catch(e){KDD[k]=[];} })); }
+  // Bought the Dip: any buy of a fund while that fund was 10%+ below its high.
+  const ts=d=>Date.parse(d+'T16:00:00Z'), dip=mine.some(b=>(KDD[b.s]||[]).some(e=>ts(b.d)>=e.hit&&(!e.end||ts(b.d)<=e.end)));
+  const MS=[10,25,50,100,250,500,1000], next=MS.find(m=>m>streak)||streak+100, prev=[0,...MS].filter(m=>m<=streak).pop()||0;
+  const B=[['🌱','Started',days>=1],['🔥','10-Day Streak',streak>=10],['💪','50 Buy Days',days>=50],['🏆','100 Buy Days',days>=100],['🛒','Bought the Dip',dip],['💵','$25K Invested',inv>=25000],['💎','$100K Invested',inv>=100000]];
+  const q=Q&&Q.VTI&&Q.VTI.changePct!=null?Q.VTI.changePct:null;
+  $('kpToday').innerHTML=q==null?'':'<span class="kchip">'+(q>=0?'Up Day':'Down Day')+'</span>';
+  $('kpBody').innerHTML='<div class="kst"><span class="kf">🔥</span><div><b>'+streak+(rh.streakAll?'+':'')+'</b><span>market days in a row</span></div>'+
+      '<div class="kmsg">'+(q==null?'Every buy counts.':q>=0?'Up day: your shares are worth more.':'Down day: today\'s buy gets more shares.')+'</div></div>'+
+    '<div class="kbar"><div style="width:'+Math.min(100,Math.max(3,(streak-prev)/(next-prev)*100)).toFixed(1)+'%"></div></div>'+
+    '<div class="ksub"><span>'+(next-streak)+' more to a '+next+'-day streak</span><span>This year: '+days+' buy days · '+usd(inv)+'</span></div>'+
+    '<div class="kbadges">'+B.map(b=>'<span class="kb'+(b[2]?' on':'')+'" title="'+b[1]+(b[2]?' (earned)':' (locked)')+'"><i>'+b[0]+'</i>'+b[1]+'</span>').join('')+'</div>';
 }
 async function markets(){ spxCard();
   const r=S.mr||'20y'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
