@@ -1214,12 +1214,18 @@ function goalNeed(p,L=0){ // daily amount so that P(value >= goal) >= p (with an
   if(ok(0))res=0; else{let lo=0,hi=50; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi);}}
   return GN[key]=res;
 }
+const SIMC=new Map();
 function sim(a1,a2,L,full){
+  const h0=holdings(), r1k=v=>Math.round(v/1000)*1000, key=[a1,a2,L,full,r1k(h0.vti),r1k(h0.vxus),r1k(h0.cash),S.apy,S.outlook,S.eq,S.us,monthsTo(Math.max(...AGES))].join('|');
+  if(SIMC.has(key))return SIMC.get(key);
+  const out=simRun(a1,a2,L,full); if(SIMC.size>6)SIMC.delete(SIMC.keys().next().value); SIMC.set(key,out); return out;
+}
+function simRun(a1,a2,L,full){
   const h=holdings(), w=weights(), o=OUT[S.outlook], N=4000, M=Math.max(12,monthsTo(Math.max(...AGES))), r=rng(42);
   const mu1=Math.log(1+o.us-FEE.us)/12, mu2=Math.log(1+o.intl-FEE.intl)/12;
   const s1=VOL.us/Math.sqrt(12), s2=VOL.intl/Math.sqrt(12), cm=Math.pow(1+S.apy/100,1/12)-1, k2=Math.sqrt(1-RHO*RHO);
   const cols=[]; for(let t=0;t<=M;t++)cols.push(new Float64Array(N));
-  const gauss=()=>{let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());};
+  let spare=null; const gauss=()=>{if(spare!=null){const v=spare;spare=null;return v;} let u=0;while(u===0)u=r(); const m=Math.sqrt(-2*Math.log(u)), th=2*Math.PI*r(); spare=m*Math.sin(th); return m*Math.cos(th);};
   for(let i=0;i<N;i++){
     let a=h.vti+L*w.vti,b=h.vxus+L*w.vxus,c=h.cash+L*w.cash; cols[0][i]=a+b+c;
     for(let t=1;t<=M;t++){
@@ -1386,15 +1392,7 @@ function draw(){
     $('gTxt').textContent='chance of '+big(S.goal)+' by '+S.goalAge;
     $('gPct').style.color=pct>=50?'var(--gt)':'var(--ink)';
     const T0=md[0]+outsideTotal(); $('gBar').style.width=Math.max(2,Math.min(100,T0/S.goal*100))+'%';
-    { const P=.75, D=goalNeed(P), L=lumpNeed(P,0), half=L?Math.round(L/2000)*1000:0, Dm=half?goalNeed(P,half):0;
-      let h;
-      if(D===0) h='<div class="gnh">Your Plan</div><div class="gplan ok"><b>On track.</b> No extra money needed to reach '+big(S.goal)+' by '+S.goalAge+' (75% chance).</div>';
-      else if(D==null&&L==null) h='<div class="gnh">Your Plan</div><div class="gplan">That goal is out of reach by '+S.goalAge+'. Try a later age or a smaller goal.</div>';
-      else h='<div class="gnh">To reach '+big(S.goal)+' by '+S.goalAge+' <span class="gns">(75% chance)</span></div><div class="gopts">'+
-        (D!=null?'<div><span class="gl">Invest daily</span><span class="gv">'+usd(D)+'<em>/day</em></span><span class="gm">≈ '+usd(D*21)+'/mo</span></div>':'')+
-        (L!=null?'<div><span class="gl">Or add once, today</span><span class="gv">'+big(L)+'</span><span class="gm">one-time deposit</span></div>':'')+
-        (half&&Dm!=null?'<div><span class="gl">Or a mix</span><span class="gv">'+big(half)+'</span><span class="gm">today + '+usd(Dm)+'/day</span></div>':'')+'</div>';
-      $('gNeed').innerHTML=h; }
+    // (goal plan search removed with the goal card: it re-ran the simulation dozens of times per draw)
     $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%'+(outsideTotal()?', incl. '+big(outsideTotal())+' outside Robinhood':'')+'). '+(T0>=S.goal?'You\'re already there. Now it\'s about keeping it.':when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
@@ -1916,27 +1914,23 @@ async function ma200(sym){ if(MA200[sym]&&Date.now()-MA200[sym].at<6*3600e3)retu
   try{const h=HC[sym+'1y']||await (await fetch('/api/history?s='+sym+'&r=1y')).json(); HC[sym+'1y']=h; const c=h.c||[]; if(c.length<200)return null;
     const v=c.slice(-200).reduce((a,b)=>a+b,0)/200; MA200[sym]={v,at:Date.now()}; return v;}catch(e){return null;} }
 async function dcaFunds(){
-  // DCA scoreboard: what only goes up (shares owned), and why down markets help (sale bonus shares).
+  // DCA scoreboard: shares owned only go up, and the DCA bonus: buying the same dollars every day automatically
+  // buys more shares when prices are low, so you end up with more shares than paying the average price each time.
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price})));
   const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4);
-  const hist={}; await Promise.all(['VTI','VXUS'].map(async k=>{ try{ hist[k]=HC[k+'1y']||await (await fetch('/api/history?s='+k+'&r=1y')).json(); HC[k+'1y']=hist[k]; }catch(e){} }));
-  const maAt=(k,day)=>{ const h=hist[k]; if(!h||!h.t||!h.c)return null; const ts=Date.parse(day+'T21:00:00Z'); let i=-1;
-    for(let j=h.t.length-1;j>=0;j--)if(h.t[j]<=ts){i=j;break;} if(i<199)return null; let s=0; for(let j=i-199;j<=i;j++)s+=h.c[j]; return s/200; };
-  const [m1,m2]=await Promise.all([ma200('VTI'),ma200('VXUS')]);
   const nf=(v,d)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-  const box=(k,sh,ma)=>{ const now=price(k), mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0);
-    const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0);
-    let bonus=0, saleDays=0; mine.forEach(b=>{const m=maAt(k,b.d); if(m&&+b.p<m){bonus+=(+b.a)/(+b.p)-(+b.a)/m; saleDays++;}});
+  const box=(k,sh)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0&&+b.a>0);
+    const spent=mine.reduce((t,b)=>t+(+b.a),0), added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0);
+    const avgMkt=mine.length?mine.reduce((t,b)=>t+(+b.p),0)/mine.length:0, paid=added?spent/added:0, bonus=avgMkt?added-spent/avgMkt:0;
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
-    const today=ma&&now?(now<ma?'<span class="sale">On sale today</span> Your buy gets '+((ma/now-1)*100).toFixed(1)+'% more shares than at the 200-day average.':'<span class="up">Prices are up</span> Your shares are worth more. Keep buying.'):'';
     return '<div><div class="dh"><b class="fn">'+k+'</b><span class="dsh">'+nf(sh,0)+' <small>shares</small></span></div>'+
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
       '<div class="fr"><span>Next: '+goal.toLocaleString('en-US')+' shares</span><span>'+nf(Math.max(1,goal-sh),0)+' to go</span></div>'+
       (added>0?'<div class="fr"><span>Added this year</span><span class="g">+'+nf(added,1)+'</span></div>':'')+
-      (bonus>0?'<div class="fr"><span>Sale bonus <em>'+saleDays+' sale day'+(saleDays===1?'':'s')+'</em></span><span class="g">+'+nf(bonus,1)+'</span></div>':'')+
-      (today?'<div class="fn2">'+today+'</div>':'')+'</div>'; };
-  $('dbFund').innerHTML=box('VTI',+S.shVTI||0,m1)+box('VXUS',+S.shVXUS||0,m2)+
-    '<p class="dnote">Every buy adds shares, so this only goes up. When prices drop, the same dollars buy more shares: that\'s the sale bonus.</p>';
+      (bonus>0.05?'<div class="fr"><span>DCA bonus</span><span class="g">+'+nf(bonus,1)+'</span></div>'+
+        '<div class="fn2">You paid '+usd(paid,true)+' a share on average this year. The average price was '+usd(avgMkt,true)+'.</div>':'')+'</div>'; };
+  $('dbFund').innerHTML=box('VTI',+S.shVTI||0)+box('VXUS',+S.shVXUS||0)+
+    '<p class="dnote">Every buy adds shares, so this only goes up. Buying the same amount every day gets you more shares when prices dip, which is your DCA bonus. It works in up and down markets.</p>';
 }
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
 function dcaBuys(){
