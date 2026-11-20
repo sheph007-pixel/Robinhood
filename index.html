@@ -751,12 +751,47 @@ body.vm-on .tabs{visibility:hidden}
 #vmType{padding:0!important;margin:0!important;text-indent:0!important}
 @media (prefers-reduced-motion:reduce){.vmorb,.vmorb .cl{animation:none!important}}
 .gone{display:none!important}
+.pfstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.pfstats>div{background:var(--soft);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.pfstats .k{font-size:12px;color:var(--ink2);font-weight:600}
+.pfstats .v{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.pfstats .m{font-size:12px;color:var(--ink2)}
+@media (max-width:640px){.pfstats{grid-template-columns:repeat(2,1fr)}}
+.pfbar{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px}
+.pflist{display:flex;flex-direction:column}
+.pfr{display:grid;grid-template-columns:1fr auto auto;gap:4px 16px;align-items:baseline;padding:12px 0;border-top:1px solid var(--line)}
+.pfr:first-child{border-top:0}
+.pfr .n{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px} .pfr .n i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.pfr .d{font-size:13px;color:var(--ink2);grid-column:1} .pfr .v{font-weight:600;font-size:16px;text-align:right}
+.pfr .p{text-align:right;color:var(--ink2);font-size:14px;min-width:48px} .pfr .g{grid-column:2/4;text-align:right;font-size:13px}
+.pfr .g.up{color:var(--gt)} .pfr .g.dn{color:var(--down)}
+.hb{display:flex;flex-direction:column;gap:9px}
+.hbr{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:4px 12px;align-items:center;font-size:14px}
+.hbr .l{display:flex;justify-content:space-between;gap:8px;min-width:0} .hbr .l span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbr .l span:last-child{color:var(--ink2);white-space:nowrap}
+.hbr .t{grid-column:1;height:6px;border-radius:3px;background:var(--soft);overflow:hidden} .hbr .t div{height:100%;border-radius:3px}
+.hbr .pc{grid-row:1/3;grid-column:2;text-align:right;font-weight:700}
+.pfnote{font-size:13px;color:var(--ink2);margin:0}
+.score{display:flex;align-items:center;gap:18px}
+.score .ring{width:84px;height:84px;flex:none}
+.score .sl{font-size:15px} .score .sl b{font-size:18px}
+.sizebar{display:flex;height:28px;border-radius:8px;overflow:hidden;gap:2px}
+.sizebar div{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#000;min-width:0;overflow:hidden}
+.sizelg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink2)} .sizelg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.vals{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:640px){.vals{grid-template-columns:repeat(2,1fr)}}
+.vals>div{display:flex;flex-direction:column;gap:2px} .vals .k{font-size:12px;color:var(--ink2);font-weight:600} .vals .v{font-size:20px;font-weight:700} .vals .m{font-size:12px;color:var(--ink2)}
+.top10{display:flex;flex-direction:column}
+.t10{display:grid;grid-template-columns:22px 1fr auto 52px;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.t10:first-child{border-top:0} .t10 .r{color:var(--ink2);font-size:12px} .t10 .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .t10 .nm small{color:var(--ink2);margin-left:6px}
+.t10 .pc{text-align:right;font-weight:700}
 .mxr{padding:12px 0;border-top:1px solid var(--line)} .mxr:first-child{border-top:0;padding-top:4px}
 .mxt{display:flex;justify-content:space-between;align-items:baseline;font-size:17px;font-weight:600}
 .mxn{display:flex;align-items:center;gap:8px} .mxn i{width:10px;height:10px;border-radius:3px;display:inline-block}
 .mxb{position:relative;height:8px;margin:8px 0 6px;border-radius:4px;background:var(--soft)}
 .mxb div{height:100%;border-radius:4px} .mxb i{position:absolute;top:-4px;width:2px;height:16px;margin-left:-1px;border-radius:1px;background:var(--ink)}
 .mxs{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--ink2)} .mxs .ok{color:var(--gt);font-weight:600} .mxs .off{color:#d08a00;font-weight:600}
+.mx2{display:flex;gap:2px;background:none} .mx2 div{border-radius:4px} .mxs .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
 .goaled{margin:8px 0 4px}
 
 .gopts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -822,6 +857,7 @@ body.vm-on .tabs{visibility:hidden}
     <span class="brand">Hood Investing</span>
     <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
     <button role="tab" data-tab="hold" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Net Worth</span></button>
+    <button role="tab" data-tab="port"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 2.5A9 9 0 0 1 21.5 9H15z"/></svg><span>Holdings</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
     <button role="tab" data-tab="invest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>Invest</span></button>
     <button role="tab" data-tab="dca2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/></svg><span>DCA</span></button>
@@ -924,6 +960,16 @@ body.vm-on .tabs{visibility:hidden}
   </section>
 
   
+  </div>
+
+  <div id="tab-port" class="panel" hidden>
+    <section class="card">
+      <div class="head"><h2>Holdings</h2><span class="muted small num" id="pfTot"></span></div>
+      <div class="pfstats num" id="pfStats"></div>
+      <div class="pfbar" id="pfBar"></div>
+      <div class="pflist num" id="pfList"></div>
+    </section>
+    <div id="pfLook"><section class="card"><div class="muted small">Loading what's inside your funds…</div></section></div>
   </div>
 
   <div id="tab-mkt" class="panel">
@@ -1216,11 +1262,15 @@ function render(reproject){
   $('barTgt').setAttribute('aria-label','Target: VTI '+pc(w.vti)+', VXUS '+pc(w.vxus)+', cash '+pc(w.cash));
   const drift=Math.max(Math.abs(now.vti-w.vti),Math.abs(now.vxus-w.vxus),Math.abs(now.cash-w.cash));
   const ns=T?Math.round((now.vti+now.vxus)*100):0, nu=(h.vti+h.vxus)?Math.round(h.vti/(h.vti+h.vxus)*100):0;
-  $('mix').innerHTML=[['VTI','vti','--s1'],['VXUS','vxus','--s2'],['Cash','cash','--s3']].map(([n,k,c])=>{
-    const cur=T?h[k]/T:0, tv=w[k], gap=tv*T-h[k], on=Math.abs(cur-tv)<.02;
-    return '<div class="mxr"><div class="mxt"><span class="mxn"><i style="background:var('+c+')"></i>'+n+'</span><span class="mxv">'+usd(h[k])+'</span></div>'+
-      '<div class="mxb"><div style="width:'+Math.min(100,cur*100).toFixed(1)+'%;background:var('+c+')"></div><i style="left:'+(tv*100).toFixed(1)+'%" title="Target"></i></div>'+
-      '<div class="mxs"><span>'+pc(cur)+' now · target '+pc(tv)+'</span><span class="'+(on?'ok':'off')+'">'+(!T?'':on?'✓ On target':gap>0?usd(gap)+' under':usd(-gap)+' over')+'</span></div></div>';}).join('');
+  // Two separate checks, each against its own target from the Invest tab:
+  // US vs International within your stocks, and Stocks vs Cash across everything.
+  { const st=h.vti+h.vxus;
+    const split=(title,an,av,ac,bn,bv,bc,tgt)=>{const tot=av+bv, ap=tot?av/tot:0, t=tgt/100, on=Math.abs(ap-t)<.02, mv=t*tot-av;
+      return '<div class="mxr"><div class="mxt"><span class="mxn">'+title+'</span><span class="mxv">'+(tot?Math.round(ap*100)+' / '+Math.round((1-ap)*100):'—')+'</span></div>'+
+        '<div class="mxb mx2"><div style="width:'+(ap*100).toFixed(1)+'%;background:var('+ac+')"></div><div style="width:'+((1-ap)*100).toFixed(1)+'%;background:var('+bc+')"></div><i style="left:'+tgt+'%" title="Target"></i></div>'+
+        '<div class="mxs"><span><i class="dot" style="background:var('+ac+')"></i>'+an+' '+usd(av)+'</span><span><i class="dot" style="background:var('+bc+')"></i>'+bn+' '+usd(bv)+'</span></div>'+
+        '<div class="mxs"><span>Target '+tgt+' / '+(100-tgt)+'</span><span class="'+(on?'ok':'off')+'">'+(!tot?'':on?'✓ On target':'Move '+usd(Math.abs(mv))+' to '+(mv>0?an:bn))+'</span></div></div>';};
+    $('mix').innerHTML=split('US / International','VTI',h.vti,'--s1','VXUS',h.vxus,'--s2',S.us)+split('Stocks / Cash','Stocks',st,'--g','Cash',h.cash,'--s3',S.eq); }
   $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On target':'')):'';
 
   // deposit plan
@@ -1237,6 +1287,7 @@ function render(reproject){
   else {$('planNote').textContent='';$('planNote').hidden=true;}
 
   if(typeof nwRender==='function')nwRender();
+  if(S.tab==='port'&&!$('tab-port').hidden)portfolio();
   if(reproject){proj=null;setTimeout(()=>{project();draw();},0);}
 }
 
@@ -1379,7 +1430,7 @@ function scroller(){return phoneScroll()?document.querySelector('main'):null;}
 function scrollTop0(){const m=scroller(); if(m)m.scrollTop=0; else window.scrollTo(0,0);}
 function scrollPos(){const m=scroller(); return m?m.scrollTop:window.scrollY;}
 function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; $('tab-dca2').hidden=t!=='dca2'; if(t==='dca2')dcaBuys(); if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-port').hidden=t!=='port'; if(t==='port')portfolio(); $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; $('tab-dca2').hidden=t!=='dca2'; if(t==='dca2')dcaBuys(); if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt'){if(changed)S.mr='20y';markets();} if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 let BRIEF=null, briefAt=0;
@@ -1391,15 +1442,87 @@ async function loadBrief(force){
     const d=new Date(BRIEF.at); $('brAt').textContent=(BRIEF.phase==='close'?'After the close · ':BRIEF.phase==='open'?'Midday · ':'')+d.toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit'});}
   catch(e){ if(!BRIEF)$('brBody').innerHTML='<span class="muted">'+(e===503?'Ask AI isn\'t set up, so the brief is unavailable.':'Today\'s brief isn\'t available right now. Try again later.')+'</span>'; }
 }
+// ---------- Holdings tab: what you own, and what's inside the funds ----------
+let LT=null, ltAt=0;
+const CNAME=(()=>{let dn=null;try{dn=new Intl.DisplayNames(['en'],{type:'region'});}catch(e){} return c=>{try{return (dn&&dn.of(c))||c;}catch(e){return c;}};})();
+async function portfolio(){
+  const h=holdings(), T=h.total, st=h.vti+h.vxus, w=weights(), pc1=v=>(v*100).toFixed(v>=.1?0:1)+'%';
+  $('pfTot').textContent=usd(T);
+  const rows=[['VTI','US Total Stock Market','vti','--s1',S.shVTI],['VXUS','Total International Stock','vxus','--s2',S.shVXUS],['Cash','Earning '+S.apy.toFixed(2)+'% APY','cash','--s3',null]];
+  $('pfBar').innerHTML=rows.filter(r=>h[r[2]]>0).map(r=>'<div style="flex:'+h[r[2]]+';background:var('+r[3]+')"></div>').join('');
+  const ac=S.avgCost||{};
+  $('pfList').innerHTML=rows.map(([k,nm,key,c,sh])=>{const v=h[key], cost=sh&&ac[k]?ac[k]*sh:0, g=cost?v-cost:null;
+    return '<div class="pfr"><span class="n"><i style="background:var('+c+')"></i>'+k+'</span><span class="v">'+usd(v)+'</span><span class="p">'+(T?pc1(v/T):'0%')+'</span>'+
+      '<span class="d">'+nm+(sh?' · '+(+sh).toLocaleString('en-US',{maximumFractionDigits:3})+' shares':'')+'</span>'+
+      (g!=null?'<span class="g '+(g>=0?'up':'dn')+'">'+(g>=0?'+':'−')+usd(Math.abs(g))+' ('+(g>=0?'+':'−')+Math.abs(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+(key==='cash'?(100-S.eq)+'% of total':key==='vti'?S.us+'% of stocks':(100-S.us)+'% of stocks')+'</span>')+'</div>';}).join('');
+  const fee=h.vti*FEE.us+h.vxus*FEE.intl;
+  const tiles=(co,ct,sc,scl)=>[['Companies',co,'you own a piece of'],['Countries',ct,'where they are based'],['Diversification',sc,scl],['Yearly Fund Cost',usd(fee),T?(fee/T*100).toFixed(3)+'% of total':'']]
+    .map(t=>'<div><span class="k">'+t[0]+'</span><span class="v">'+t[1]+'</span><span class="m">'+t[2]+'</span></div>').join('');
+  $('pfStats').innerHTML=tiles('…','…','…','score out of 100');
+  if(!LT||Date.now()-ltAt>6*3600e3){ try{const r=await fetch('/api/lookthrough');if(!r.ok)throw 0;LT=await r.json();ltAt=Date.now();}
+    catch(e){ if(!LT){$('pfLook').innerHTML='<section class="card"><div class="muted small">Fund holdings are unavailable right now. Try again later.</div></section>';$('pfStats').innerHTML=tiles('—','—','—','');return;} } }
+  if(!(st>0)){$('pfStats').innerHTML=tiles('0','0','—','');$('pfLook').innerHTML='';return;}
+  const A=LT.funds.VTI, B=LT.funds.VXUS, a=h.vti/st, b=h.vxus/st;
+  // Countries
+  const cty={}; [[A,a],[B,b]].forEach(([f,x])=>{if(!x)return;Object.entries(f.countries).forEach(([c,v])=>{const k=c==='KY'?'CN':c;cty[k]=(cty[k]||0)+v*x;});});
+  const ctyL=Object.entries(cty).filter(e=>e[1]>=.00005).sort((p,q)=>q[1]-p[1]);
+  // Top companies, concentration, effective number of companies
+  const co={}; [[A,a],[B,b]].forEach(([f,x])=>{if(!x)return;f.top.forEach(e=>{const k=e.name;co[k]=co[k]||{name:e.name,ticker:e.ticker,w:0};co[k].w+=e.w*x;});});
+  const top=Object.values(co).sort((p,q)=>q.w-p.w), t10=top.slice(0,10).reduce((s,e)=>s+e.w,0);
+  const effN=1/((a*a*A.hh)+(b*b*B.hh)), nCo=(a?A.count:0)+(b?B.count:0);
+  // Score: breadth, geography vs the world (~37% outside the US), concentration of the top 10
+  const sB=Math.min(100,Math.round(100*Math.log(effN)/Math.log(250))), sG=Math.max(0,Math.round(100-Math.abs(b-.37)*200)), sC=Math.max(0,Math.min(100,Math.round(100*(1-(t10-.1)/.4))));
+  const score=Math.round((sB+sG+sC)/3), lbl=score>=80?'Excellent':score>=65?'Good':score>=50?'Fair':'Low';
+  $('pfStats').innerHTML=tiles(nCo.toLocaleString('en-US'),String(ctyL.length),score+'<span class="m"> /100</span>',lbl);
+  // label, detail, bar length (0–1), color, number shown on the right
+  const bar=(l,r,len,c,num)=>'<div class="hbr"><div class="l"><span>'+l+'</span><span>'+r+'</span></div><div class="t"><div style="width:'+Math.max(1,len*100).toFixed(1)+'%;background:var('+c+')"></div></div><span class="pc">'+num+'</span></div>';
+  let out='';
+  // Diversification
+  const ring=v=>{const r=34,C=2*Math.PI*r;return '<svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="'+r+'" fill="none" stroke="var(--soft)" stroke-width="9"/><circle cx="42" cy="42" r="'+r+'" fill="none" stroke="var(--g)" stroke-width="9" stroke-linecap="round" stroke-dasharray="'+(C*v/100).toFixed(1)+' '+C.toFixed(1)+'" transform="rotate(-90 42 42)"/><text x="42" y="48" text-anchor="middle" font-size="22" font-weight="700" fill="var(--ink)">'+v+'</text></svg>';};
+  out+='<section class="card"><div class="head"><h2>Diversification</h2></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">Your money is spread like '+Math.round(effN)+' equal-sized companies. Higher is safer.</span></div></div><div class="hb">'+
+    bar('Breadth',Math.round(effN)+' effective companies',sB/100,'--g',sB)+
+    bar('Global Mix',Math.round(b*100)+'% international (world ≈ 37%)',sG/100,'--g',sG)+
+    bar('Concentration','Top 10 are '+Math.round(t10*100)+'% of your stocks',sC/100,'--g',sC)+'</div></section>';
+  // Top 10
+  out+='<section class="card"><div class="head"><h2>Top 10 Companies You Own</h2><span class="muted small">'+Math.round(t10*100)+'% of your stocks</span></div><div class="top10 num">'+
+    top.slice(0,10).map((e,i)=>'<div class="t10"><span class="r">'+(i+1)+'</span><span class="nm">'+({META:'Meta Platforms'}[e.ticker]||e.name.replace(/,? (Inc|Corp|Co|Ltd|Corporation|Holding|Holdings|plc|SA|AG|NV|SE)\.?( NV| AG| Co\.?| Ltd\.?)*$/,'').replace(/\s*&$/,''))+(/^[A-Z.]{1,5}$/.test(e.ticker||'')?'<small>'+e.ticker+'</small>':'')+'</span><span>'+usd(e.w*st)+'</span><span class="pc">'+pc1(e.w)+'</span></div>').join('')+'</div></section>';
+  // Countries
+  const cTop=ctyL.slice(0,10), cRest=ctyL.slice(10).reduce((s,e)=>s+e[1],0), cMax=cTop[0][1];
+  out+='<section class="card"><div class="head"><h2>Where the Companies Are</h2><span class="muted small">by country, % of your stocks</span></div><div class="hb num">'+
+    cTop.map(([c,v])=>bar(CNAME(c),usd(v*st),v/cMax,c==='US'?'--s1':'--s2',pc1(v))).join('')+
+    (cRest?bar('Other '+(ctyL.length-10)+' countries',usd(cRest*st),cRest/cMax,'--s2',pc1(cRest)):'')+'</div></section>';
+  // Sectors (US)
+  if(A.sectors&&a){const L=Object.entries(A.sectors).sort((p,q)=>q[1]-p[1]), mx=L[0][1];
+    out+='<section class="card"><div class="head"><h2>Industries</h2><span class="muted small">US companies, from Robinhood</span></div><div class="hb num">'+
+      L.slice(0,11).map(([n,v])=>bar(n,'',v/mx,'--s1',pc1(v))).join('')+'</div>'+
+      '<p class="pfnote">Based on the '+Math.round(A.sectorCoverage*100)+'% of VTI in its largest companies.'+(A.industries?' Biggest industries: '+A.industries.slice(0,4).map(x=>x[0]+' '+pc1(x[1])).join(', ')+'.':'')+'</p></section>';}
+  // Size
+  const sz={}; [[A,a],[B,b]].forEach(([f,x])=>{if(!x||!f.size)return;Object.entries(f.size).forEach(([k,v])=>{sz[k]=(sz[k]||0)+v*x;});});
+  const szT=Object.values(sz).reduce((p,q)=>p+q,0);
+  if(szT>.5){const SZ=[['Mega','over $200B','#00C805'],['Large','$10B–$200B','#7bdc7e'],['Mid','$2B–$10B','#f5c04a'],['Small','under $2B','#ff8a4c']];
+    out+='<section class="card"><div class="head"><h2>Company Size</h2><span class="muted small">by market value</span></div><div class="sizebar">'+
+      SZ.filter(z=>sz[z[0]]).map(z=>{const v=sz[z[0]]/szT;return '<div style="flex:'+v+';background:'+z[2]+'">'+(v>=.07?Math.round(v*100)+'%':'')+'</div>';}).join('')+'</div><div class="sizelg">'+
+      SZ.filter(z=>sz[z[0]]).map(z=>'<span><i style="background:'+z[2]+'"></i><b style="color:var(--ink)">'+z[0]+'</b> '+z[1]+' · '+pc1(sz[z[0]]/szT)+'</span>').join('')+'</div></section>';}
+  // Valuation & income
+  const pe=(A.pe&&B.pe)?1/(a/A.pe+b/B.pe):null, pb=(A.pb&&B.pb)?1/(a/A.pb+b/B.pb):null, dy=(A.dy!=null&&B.dy!=null)?a*A.dy+b*B.dy:null;
+  const inc=(dy!=null?st*dy/100:0)+h.cash*S.apy/100;
+  if(pe||dy!=null) out+='<section class="card"><div class="head"><h2>Valuation &amp; Income</h2></div><div class="vals num">'+
+    '<div><span class="k">P/E Ratio</span><span class="v">'+(pe?pe.toFixed(1):'—')+'</span><span class="m">US '+(A.pe||0).toFixed(1)+' · Intl '+(B.pe||0).toFixed(1)+'</span></div>'+
+    '<div><span class="k">Price / Book</span><span class="v">'+(pb?pb.toFixed(1):'—')+'</span><span class="m">US '+(A.pb||0).toFixed(1)+' · Intl '+(B.pb||0).toFixed(1)+'</span></div>'+
+    '<div><span class="k">Dividend Yield</span><span class="v">'+(dy!=null?dy.toFixed(2)+'%':'—')+'</span><span class="m">US '+(A.dy||0).toFixed(2)+'% · Intl '+(B.dy||0).toFixed(2)+'%</span></div>'+
+    '<div><span class="k">Yearly Income</span><span class="v">'+usd(inc)+'</span><span class="m">dividends + cash interest</span></div></div></section>';
+  out+='<p class="pfnote" style="text-align:center;margin-top:12px">Fund holdings from Vanguard as of '+new Date(A.asOf+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'. Industry, size and valuation from Robinhood.</p>';
+  $('pfLook').innerHTML=out;
+}
 async function markets(){
-  const r=S.mr||'max'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
+  const r=S.mr||'20y'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
   for(const sym of ['VTI','VXUS']){const el=$('mk'+sym), k=sym+r;
     if(!HC[k]){el.innerHTML='<div class="muted small">Loading '+sym+'…</div>';try{const x=await fetch('/api/history?s='+sym+'&r='+r);if(!x.ok)throw 0;HC[k]=await x.json();}catch(e){el.innerHTML='<div class="muted small">'+sym+' history unavailable</div>';continue;}}
     mchart(el,sym,HC[k]);}
 }
 function mchart(el,sym,h){
   const C=h.c.slice(), Tm=h.t.slice(); if(Q[sym]&&Q[sym].price){C.push(Q[sym].price);Tm.push(Date.now());}
-  const rg=S.mr||'max', win={'1y':200,'5y':40,'10y':40,'15y':40,'20y':40,'max':10}[rg], yrsBack={'1y':1,'5y':5,'10y':10,'15y':15,'20y':20}[rg];
+  const rg=S.mr||'20y', win={'1y':200,'5y':40,'10y':40,'15y':40,'20y':40,'max':10}[rg], yrsBack={'1y':1,'5y':5,'10y':10,'15y':15,'20y':20}[rg];
   const MA=C.map((v,i)=>{if(i<win-1)return null;let s=0;for(let j=i-win+1;j<=i;j++)s+=C[j];return s/win;});
   // Corrections: each time price fell 10%+ from its running high. Computed on the full series so peaks before the window still count.
   const DDp=[], DD=[]; { let pk=C[0],pi=0,ep=null; for(let i=0;i<C.length;i++){ if(C[i]>=pk){ if(ep){ep.end=i;DD.push(ep);ep=null;} pk=C[i];pi=i; DDp.push(0); continue; }
@@ -1705,7 +1828,7 @@ function dcaRender(){
     '<p class="muted small">Worked out from the buys your recurring investments placed in Robinhood, and included in all projections. A change you make in Robinhood shows here after the next market day\u2019s buy (or missing buy).</p>';
   $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
 }
-showTab(S.tab==='money'?'invest':S.tab==='dca'?'dca2':['mkt','invest','dca2'].includes(S.tab)?S.tab:'home');
+showTab(S.tab==='money'?'invest':S.tab==='dca'?'dca2':['mkt','port','invest','dca2'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes();
 // Prices refresh after the open (9:30 ET) and the close (4:00 ET), or by hand.
 let lastQ=Date.now();
