@@ -322,6 +322,22 @@ function readBody(req, limit = 100 * 1024) {
 // ---- Robinhood sync: raw positions/cash/recurring orders in, saved state updated ----
 function readState() { try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch (e) { return {}; } }
 function writeState(obj) { fs.mkdirSync(DATA_DIR, { recursive: true }); const tmp = STATE_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(obj)); fs.renameSync(tmp, STATE_FILE); }
+const NYSE_HOLIDAYS = new Set(['2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25','2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
+  '2027-01-01','2027-01-18','2027-02-15','2027-03-26','2027-05-31','2027-06-18','2027-07-05','2027-09-06','2027-11-25','2027-12-24',
+  '2028-01-17','2028-02-21','2028-04-14','2028-05-29','2028-06-19','2028-07-04','2028-09-04','2028-11-23','2028-12-25']);
+// Latest market day whose recurring buys should already have happened (they're placed around 11:20 AM ET).
+function expectedBuyDay() {
+  const et = s => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(s);
+  const hm = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit' }).format(new Date()).split(':');
+  let d = new Date(), first = true;
+  for (let k = 0; k < 10; k++, first = false, d = new Date(d.getTime() - 864e5)) {
+    const day = et(d), wd = new Date(day + 'T12:00:00Z').getUTCDay();
+    if (wd === 0 || wd === 6 || NYSE_HOLIDAYS.has(day)) continue;
+    if (first && (+hm[0] % 24) * 60 + +hm[1] < 12 * 60 + 30) continue; // today's buys not due yet
+    return day;
+  }
+  return '0000-00-00';
+}
 function summarizeRecurring(orders) {
   const filled = orders.filter(o => o && o.side === 'buy' && (o.state === 'filled' || !o.state) && +o.amount > 0 && o.date)
     .map(o => ({ symbol: String(o.symbol).toUpperCase(), amount: +o.amount, date: String(o.date).slice(0, 10), price: +o.price || null, shares: +o.shares || null }))
@@ -343,6 +359,10 @@ function summarizeRecurring(orders) {
   const dates = [...new Set(filled.map(o => o.date))].sort().reverse(); let streak = 0;
   if (dates.length && (Date.now() - Date.parse(dates[0])) <= 5 * 864e5) { streak = 1; for (let i = 1; i < dates.length && (Date.parse(dates[i - 1]) - Date.parse(dates[i])) <= 4 * 864e5; i++) streak++; }
   const streakAll = streak > 0 && streak === dates.length; // reaches the start of the synced history
+  // A schedule changed or paused in Robinhood can't be read directly, only the orders it creates. If the most
+  // recent market day has passed its buy time with no order, treat that recurring buy as stopped.
+  const exp = expectedBuyDay();
+  for (const r of recurring) if (r.lastDate < exp) { r.stopped = true; r.freq = 'stopped'; r.perMonth = 0; }
   return { recurring, recent: filled.slice(0, 20), days30, invested30, streak, streakAll };
 }
 function applySync(b) {
