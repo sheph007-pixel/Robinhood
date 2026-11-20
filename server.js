@@ -145,6 +145,16 @@ async function runAiTool(name, input) {
 }
 
 const VOICE_NOTE = '\n\nThis turn is a live voice conversation. Talk like a real person on a phone call with a client you know well: relaxed, warm, natural, 1 to 3 short sentences. Make the first sentence very short. No markdown, lists, symbols or jargon; say amounts the way people say them ("about 1.3 million", "two thousand a day"). Answer from the snapshot whenever it covers the question; look things up only for news or data it does not have. When you use a tool, you may say a brief sentence first.';
+// Live market snapshot added to every AI request so most questions need no tool round trip (cached 60s).
+const MKT_SYMS = [['^GSPC', 'S&P 500'], ['^IXIC', 'Nasdaq'], ['^DJI', 'Dow'], ['^VIX', 'VIX (fear gauge)'], ['^TNX', '10-year Treasury yield (x10)'], ['VTI', 'VTI'], ['VXUS', 'VXUS']];
+let mktCache = { at: 0, text: '' };
+async function marketSnapshot() {
+  if (mktCache.text && Date.now() - mktCache.at < 60e3) return mktCache.text;
+  const rows = await Promise.all(MKT_SYMS.map(async ([sym, label]) => { try { const q = await yahoo(sym);
+    return label + ': ' + (+q.price).toFixed(2) + (q.changePct != null ? ' (' + (q.changePct >= 0 ? '+' : '') + q.changePct.toFixed(2) + '% today' : '') + (q.high52 ? ', ' + ((1 - q.price / q.high52) * 100).toFixed(1) + '% below 52-week high' : '') + (q.changePct != null ? ')' : ''); } catch (e) { return null; } }));
+  const text = 'Live market (as of ' + new Date().toUTCString() + '): ' + rows.filter(Boolean).join('; ');
+  mktCache = { at: Date.now(), text }; return text;
+}
 async function handleChat(req, res) {
   const client = aiClient();
   if (!client) return json(res, 503, { error: 'no_key' });
@@ -154,7 +164,8 @@ async function handleChat(req, res) {
   const messages = msgs.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
     .map(m => ({ role: m.role, content: m.content.slice(0, 8000) }));
   if (!messages.length || messages[messages.length - 1].role !== 'user') return json(res, 400, { error: 'bad data' });
-  const context = String(body.context || '').slice(0, 20000), voice = !!body.voice;
+  const context = String(body.context || '').slice(0, 20000), voice = !!body.voice, t0 = Date.now(); let firstAt = 0, rounds = 0;
+  const mkt = await Promise.race([marketSnapshot(), new Promise(r => setTimeout(() => r(''), 1500))]).catch(() => '');
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
   try {
     for (let round = 0; round < 8; round++) {
@@ -165,12 +176,13 @@ async function handleChat(req, res) {
         ...(voice && /haiku/.test(AI_MODEL) ? { thinking: { type: 'disabled' } } : {}), // voice: skip thinking so it starts talking sooner
         system: [
           { type: 'text', text: AI_SYSTEM, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\nLive portfolio snapshot (synced from the Robinhood Core account):\n' + context + (voice ? VOICE_NOTE : '') },
+          { type: 'text', text: 'Live portfolio snapshot (synced from the Robinhood Core account):\n' + context, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: 'Today is ' + new Date().toUTCString() + '.\n' + mkt + (voice ? VOICE_NOTE : '') },
         ],
         tools: [...AI_TOOLS, ...(rh.connected() ? [RH_TOOL] : []), { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages,
       });
-      stream.on('text', (t) => res.write(t));
+      rounds++; stream.on('text', (t) => { if (!firstAt) firstAt = Date.now(); res.write(t); });
       stream.on('streamEvent', (ev) => {
         if (ev.type === 'content_block_start' && ev.content_block) {
           if (ev.content_block.type === 'server_tool_use') res.write('\u0000S');
@@ -197,6 +209,7 @@ async function handleChat(req, res) {
     console.error('chat error', e && e.status, e && e.message);
     res.write('\n\nSorry, the assistant ran into a problem' + (e && e.status === 401 ? ' (API key not accepted).' : '. Please try again.'));
   }
+  console.log('chat timing', voice ? 'voice' : 'text', 'first word ' + (firstAt ? firstAt - t0 : -1) + 'ms', 'total ' + (Date.now() - t0) + 'ms', 'rounds ' + rounds);
   res.end();
 }
 // Each view fetches extra history so a 200-day moving average is complete from the first visible point.
@@ -446,7 +459,7 @@ function readRaw(req, limit) {
 }
 async function handleStt(req, res) {
   const key = sttKey(); if (!key) return json(res, 503, { error: 'no_stt_key' });
-  let audio; try { audio = await readRaw(req, 10 * 1024 * 1024); } catch (e) { return json(res, 413, { error: 'too large' }); }
+  const ts = Date.now(); let audio; try { audio = await readRaw(req, 10 * 1024 * 1024); } catch (e) { return json(res, 413, { error: 'too large' }); }
   if (!audio.length) return json(res, 400, { error: 'empty' });
   const type = String(req.headers['content-type'] || 'audio/mp4').split(';')[0];
   const ext = type.includes('webm') ? 'webm' : type.includes('ogg') ? 'ogg' : type.includes('wav') ? 'wav' : 'm4a';
@@ -459,6 +472,7 @@ async function handleStt(req, res) {
     const r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: fd });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { console.error('stt error', r.status, j && j.error && j.error.message); return json(res, 502, { error: 'stt failed' }); }
+    console.log('stt timing ' + (Date.now() - ts) + 'ms', audio.length + ' bytes');
     return json(res, 200, { text: String(j.text || '').trim() });
   } catch (e) { console.error('stt error', e.message); return json(res, 502, { error: 'stt failed' }); }
 }
@@ -466,13 +480,13 @@ async function handleStt(req, res) {
 async function handleTts(req, res) {
   const key = sttKey(); if (!key) return json(res, 503, { error: 'no_tts_key' });
   let b; try { b = JSON.parse(await readBody(req, 8 * 1024)); } catch (e) { return json(res, 400, { error: 'bad data' }); }
-  const input = String(b.text || '').slice(0, 800).trim(); if (!input) return json(res, 400, { error: 'empty' });
+  const input = String(b.text || '').slice(0, 800).trim(); if (!input) return json(res, 400, { error: 'empty' }); const tt = Date.now();
   try {
     const r = await fetch('https://api.openai.com/v1/audio/speech', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: process.env.TTS_MODEL || 'gpt-4o-mini-tts', voice: process.env.TTS_VOICE || 'ash', input, response_format: 'mp3',
         instructions: 'American male voice. A trusted financial advisor on a relaxed phone call with a longtime client: warm, natural and easygoing, with normal conversational rhythm. Brisk pace, slightly faster than normal, no long pauses, never robotic or announcer-like.' }) });
     if (!r.ok) { const j = await r.json().catch(() => ({})); console.error('tts error', r.status, j && j.error && j.error.message); return json(res, 502, { error: 'tts failed' }); }
-    const audio = Buffer.from(await r.arrayBuffer());
+    const audio = Buffer.from(await r.arrayBuffer()); console.log('tts timing ' + (Date.now() - tt) + 'ms', input.length + ' chars');
     res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': audio.length, 'Cache-Control': 'no-store' }); return res.end(audio);
   } catch (e) { console.error('tts error', e.message); return json(res, 502, { error: 'tts failed' }); }
 }

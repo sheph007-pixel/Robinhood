@@ -1393,8 +1393,19 @@ let VA=null; // one audio element, unlocked by a tap, reused for every reply (iP
 function silentWav(){const n=800,b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
   w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,16000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
   return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));}
-function unlockAudio(){ if(!VA){VA=new Audio();VA.setAttribute('playsinline','');VA.preload='auto';} try{VA.src=silentWav();const p=VA.play();if(p)p.catch(()=>{});}catch(e){} unlockTTS(); }
-function stopSpeech(){ if(TTS)TTS.cancel(); if(VA){try{VA.onended=VA.onerror=null;VA.pause();}catch(e){}} }
+// soft "thinking" pulse, generated on the fly (two gentle notes, then a pause), looped while it works on an answer
+let VT=null, THINK_URL=null;
+function thinkWav(){ if(THINK_URL)return THINK_URL; const sr=16000, n=Math.floor(sr*1.4), b=new ArrayBuffer(44+n*2), v=new DataView(b), w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
+  w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+  const note=(t,start,f)=>{const x=t-start; if(x<0||x>0.32)return 0; const env=Math.sin(Math.PI*x/0.32); return Math.sin(2*Math.PI*f*x)*env*env;};
+  for(let i=0;i<n;i++){const t=i/sr; const y=0.16*(note(t,0,659.25)+0.8*note(t,0.2,880)); v.setInt16(44+i*2,Math.max(-1,Math.min(1,y))*32767,true);}
+  return THINK_URL=URL.createObjectURL(new Blob([b],{type:'audio/wav'}));}
+function thinkOn(){ if(!VT)return; try{ if(VT.src!==thinkWav())VT.src=thinkWav(); VT.loop=true; VT.volume=0.6; VT.currentTime=0; const p=VT.play(); if(p)p.catch(()=>{});}catch(e){} }
+function thinkOff(){ if(VT){try{VT.pause();}catch(e){}} }
+function unlockAudio(){ if(!VA){VA=new Audio();VA.setAttribute('playsinline','');VA.preload='auto';} if(!VT){VT=new Audio();VT.setAttribute('playsinline','');}
+  try{VA.src=silentWav();const p=VA.play();if(p)p.catch(()=>{});}catch(e){}
+  try{VT.src=silentWav();const p2=VT.play();if(p2)p2.then(()=>VT.pause()).catch(()=>{});}catch(e){} unlockTTS(); }
+function stopSpeech(){ thinkOff(); if(TTS)TTS.cancel(); if(VA){try{VA.onended=VA.onerror=null;VA.pause();}catch(e){}} }
 function ttsUrl(t){ return fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})}).then(r=>r.ok?r.blob():null).then(b=>b?URL.createObjectURL(b):null).catch(()=>null); }
 function sayBrowser(t,v,done){ if(!TTS){done();return;} const u=new SpeechSynthesisUtterance(t); if(v)u.voice=v; u.rate=1.15; u.onend=u.onerror=()=>done(); TTS.speak(u); }
 let VOICEV=null; function pickVoice(){if(VOICEV)return VOICEV; const vs=(TTS?TTS.getVoices():[]).filter(v=>/^en(-|_)US/i.test(v.lang));
@@ -1469,7 +1480,7 @@ $('aiMic').addEventListener('click',()=>{
 // voice mode
 let VM=null;
 const VMS={listening:'Listening',thinking:'Thinking',speaking:'Speaking',paused:'Mic off'};
-function vmSet(st,cap){if(!VM)return;VM.st=st;$('vm').dataset.s=st;$('vmStat').textContent=VMS[st]||st;if(cap!=null)$('vmCap').textContent=cap;}
+function vmSet(st,cap){if(!VM)return; if(st==='thinking'&&VM.st!=='thinking')thinkOn(); else if(st!=='thinking')thinkOff(); VM.st=st;$('vm').dataset.s=st;$('vmStat').textContent=VMS[st]||st;if(cap!=null)$('vmCap').textContent=cap;}
 function vmOpen(){
   if(!aiReady)return;
   unlockAudio(); VM={gen:0,muted:false,st:'',ctl:null}; $('vm').hidden=false; document.body.classList.add('vm-on');
@@ -1485,12 +1496,25 @@ function vmListen(){
   VM.ctl=listenAny(t=>{if(!VM)return; if(t==='…'){VM.tx=true;vmSet('thinking','');} else $('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening'&&!VM.tx)return; VM.tx=false; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},650,
     err=>{if(!VM)return;VM.ctl=null;VM.muted=true;releaseMic();$('vmMute').setAttribute('aria-pressed','true');vmSet('paused',micHelp(err));},true);
 }
+// talk over it to interrupt: while it speaks, watch the open mic; sustained voice stops the reply and listens
+function bargeWatch(g){
+  if(!MIC||!ACTX||!MIC.getAudioTracks().some(t=>t.readyState==='live'))return;
+  let src; try{src=ACTX.createMediaStreamSource(MIC);}catch(e){return;}
+  const an=ACTX.createAnalyser(); an.fftSize=1024; src.connect(an); const buf=new Float32Array(an.fftSize); let loud=0, floor=null; const t0=Date.now();
+  const tick=()=>{ if(!VM||VM.gen!==g||(VM.st!=='speaking'&&VM.st!=='thinking')||VM.muted){try{src.disconnect();}catch(e){} return;}
+    an.getFloatTimeDomainData(buf); let r=0; for(let k=0;k<buf.length;k++)r+=buf[k]*buf[k]; r=Math.sqrt(r/buf.length);
+    if(Date.now()-t0<300){floor=floor==null?r:Math.min(floor,r);}
+    const th=Math.max(0.05,(floor||0)*5);
+    if(r>th){ if(!loud)loud=Date.now(); else if(Date.now()-loud>280){ try{src.disconnect();}catch(e){} VM.gen++; stopSpeech(); vmListen(); return; } } else loud=0;
+    requestAnimationFrame(tick); };
+  tick();
+}
 async function vmAsk(q){
   const g=++VM.gen, v=pickVoice(), queue=[]; let used=0, busy=false, finished=false;
   vmSet('thinking','');
   const pump=()=>{ if(!VM||VM.gen!==g||busy)return; const it=queue.shift();
     if(it==null){ if(finished)vmListen(); return; }
-    busy=true; const next=()=>{busy=false;pump();};
+    busy=true; const next=()=>{busy=false;pump();}; if(VM.bw!==g){VM.bw=g; setTimeout(()=>bargeWatch(g),400);}
     if(!it.url){ vmSet('speaking',it.text); sayBrowser(it.text,v,next); return; }
     it.url.then(u=>{ if(!VM||VM.gen!==g)return;
       if(!u){ vmSet('speaking',it.text); sayBrowser(it.text,v,next); return; }
