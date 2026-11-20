@@ -1479,8 +1479,8 @@ async function portfolio(){
   let out='';
   // Diversification
   const ring=v=>{const r=34,C=2*Math.PI*r;return '<svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="'+r+'" fill="none" stroke="var(--soft)" stroke-width="9"/><circle cx="42" cy="42" r="'+r+'" fill="none" stroke="var(--g)" stroke-width="9" stroke-linecap="round" stroke-dasharray="'+(C*v/100).toFixed(1)+' '+C.toFixed(1)+'" transform="rotate(-90 42 42)"/><text x="42" y="48" text-anchor="middle" font-size="22" font-weight="700" fill="var(--ink)">'+v+'</text></svg>';};
-  out+='<section class="card"><div class="head"><h2>Diversification</h2></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">Your money is spread like '+Math.round(effN)+' equal-sized companies. Higher is safer.</span></div></div><div class="hb">'+
-    bar('Breadth',Math.round(effN)+' effective companies',sB/100,'--g',sB)+
+  out+='<section class="card"><div class="head"><h2>Diversification</h2></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">You own a piece of '+nCo.toLocaleString('en-US')+' companies in '+ctyL.length+' countries.</span></div></div><div class="hb">'+
+    bar('Breadth',nCo.toLocaleString('en-US')+' companies',sB/100,'--g',sB)+
     bar('Global Mix',Math.round(b*100)+'% international (world ≈ 37%)',sG/100,'--g',sG)+
     bar('Concentration','Top 10 are '+Math.round(t10*100)+'% of your stocks',sC/100,'--g',sC)+'</div></section>';
   // Top 10
