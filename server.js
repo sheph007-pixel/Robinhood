@@ -241,7 +241,7 @@ async function handleChat(req, res) {
   res.end();
 }
 // Each view fetches extra history so a 200-day moving average is complete from the first visible point.
-const HIST_RANGES = { '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': ['max', '1wk'], 'max': ['max', '1mo'] };
+const HIST_RANGES = { '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': ['max', '1wk'], '15y': ['max', '1wk'], '20y': ['max', '1wk'], 'max': ['max', '1mo'] };
 const histCache = new Map();
 async function history(sym, rng) {
   const key = sym + rng + 'v2', hit = histCache.get(key);
