@@ -913,9 +913,9 @@ body.vm-on .tabs{visibility:hidden}
     <div class="goalin goaled" id="goalEd" hidden><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt" placeholder="$3M"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">Current Plan</span><span class="ls">Current</span></span></div>
-    <div class="wiq num"><span class="wiqk">What if you add</span>
-      <label><input type="text" inputmode="decimal" id="dcaVTI" aria-label="Extra per day to VTI"><span class="ld">/day VTI</span><span class="lm">VTI per day</span></label>
-      <label><input type="text" inputmode="decimal" id="dcaVXUS" aria-label="Extra per day to VXUS"><span class="ld">/day VXUS</span><span class="lm">VXUS per day</span></label>
+    <div class="wiq num"><span class="wiqk">What If You Add</span>
+      <label><input type="text" inputmode="decimal" id="dcaVTI" aria-label="Extra per day to VTI"><span class="ld">/day VTI</span><span class="lm">VTI Per Day</span></label>
+      <label><input type="text" inputmode="decimal" id="dcaVXUS" aria-label="Extra per day to VXUS"><span class="ld">/day VXUS</span><span class="lm">VXUS Per Day</span></label>
       <label><input type="text" inputmode="decimal" id="lump" aria-label="One-time deposit"><span class="ld">once</span><span class="lm">One-time</span></label>
       <button type="button" class="wiqc" id="wClear" hidden>Clear</button><button type="button" id="wCalc" hidden></button>
     </div>
@@ -1281,7 +1281,7 @@ function render(reproject){
     const row=(name,a,b,la,lb,ca,cb,ta)=>{const off=Math.abs(a-ta), ok=off<2;
       return '<div class="split"><div class="srow"><span class="sn">'+name+'</span><span class="sv num">'+Math.round(a)+' / '+Math.round(b)+'</span></div>'+
         '<div class="sbar"><div style="width:'+a+'%;background:var('+ca+')"></div><div style="width:'+b+'%;background:var('+cb+')"></div><i style="left:'+ta+'%"></i></div>'+
-        '<div class="srow small"><span class="muted">Target '+ta+' / '+(100-ta)+'</span><span class="'+(ok?'ok':'off')+'">'+(ok?'✓ On target':'Off by '+Math.round(off)+'%')+'</span></div></div>';};
+        '<div class="srow small"><span class="muted">Target '+ta+' / '+(100-ta)+'</span><span class="'+(ok?'ok':'off')+'">'+(ok?'✓ On Target':'Off by '+Math.round(off)+'%')+'</span></div></div>';};
     $('splits').innerHTML=row('US / International',pv,100-pv,'VTI','VXUS','--s1','--s2',tu)+row('Stocks / Cash',ps,100-ps,'Stocks','Cash','--g','--s3',te)+
       ''; }
 
@@ -1302,9 +1302,9 @@ function render(reproject){
       return '<div class="mxr"><div class="mxt"><span class="mxn">'+title+'</span><span class="mxv">'+(tot?Math.round(ap*100)+'% / '+Math.round((1-ap)*100)+'%':'—')+'</span></div>'+
         '<div class="mxb mx2"><div style="width:'+(ap*100).toFixed(1)+'%;background:var('+ac+')"></div><div style="width:'+((1-ap)*100).toFixed(1)+'%;background:var('+bc+')"></div><i style="left:'+tgt+'%" title="Target"></i></div>'+
         '<div class="mxs"><span><i class="dot" style="background:var('+ac+')"></i>'+an+' '+usd(av)+'</span><span><i class="dot" style="background:var('+bc+')"></i>'+bn+' '+usd(bv)+'</span></div>'+
-        '<div class="mxs"><span>Target '+tgt+'% / '+(100-tgt)+'%</span><span class="'+(on?'ok':'off')+'">'+(!tot?'':on?'✓ On target':'Move '+usd(Math.abs(mv))+' to '+(mv>0?an:bn))+'</span></div></div>';};
+        '<div class="mxs"><span>Target '+tgt+'% / '+(100-tgt)+'%</span><span class="'+(on?'ok':'off')+'">'+(!tot?'':on?'✓ On Target':'Move '+usd(Math.abs(mv))+' to '+(mv>0?an:bn))+'</span></div></div>';};
     $('mix').innerHTML=split('US / International','VTI',h.vti,'--s1','VXUS',h.vxus,'--s2',S.us)+split('Stocks / Cash','Stocks',st,'--g','Cash',h.cash,'--s3',S.eq); }
-  $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On target':'')):'';
+  $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On Target':'')):'';
 
   // deposit plan
   const D=Math.round(parse($('dep').value)), b=roundPlan(planDeposit(h,D),D);
@@ -1508,16 +1508,16 @@ async function portfolio(){
   // What matters when you buy a little every day: keep costs low, stay spread out, let payouts add up, keep buying.
   const tip=(ic,t,d)=>'<div class="wm"><span class="wi">'+ic+'</span><div><b>'+t+'</b><span>'+d+'</span></div></div>';
   out+='<section class="card"><div class="head"><h2>What Matters for You</h2></div><div class="wml">'+
-    tip('1','Keep buying, every day','Buying the same amount on a schedule means you get more shares when prices are low. Time in the market does the heavy lifting.')+
-    tip('2','Keep costs low','You pay about <b>'+usd(fee)+' a year</b> to own all '+nCo.toLocaleString('en-US')+' companies. That is very cheap, so more of your money keeps growing.')+
-    tip('3','Stay spread out','Your money is in '+nCo.toLocaleString('en-US')+' companies across '+ctyL.length+' countries. No single company can sink you.')+
-    (divs!=null?tip('4','Let the payouts add up','The companies pay you about <b>'+usd(divs)+' a year</b>'+(intr>0?', plus '+usd(intr)+' in cash interest':'')+'. Reinvested, that buys even more shares.'):'')+
+    tip('1','Keep Buying, Every Day','Buying the same amount on a schedule means you get more shares when prices are low. Time in the market does the heavy lifting.')+
+    tip('2','Keep Costs Low','You pay about <b>'+usd(fee)+' a year</b> to own all '+nCo.toLocaleString('en-US')+' companies. That is very cheap, so more of your money keeps growing.')+
+    tip('3','Stay Spread Out','Your money is in '+nCo.toLocaleString('en-US')+' companies across '+ctyL.length+' countries. No single company can sink you.')+
+    (divs!=null?tip('4','Let the Payouts Add Up','The companies pay you about <b>'+usd(divs)+' a year</b>'+(intr>0?', plus '+usd(intr)+' in cash interest':'')+'. Reinvested, that buys even more shares.'):'')+
     '</div></section>';
   // Spread score, in plain words
   out+='<section class="card"><div class="head"><h2>How Spread Out You Are</h2></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">A score out of 100. Higher means your money doesn\'t depend on just a few companies or one country.</span></div></div><div class="hb">'+
-    bar('Number of companies',nCo.toLocaleString('en-US'),sB/100,'--g',sB)+
+    bar('Number of Companies',nCo.toLocaleString('en-US'),sB/100,'--g',sB)+
     bar('Outside the US',Math.round(b*100)+'% of your stocks (the world is about 37%)',sG/100,'--g',sG)+
-    bar('Biggest 10 companies',Math.round(t10*100)+'% of your stocks',sC/100,'--g',sC)+'</div></section>';
+    bar('Biggest 10 Companies',Math.round(t10*100)+'% of your stocks',sC/100,'--g',sC)+'</div></section>';
   // Top 10
   out+='<section class="card"><div class="head"><h2>Your 10 Biggest Companies</h2><span class="muted small">'+Math.round(t10*100)+'% of your stocks</span></div><div class="top10 num">'+
     top.slice(0,10).map((e,i)=>'<div class="t10"><span class="r">'+(i+1)+'</span><span class="nm">'+({META:'Meta Platforms'}[e.ticker]||e.name.replace(/,? (Inc|Corp|Co|Ltd|Corporation|Holding|Holdings|plc|SA|AG|NV|SE)\.?( NV| AG| Co\.?| Ltd\.?)*$/,'').replace(/\s*&$/,''))+(/^[A-Z.]{1,5}$/.test(e.ticker||'')?'<small>'+e.ticker+'</small>':'')+'</span><span>'+usd(e.w*st)+'</span><span class="pc">'+pc1(e.w)+'</span></div>').join('')+'</div></section>';
@@ -1527,11 +1527,11 @@ async function portfolio(){
     cTop.map(([c,v])=>bar(CNAME(c),usd(v*st),v/cMax,c==='US'?'--s1':'--s2',pc1(v))).join('')+
     (cRest?bar('Other '+(ctyL.length-10)+' countries',usd(cRest*st),cRest/cMax,'--s2',pc1(cRest)):'')+'</div></section>';
   // What the companies do (US), with plain names for Robinhood's sector labels
-  const PLAIN={'Electronic Technology':'Computers, phones & chips','Technology Services':'Software & internet','Finance':'Banks, insurance & payments','Health Technology':'Medicines & medical devices',
-    'Health Services':'Hospitals & health plans','Retail Trade':'Stores & online shopping','Consumer Non-Durables':'Food, drinks & household goods','Consumer Durables':'Cars, homes & appliances',
-    'Consumer Services':'Restaurants, travel & entertainment','Energy Minerals':'Oil & gas','Utilities':'Electricity & water','Producer Manufacturing':'Factories & machinery',
-    'Industrial Services':'Construction & engineering','Process Industries':'Chemicals & materials','Non-Energy Minerals':'Mining & metals','Transportation':'Airlines, rail & shipping',
-    'Communications':'Phone & cable','Commercial Services':'Business services','Distribution Services':'Wholesale & delivery','Miscellaneous':'Other'};
+  const PLAIN={'Electronic Technology':'Computers, Phones & Chips','Technology Services':'Software & Internet','Finance':'Banks, Insurance & Payments','Health Technology':'Medicines & Medical Devices',
+    'Health Services':'Hospitals & Health Plans','Retail Trade':'Stores & Online Shopping','Consumer Non-Durables':'Food, Drinks & Household Goods','Consumer Durables':'Cars, Homes & Appliances',
+    'Consumer Services':'Restaurants, Travel & Entertainment','Energy Minerals':'Oil & Gas','Utilities':'Electricity & Water','Producer Manufacturing':'Factories & Machinery',
+    'Industrial Services':'Construction & Engineering','Process Industries':'Chemicals & Materials','Non-Energy Minerals':'Mining & Metals','Transportation':'Airlines, Rail & Shipping',
+    'Communications':'Phone & Cable','Commercial Services':'Business Services','Distribution Services':'Wholesale & Delivery','Miscellaneous':'Other'};
   if(A.sectors&&a){const L=Object.entries(A.sectors).sort((p,q)=>q[1]-p[1]), mx=L[0][1];
     out+='<section class="card"><div class="head"><h2>What the Companies Do</h2><span class="muted small">US companies</span></div><div class="hb num">'+
       L.slice(0,10).map(([n,v])=>bar(PLAIN[n]||n,'',v/mx,'--s1',pc1(v))).join('')+'</div></section>';}
@@ -1938,12 +1938,12 @@ async function dcaFunds(){
   const box=(k,sh,ma)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0), avg=+ac[k]||0, now=price(k);
     const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0), wins=avg?mine.filter(b=>+b.p<avg).length:0;
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
-    const st=avg&&now?(now<avg?['Discount day','Today\'s buy lowers your average.']:['You\'re ahead','Worth more than you paid.']):null;
+    const st=avg&&now?(now<avg?['Discount Day','Today\'s buy lowers your average.']:['You\'re Ahead','Worth more than you paid.']):null;
     const cell=(l,v)=>'<div><span>'+l+'</span><b>'+(v?usd(v,true):'—')+'</b></div>';
     return '<div><div class="dh"><b class="fn">'+k+'</b><span class="dsh">'+nf(sh,0)+' <small>shares</small></span></div>'+
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
       '<div class="fr"><span>'+nf(Math.max(1,goal-sh),0)+' to go to '+goal.toLocaleString('en-US')+'</span>'+(added>0?'<span class="g">+'+nf(added,0)+' this year</span>':'')+'</div>'+
-      '<div class="d3">'+cell('Your average',avg)+cell('Today',now)+cell('200-day',ma)+'</div>'+
+      '<div class="d3">'+cell('Your Average',avg)+cell('Today',now)+cell('200-Day',ma)+'</div>'+
       (st?'<div class="fn2"><span class="up">'+st[0]+'</span>'+st[1]+'</div>':'')+
       (wins?'<div class="dwin">'+wins+' buy'+(wins===1?'':'s')+' lowered your average this year</div>':'')+'</div>'; };
   $('dbFund').innerHTML=box('VTI',+S.shVTI||0,m1)+box('VXUS',+S.shVXUS||0,m2);
