@@ -749,6 +749,7 @@ body.vm-on .tabs{visibility:hidden}
 .vmclose svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
 #vmType{padding:0!important;margin:0!important;text-indent:0!important}
 @media (prefers-reduced-motion:reduce){.vmorb,.vmorb .cl{animation:none!important}}
+.gone{display:none!important}
 </style>
 </head>
 <body>
@@ -911,10 +912,10 @@ body.vm-on .tabs{visibility:hidden}
 
 
   <div id="tab-invest" class="panel">
-  <section class="card habit" id="habit" hidden>
+  <section class="card habit gone" id="habit" hidden>
     <div class="streak num"><span class="fire" aria-hidden="true">🔥</span><div class="sk"><b id="skN"></b><span id="skT"></span></div><div class="sr" id="skR"></div></div>
   </section>
-  <section class="card">
+  <section class="card gone">
     <div class="head"><h2>Your Auto-Invest</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
     <div id="dcaBody"></div>
     <details class="recent"><summary>Recent Buys</summary><div id="dcaRecent"></div></details>
