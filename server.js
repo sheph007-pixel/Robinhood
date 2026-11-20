@@ -663,7 +663,48 @@ async function recordNetWorth() {
   } catch (e) { console.error('net worth snapshot failed', e.message); }
 }
 setTimeout(recordNetWorth, 15e3); setInterval(recordNetWorth, 30 * 60e3);
-async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
+async function serverSync() {
+  const pend = readAlerts().filter(a => a.status === 'pending'), since = pend.length ? pend.map(a => a.at).sort()[0] : null;
+  const p = await rh.syncPayload({ manualSince: since });
+  const out = applySync(p); if (since) matchAlerts(p.manual || []);
+  console.log('Robinhood sync ok', out.shVTI, out.shVXUS); checkAlerts().catch(() => {}); return out;
+}
+// ---------- Buy Alerts ----------
+// When the S&P 500 falls 10/15/20/30% below its high (highest close in 2 years), create an alert to invest a set slice of
+// the stocks you own, split by your US/International target. Your own (non-recurring) VTI/VXUS buys after the alert are
+// matched to it at each sync; when about the full amount is in, it's marked done. Kept in their own file so app saves never overwrite them.
+const DIP_STEPS = [[10, 0.05], [15, 0.05], [20, 0.10], [30, 0.10]];
+const alertsFile = () => path.join(DATA_DIR, 'alerts.json');
+function readAlerts() { try { return JSON.parse(fs.readFileSync(alertsFile(), 'utf8')); } catch (e) { return []; } }
+function writeAlerts(a) { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(alertsFile() + '.tmp', JSON.stringify(a)); fs.renameSync(alertsFile() + '.tmp', alertsFile()); }
+async function checkAlerts() {
+  const x = await spxSnapshot(); if (!x || !x.peak || !x.last) return;
+  const dd = (1 - x.last / x.peak) * 100, peak = Math.round(x.peak), st = readState(), alerts = readAlerts();
+  const q = await quotes().catch(() => ({})), pv = s => (q[s] && q[s].price) || (st.px && st.px[s]) || 0;
+  const stocks = (+st.shVTI || 0) * pv('VTI') + (+st.shVXUS || 0) * pv('VXUS'); if (!(stocks > 0)) return;
+  const us = (st.us != null ? +st.us : 70) / 100; let added = 0;
+  for (const [lvl, pct] of DIP_STEPS) {
+    if (dd < lvl || alerts.some(a => a.peak === peak && a.level === lvl)) continue;
+    const total = Math.round(stocks * pct / 100) * 100, vti = Math.round(total * us / 100) * 100;
+    alerts.push({ id: crypto.randomBytes(4).toString('hex'), level: lvl, pct, peak, spx: Math.round(x.last), at: new Date().toISOString(),
+      amtVTI: vti, amtVXUS: total - vti, gotVTI: 0, gotVXUS: 0, orders: [], status: 'pending' });
+    added++;
+  }
+  if (added) { writeAlerts(alerts); console.log('Buy Alert created', added); }
+}
+function matchAlerts(manual) {
+  const alerts = readAlerts(), used = new Set(alerts.flatMap(a => a.orders || [])); let changed = false;
+  for (const a of alerts.filter(a => a.status === 'pending').sort((p, q) => p.at.localeCompare(q.at))) {
+    for (const o of manual.filter(o => !used.has(o.id) && o.at >= a.at && o.amount > 0).sort((p, q) => p.at.localeCompare(q.at))) {
+      const need = a.amtVTI + a.amtVXUS - a.gotVTI - a.gotVXUS; if (need <= a.amtVTI * 0.05 + a.amtVXUS * 0.05) break;
+      if (o.symbol === 'VTI') a.gotVTI = Math.round((a.gotVTI + o.amount) * 100) / 100; else a.gotVXUS = Math.round((a.gotVXUS + o.amount) * 100) / 100;
+      a.orders.push(o.id); used.add(o.id); a.lastBuy = o.at; changed = true;
+    }
+    if (a.gotVTI + a.gotVXUS >= (a.amtVTI + a.amtVXUS) * 0.95) { a.status = 'done'; a.doneAt = a.lastBuy || new Date().toISOString(); a.auto = true; changed = true; }
+  }
+  if (changed) writeAlerts(alerts);
+}
+setTimeout(() => checkAlerts().catch(() => {}), 30e3); setInterval(() => checkAlerts().catch(() => {}), 30 * 60e3);
 // Automatic sync every hour (a few small Robinhood data requests; no AI involved). Page loads and Refresh sync too.
 let lastAutoSyncAt = 0;
 setInterval(() => {
@@ -759,6 +800,14 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL, stt: !!sttKey(), tts: !!sttKey() });
   if (url.pathname === '/api/stt' && req.method === 'POST') return handleStt(req, res);
   if (url.pathname === '/api/tts' && (req.method === 'POST' || req.method === 'GET')) return handleTts(req, res, url);
+  if (url.pathname === '/api/alerts' && req.method === 'GET') {
+    let x = null; try { x = await spxSnapshot(); } catch (e) { /* show alerts without the S&P line */ }
+    return json(res, 200, { alerts: readAlerts(), steps: DIP_STEPS, spx: x ? { last: x.last, peak: x.peak } : null });
+  }
+  { const m = url.pathname.match(/^\/api\/alerts\/([0-9a-f]{8})\/(skip|done|reopen)$/);
+    if (m && req.method === 'POST') { const all = readAlerts(), a = all.find(z => z.id === m[1]); if (!a) return json(res, 404, { error: 'not found' });
+      if (m[2] === 'skip') a.status = 'skipped'; else if (m[2] === 'done') { a.status = 'done'; a.doneAt = new Date().toISOString(); a.auto = false; } else { a.status = 'pending'; delete a.doneAt; }
+      writeAlerts(all); return json(res, 200, { ok: true }); } }
   if (url.pathname === '/api/spx') {
     try { return json(res, 200, await spxSnapshot()); }
     catch (e) { return json(res, 502, { error: 'S&P 500 data unavailable' }); }

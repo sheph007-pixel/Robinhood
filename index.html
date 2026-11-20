@@ -341,7 +341,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
   .wiq{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 8px;padding:12px}
   .wiqk{grid-column:1/3;grid-row:1;align-self:center}
   .wiqc{grid-column:3;grid-row:1;justify-self:end;padding:0}
-  .wiq label{flex-direction:column-reverse;align-items:stretch;gap:3px;font-size:12px;min-width:0}
+  .wiq label{grid-row:2;flex-direction:column-reverse;align-items:stretch;gap:3px;font-size:12px;min-width:0}
   .wiq label span{white-space:nowrap} .wiq .ld{display:none} .wiq .lm{display:block}
   .wiq input{width:100%;font-size:16px;padding:7px 8px}
   .wsum{flex-direction:column;align-items:flex-start;gap:2px}
@@ -767,9 +767,21 @@ body.vm-on .tabs{visibility:hidden}
 @media (prefers-reduced-motion:reduce){.vmorb,.vmorb .cl{animation:none!important}}
 .gone{display:none!important}
 [hidden]{display:none!important} /* cards set display:flex, which would otherwise override the hidden attribute */
-.dipalert{border:1px solid var(--g)!important;gap:10px}
+.dipalert{border:1px solid var(--g)!important;padding:0!important}
+.dabn{font:inherit;color:var(--ink);background:none;border:0;width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;text-align:left;font-size:15px}
+.dabn .che{margin-left:auto;color:var(--gt);font-weight:700} .dabn b{color:var(--gt)}
+.nbadge{position:absolute;top:2px;margin-left:16px;min-width:16px;height:16px;border-radius:8px;background:var(--g);color:#000;font-size:10px;font-weight:800;font-style:normal;display:inline-flex;align-items:center;justify-content:center;padding:0 4px}
+.tabs button{position:relative}
+.alsteps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.als{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--ink2)} .als b{font-size:18px;color:var(--ink)} .als em{font-style:normal}
+.als.hit{box-shadow:inset 0 0 0 1px var(--g)} .als.hit b,.als.hit span{color:var(--gt)}
+.alsec{font-size:14px;color:var(--ink2);margin:14px 2px 6px;font-weight:700}
+.alc{gap:10px} .alc.pend{border:1px solid var(--g)!important} .alh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.alr{display:flex;justify-content:space-between;font-size:14px} .alr .g{color:var(--gt);font-weight:700}
+.okb{font-size:13px;font-weight:800;color:var(--gt)} .alc.skip{opacity:.6}
+@media (max-width:560px){.alsteps{grid-template-columns:repeat(2,1fr)} .dabn{font-size:14px;gap:8px;padding:12px} .dabn .dab{font-size:12px;padding:3px 9px}}
 .dah{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.dab{font-size:13px;font-weight:800;color:#000;background:var(--g);border-radius:99px;padding:4px 12px}
+.dab{font-size:13px;font-weight:800;color:#000;background:var(--g);border-radius:99px;padding:4px 12px;white-space:nowrap}
 .dam{font-size:28px;font-weight:800;letter-spacing:-.01em} .dam b{color:var(--gt)}
 .das{font-size:14px;color:var(--ink2);line-height:1.45}
 .dag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:14px} .dag b{color:var(--gt)}
@@ -927,6 +939,7 @@ body.vm-on .tabs{visibility:hidden}
     <button role="tab" data-tab="hold" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Net Worth</span></button>
     <button role="tab" data-tab="port"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 2.5A9 9 0 0 1 21.5 9H15z"/></svg><span>Holdings</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
+    <button role="tab" data-tab="alerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span>Alerts</span><i class="nbadge" id="alBadge" hidden></i></button>
     <button role="tab" data-tab="invest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>Invest</span></button>
     <button role="tab" data-tab="dca2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/></svg><span>DCA</span></button>
     <button role="tab" data-tab="ai" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
@@ -1053,6 +1066,15 @@ body.vm-on .tabs{visibility:hidden}
       <div class="pflist num" id="pfList"></div>
     </section>
     <div id="pfLook"><section class="card"><div class="muted small">Loading what's inside your funds…</div></section></div>
+  </div>
+
+  <div id="tab-alerts" class="panel" hidden>
+    <section class="card">
+      <div class="head"><h2>Buy Alerts</h2><span class="muted small" id="alNow"></span></div>
+      <div class="alsteps num" id="alSteps"></div>
+      <p class="pfnote">When the S&amp;P 500 falls 10%, 15%, 20% or 30% below its high, you get an alert to invest a set slice of your stocks, split VTI / VXUS by your target. Buy it in Robinhood and it's checked off automatically at the next sync. Your daily buys keep going no matter what.</p>
+    </section>
+    <div id="alList"></div>
   </div>
 
   <div id="tab-mkt" class="panel">
@@ -1512,7 +1534,7 @@ function scroller(){return phoneScroll()?document.querySelector('main'):null;}
 function scrollTop0(){const m=scroller(); if(m)m.scrollTop=0; else window.scrollTo(0,0);}
 function scrollPos(){const m=scroller(); return m?m.scrollTop:window.scrollY;}
 function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-port').hidden=t!=='port'; if(t==='port')portfolio(); $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; $('tab-dca2').hidden=t!=='dca2'; if(t==='dca2')dcaBuys(); if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt'){if(changed)S.mr='20y';markets();} if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-port').hidden=t!=='port'; if(t==='port')portfolio(); $('tab-alerts').hidden=t!=='alerts'; if(t==='alerts')alertsTab(); $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; $('tab-dca2').hidden=t!=='dca2'; if(t==='dca2')dcaBuys(); if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt'){if(changed)S.mr='20y';markets();} if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 let BRIEF=null, briefAt=0;
@@ -1616,26 +1638,35 @@ async function spxCard(){
     '<div class="spxf"><div class="spxh">Wall Street Forecast · End of '+T.year+'</div>'+fc+'<p class="pfnote">Updated '+new Date(T.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'. Checked automatically, weekly when banks publish (Nov–Jan, Jun–Jul). Forecasts are opinions, not promises.</p></div>';
   $('spxAt').textContent=new Date(x.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
-// Buy Alert: steps keyed to how far the S&P 500 is below its high, each sized as a % of the stocks you own.
-// It's on top of the daily buys (which keep going no matter what) and is funded from the cash reserve.
-const DIP_STEPS=[[10,.05],[15,.05],[20,.10],[30,.10]];
+// Buy Alerts (server-owned, see /api/alerts): Home shows a compact banner; the Alerts tab holds the full list.
+let ALS=null, alsAt=0;
+async function loadAlerts(force){ if(!force&&ALS&&Date.now()-alsAt<60e3)return ALS; try{const r=await fetch('/api/alerts',{cache:'no-store'});if(r.ok){ALS=await r.json();alsAt=Date.now();}}catch(e){} return ALS; }
 async function dipAlert(){
-  const el=$('dipAlert'); if(!SPX||Date.now()-spxAt>5*60e3){ try{const r=await fetch('/api/spx');if(r.ok){SPX=await r.json();spxAt=Date.now();}}catch(e){} }
-  const x=SPX; if(!x||!x.peak||!x.last){el.hidden=true;return;}
-  const dd=(1-x.last/x.peak)*100, d=S.dip&&S.dip.peak===Math.round(x.peak)?S.dip:{peak:Math.round(x.peak),done:[]};
-  const step=DIP_STEPS.find(s=>dd>=s[0]&&!d.done.includes(s[0]));
-  if(dd<10||!step){el.hidden=true;return;}
-  const h=holdings(), st=h.vti+h.vxus, amt=Math.round(st*step[1]/100)*100, back=(x.peak/x.last-1)*100, nxt=DIP_STEPS.find(s=>s[0]>step[0]);
-  const u=S.us/100, cashNote=h.cash>=amt?'From your cash reserve ('+usd(h.cash)+' available).':h.cash>0?'Your cash reserve has '+usd(h.cash)+'; add the rest from your bank.':'Add it from your bank, on top of your daily buys.';
-  el.hidden=false;
-  el.innerHTML='<div class="dah"><span class="dab">🛒 Buy Alert</span><span class="muted small">S&amp;P 500 is '+dd.toFixed(1)+'% below its high</span></div>'+
-    '<div class="dam">Invest <b>'+usd(amt)+'</b> now</div>'+
-    '<div class="das">That\'s '+Math.round(step[1]*100)+'% of your stocks: about '+usd(Math.round(amt*u))+' VTI and '+usd(amt-Math.round(amt*u))+' VXUS. '+cashNote+'</div>'+
-    '<div class="dag"><span>If the S&amp;P gets back to its high ('+Math.round(x.peak).toLocaleString('en-US')+')</span><b>+'+back.toFixed(1)+'% · about +'+usd(amt*back/100)+'</b></div>'+
-    '<div class="dab2"><button type="button" class="btn" id="dipDone">I Invested</button><button type="button" class="btn ghost" id="dipSkip">Not Now</button></div>'+
-    '<p class="pfnote">Your daily buys keep going no matter what. '+(nxt?'Next step: at −'+nxt[0]+'%, invest another '+Math.round(nxt[1]*100)+'% of your stocks.':'This is the last step.')+' Drops have always recovered in the past, but sometimes it took years.</p>';
-  const mark=()=>{ d.done=[...new Set([...d.done,...DIP_STEPS.filter(s=>s[0]<=step[0]).map(s=>s[0])])]; S.dip=d; save(); dipAlert(); };
-  $('dipDone').onclick=mark; $('dipSkip').onclick=mark;
+  const el=$('dipAlert'), A=await loadAlerts(); if(!A){el.hidden=true;return;}
+  const pend=A.alerts.filter(a=>a.status==='pending'), b=$('alBadge'); b.hidden=!pend.length; b.textContent=pend.length;
+  if(!pend.length){el.hidden=true;return;}
+  const tot=pend.reduce((t,a)=>t+a.amtVTI+a.amtVXUS-a.gotVTI-a.gotVXUS,0);
+  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">🛒 Buy Alert</span><span><b>Invest '+usd(Math.max(0,tot))+'</b> · '+pend.length+' pending</span><span class="che">View ›</span></button>';
+  $('dipGo').onclick=()=>showTab('alerts');
+}
+async function alertsTab(){
+  const A=await loadAlerts(true); if(!A){$('alList').innerHTML='<section class="card"><div class="muted small">Alerts are unavailable right now.</div></section>';return;}
+  const x=A.spx, fd=v=>new Date(v).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), n=v=>Math.round(v).toLocaleString('en-US');
+  if(x){ const dd=(1-x.last/x.peak)*100;
+    $('alNow').textContent='S&P 500 '+n(x.last)+(dd>=0.5?' · '+dd.toFixed(1)+'% below its high':' · at its high');
+    $('alSteps').innerHTML=A.steps.map(([l,p])=>{const hit=dd>=l, lvl=x.peak*(1-l/100); return '<div class="als'+(hit?' hit':'')+'"><b>−'+l+'%</b><span>'+(hit?'Reached':'At '+n(lvl))+'</span><em>Invest '+Math.round(p*100)+'% of stocks</em></div>';}).join(''); }
+  const card=a=>{ const tot=a.amtVTI+a.amtVXUS, got=a.gotVTI+a.gotVXUS, row=(k,need,have)=>'<div class="alr"><span><b>'+k+'</b> '+usd(need)+'</span><span class="'+(have>=need*.95?'g':'')+'">'+(have>0?usd(have)+' bought':'Not yet')+'</span></div><div class="kbar sm"><div style="width:'+Math.min(100,Math.max(2,have/need*100)).toFixed(1)+'%"></div></div>';
+    const since=x&&x.last>a.spx?' · S&amp;P is up '+((x.last/a.spx-1)*100).toFixed(1)+'% since':'';
+    if(a.status==='pending') return '<section class="card alc pend"><div class="alh"><span class="dab">−'+a.level+'% Buy Alert</span><span class="muted small">'+fd(a.at)+' · S&amp;P '+n(a.spx)+'</span></div>'+
+      '<div class="dam">Invest <b>'+usd(tot)+'</b></div><div class="das">Buy these in Robinhood. We\'ll check it off when the buys show up.</div>'+row('VTI',a.amtVTI,a.gotVTI)+row('VXUS',a.amtVXUS,a.gotVXUS)+
+      '<div class="dab2"><button type="button" class="btn" data-al="'+a.id+'" data-act="done">Mark Done</button><button type="button" class="btn ghost" data-al="'+a.id+'" data-act="skip">Skip</button></div></section>';
+    if(a.status==='done') return '<section class="card alc done"><div class="alh"><span class="okb">✓ Done</span><span class="muted small">−'+a.level+'% alert · '+fd(a.at)+'</span></div>'+
+      '<div class="das">'+(got>0?'Invested <b>'+usd(got)+'</b> ('+usd(a.gotVTI)+' VTI · '+usd(a.gotVXUS)+' VXUS)':'Marked done')+(a.doneAt?' on '+fd(a.doneAt):'')+since+'</div></section>';
+    return '<section class="card alc skip"><div class="alh"><span class="muted small">Skipped · −'+a.level+'% alert · '+fd(a.at)+'</span><button type="button" class="rlink" data-al="'+a.id+'" data-act="reopen">Reopen</button></div></section>'; };
+  const all=A.alerts.slice().sort((p,q)=>q.at.localeCompare(p.at)), pend=all.filter(a=>a.status==='pending'), rest=all.filter(a=>a.status!=='pending');
+  $('alList').innerHTML=(pend.length?'<h3 class="alsec">Pending</h3>'+pend.map(card).join(''):'')+(rest.length?'<h3 class="alsec">History</h3>'+rest.map(card).join(''):'')+
+    (!all.length?'<section class="card"><div class="muted">No alerts yet. You\'ll get one when the S&amp;P 500 falls 10% below its high.</div></section>':'');
+  $('alList').querySelectorAll('[data-al]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{await fetch('/api/alerts/'+b.dataset.al+'/'+b.dataset.act,{method:'POST'});}catch(e){} await loadAlerts(true); alertsTab(); dipAlert(); });
 }
 // Keep It Going: a streak, milestones and badges that only go up. Up days and down days are both wins.
 let KDD=null;
@@ -2012,7 +2043,7 @@ function dcaRender(){
     '<p class="muted small">Worked out from the buys your recurring investments placed in Robinhood, and included in all projections. A change you make in Robinhood shows here after the next market day\u2019s buy (or missing buy).</p>';
   $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
 }
-showTab(S.tab==='money'?'invest':S.tab==='dca'?'dca2':['mkt','port','invest','dca2'].includes(S.tab)?S.tab:'home');
+showTab(S.tab==='money'?'invest':S.tab==='dca'?'dca2':['mkt','port','alerts','invest','dca2'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes();
 // Prices refresh after the open (9:30 ET) and the close (4:00 ET), or by hand.
 let lastQ=Date.now();
