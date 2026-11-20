@@ -499,6 +499,7 @@ body.on-ai .upd{display:none}
 .mklg .sw{display:inline-block;width:14px;height:0;margin-right:5px;vertical-align:middle}
 .sw-px{border-top:2px solid var(--g)}
 .sw-ma{border-top:2px solid var(--ink);opacity:.75}
+.sw-dd{border-top:2px dashed var(--down)}
 .upd{justify-content:center!important;gap:6px!important;padding:18px 0 8px!important;font-size:13px}
 .upd .status{font-size:13px}
 .rlink{font:inherit;font-size:13px;font-weight:600;color:var(--gt);background:none;border:0;padding:0 2px;cursor:pointer}
@@ -840,7 +841,6 @@ body.vm-on .tabs{visibility:hidden}
     <button type="button" class="ontrack" id="onTrack" hidden></button>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">With Added Money</span><span class="ls">Added</span></span></div>
-    <div class="agerow"><span class="k">Age</span><div class="chips" id="ages" role="group" aria-label="Age"></div></div>
     <div class="range num">
       <div><span class="k">Poor Market</span><span class="v" id="fLo"></span></div>
       <div><span class="k">Average</span><span class="v" id="fMd2"></span></div>
@@ -958,7 +958,7 @@ body.vm-on .tabs{visibility:hidden}
     <div class="head"><h2>Add New Money</h2><span class="muted small">Enter an amount to see what to buy in Robinhood.</span></div>
     <div class="dep-in"><input type="text" inputmode="decimal" id="dep" placeholder="$0" aria-label="New money amount"></div>
     <div class="plan num" id="plan"></div>
-    <p class="callout" id="planNote"></p>
+    <p class="callout" id="planNote" hidden></p>
     <button id="apply" hidden></button>
   </section>
   <section class="card">
@@ -1223,8 +1223,8 @@ function render(reproject){
   const fut=D>0?' <br>This '+usd(D)+' could grow to about <b>'+big(D*Math.pow(1+g,yrs65))+'</b> by age '+S.age+'.':'';
   if(D>0){const H={vti:h.vti+b.vti,vxus:h.vxus+b.vxus,cash:h.cash+b.cash},TT=T+D;
     const on=Math.max(Math.abs(H.vti/TT-w.vti),Math.abs(H.vxus/TT-w.vxus),Math.abs(H.cash/TT-w.cash))<.005;
-    $('planNote').innerHTML='After this you\'ll be at <b>'+pc(H.vti/TT)+' VTI · '+pc(H.vxus/TT)+' VXUS · '+pc(H.cash/TT)+' cash</b>'+(on?', right on target.':', closer to your '+pc(w.vti)+' / '+pc(w.vxus)+' / '+pc(w.cash)+' target. The rest evens out with future deposits.')+fut;}
-  else $('planNote').textContent='Type an amount above. For every $1,000 at your target mix: '+usd(1000*w.vti)+' VTI, '+usd(1000*w.vxus)+' VXUS, '+usd(1000*w.cash)+' cash. If something is underweight, it gets filled first.';
+    $('planNote').hidden=false; $('planNote').innerHTML='After this you\'ll be at <b>'+pc(H.vti/TT)+' VTI · '+pc(H.vxus/TT)+' VXUS · '+pc(H.cash/TT)+' cash</b>'+(on?', right on target.':', closer to your '+pc(w.vti)+' / '+pc(w.vxus)+' / '+pc(w.cash)+' target. The rest evens out with future deposits.')+fut;}
+  else {$('planNote').textContent='';$('planNote').hidden=true;}
 
   if(typeof nwRender==='function')nwRender();
   if(reproject){proj=null;setTimeout(()=>{project();draw();},0);}
@@ -1242,8 +1242,6 @@ $('apply').addEventListener('click',()=>{
 
 function draw(){
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
-  $('ages').innerHTML=AG.map(a=>'<button data-a="'+a+'" aria-pressed="'+(a===S.age)+'">'+a+'</button>').join('');
-  $('ages').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.age=+b.dataset.a;save();draw();});
     if(!proj)return;
   const d=t=>realOn()?Math.pow(1+INFL,t/12):1, Mh=proj.M, Ma=Math.min(Mh,monthsTo(S.age));
   const lo=proj.lo.map((v,t)=>v/d(t)), md=proj.md.map((v,t)=>v/d(t)), hi=proj.hi.map((v,t)=>v/d(t)), put=proj.put.map((v,t)=>v/d(t)), lq=proj.lq.map((v,t)=>v/d(t)), hq=proj.hq.map((v,t)=>v/d(t));
@@ -1263,7 +1261,7 @@ function draw(){
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
   { const el=$('wres');
-    if(!scen){el.innerHTML='<div class="muted">Enter a daily amount and/or a one-time deposit, then tap Calculate to see the impact at age '+S.age+'.</div>';}
+    if(!scen){el.innerHTML='';}
     else{const sm=scen.md[Ma]/d(Ma), gain=sm-md[Ma], pct=md[Ma]?gain/md[Ma]*100:0, mo=SC.a1+SC.a2, own=SC.L+mo*Ma, grow=Math.max(0,gain-own);
       const parts=[]; if(SC.d1)parts.push(usd(SC.d1)+'/day to VTI'); if(SC.d2)parts.push(usd(SC.d2)+'/day to VXUS'); if(SC.L)parts.push(usd(SC.L)+' one time');
       el.innerHTML='<div class="wimpact"><div><span class="k">More at Age '+S.age+'</span><span class="wbig">'+(gain<0?'−'+big(-gain):'+'+big(gain))+'</span></div><div><span class="k">Impact</span><span class="wbig">'+(pct<0?'−':'+')+Math.abs(pct).toFixed(0)+'%</span></div></div>'+
@@ -1271,7 +1269,7 @@ function draw(){
         '<div class="muted">Adding '+parts.join(' + ')+(mo?' (about '+usd(mo)+'/mo, every market day)':'')+'. You put in '+big(own)+'; growth adds '+big(grow)+'.</div>';}
   }
 
-  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(W<500?Math.max(220,W*.62):Math.min(380,Math.max(250,W*.5))), m={l:4,r:58,t:12,b:28}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(W<500?Math.max(220,W*.62):Math.min(380,Math.max(250,W*.5))), m={l:4,r:58,t:12,b:38}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const Mx=Mh, top=Math.max(1,...hi,...(scen?scen.md.map((v,t)=>v/d(t)):[]));
   const steps=[1e5,2e5,5e5,1e6,2e6,2.5e6,5e6,1e7,2e7,2.5e7,5e7,1e8];
   const step=steps.find(x=>top/x<=6)||2e8, ymin=0, ymax=Math.ceil(top/step)*step;
@@ -1279,10 +1277,13 @@ function draw(){
   const lab=v=>v>=1e6?'$'+(v/1e6)+'M':v>=1e3?'$'+(v/1e3)+'k':'$'+v;
   let g='';
   for(let v=0;v<=ymax+1;v+=step)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+lab(v)+'</text>';
-  const a0=Math.ceil(ageNow()/5)*5;
-  g+='<text x="'+X(0)+'" y="'+(H-8)+'" text-anchor="start" font-size="11" fill="'+ink2+'">Now</text>';
-  for(let a=a0;a<=75;a+=5){const t=monthsTo(a);if(t<=0||X(t)-X(0)<34)continue;
-    g+='<text x="'+X(t)+'" y="'+(H-8)+'" text-anchor="'+(a===75?'end':'middle')+'" font-size="11" fill="'+(a===S.age?ink:ink2)+'" font-weight="'+(a===S.age?700:400)+'">'+a+'</text>';}
+  // Age axis doubles as the age picker: tap a label to select it (selected = green pill).
+  const ay=H-14, gt=css('--gt');
+  g+='<text x="'+X(0)+'" y="'+(ay+4)+'" text-anchor="start" font-size="11" fill="'+ink2+'">Now</text>';
+  for(const a of AG){const t=monthsTo(a);if(t<=0||X(t)-X(0)<34)continue; const on=a===S.age, cx=Math.min(X(t),W-m.r+4-16);
+    g+='<g class="atk" data-a="'+a+'" role="button" tabindex="0" aria-label="Show age '+a+'" aria-pressed="'+on+'" style="cursor:pointer"><rect x="'+(cx-20)+'" y="'+(H-m.b+2)+'" width="40" height="'+(m.b-2)+'" fill="transparent"/>'+
+      (on?'<rect x="'+(cx-17)+'" y="'+(ay-12)+'" width="34" height="24" rx="12" fill="'+s1+'"/>':'')+
+      '<text x="'+cx+'" y="'+(ay+4)+'" text-anchor="middle" font-size="13" font-weight="700" fill="'+(on?'#000':gt)+'">'+a+'</text></g>';}
   const P=a=>{let p='';for(let t=0;t<=Mx;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(a[t]).toFixed(1);return p;};
   const B=(u,l)=>{let p='';for(let t=0;t<=Mx;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(u[t]).toFixed(1);for(let t=Mx;t>=0;t--)p+='L'+X(t).toFixed(1)+' '+Y(l[t]).toFixed(1);return p+'Z';};
   g+='<path d="'+B(hi,lo)+'" fill="'+s1+'" opacity=".13"/>';
@@ -1321,7 +1322,8 @@ function draw(){
     $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%'+(outsideTotal()?', incl. '+big(outsideTotal())+' outside Robinhood':'')+'). '+(T0>=S.goal?'You\'re already there. Now it\'s about keeping it.':when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
-  wrap.onpointermove=wrap.onpointerdown=function(ev){
+  svg.querySelectorAll('.atk').forEach(k=>{const pick=()=>{S.age=+k.dataset.a;save();draw();}; k.onclick=pick; k.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}};});
+  wrap.onpointermove=wrap.onpointerdown=function(ev){ if(ev.target.closest&&ev.target.closest('.atk')){wrap.onpointerleave();return;}
     const rc=svg.getBoundingClientRect(), t=Math.max(0,Math.min(Mx,Math.round((ev.clientX-rc.left-m.l)/iw*Mx)));
     xh.setAttribute('x1',X(t));xh.setAttribute('x2',X(t));xh.setAttribute('visibility','visible');
     xd.setAttribute('cx',X(t));xd.setAttribute('cy',Y(md[t]));xd.setAttribute('visibility','visible');
@@ -1389,14 +1391,17 @@ function mchart(el,sym,h){
   const C=h.c.slice(), Tm=h.t.slice(); if(Q[sym]&&Q[sym].price){C.push(Q[sym].price);Tm.push(Date.now());}
   const rg=S.mr||'max', win={'1y':200,'5y':40,'10y':40,'max':10}[rg], yrsBack={'1y':1,'5y':5,'10y':10}[rg];
   const MA=C.map((v,i)=>{if(i<win-1)return null;let s=0;for(let j=i-win+1;j<=i;j++)s+=C[j];return s/win;});
+  // Corrections: each time price fell 10%+ from its running high. Computed on the full series so peaks before the window still count.
+  const DDp=[], DD=[]; { let pk=C[0],pi=0,ep=null; for(let i=0;i<C.length;i++){ if(C[i]>=pk){ if(ep){ep.end=i;DD.push(ep);ep=null;} pk=C[i];pi=i; DDp.push(0); continue; }
+    const d=C[i]/pk-1; DDp.push(d); if(!ep&&d<=-.1)ep={pk:pi,hit:i,tr:i,depth:d}; if(ep&&d<ep.depth){ep.depth=d;ep.tr=i;} } if(ep)DD.push(ep); }
   let s0=0; if(yrsBack){const cut=Date.now()-yrsBack*365.25*864e5; s0=Math.max(0,Tm.findIndex(x=>x>=cut));}
-  const c=C.slice(s0), t=Tm.slice(s0), ma=MA.slice(s0);
+  const c=C.slice(s0), t=Tm.slice(s0), ma=MA.slice(s0), dd=DDp.slice(s0);
   const n=c.length, first=c[0], last=c[n-1], chg=(last/first-1)*100, since=new Date(t[0]);
   const names={VTI:'US Total Stock Market',VXUS:'Total International Stock'};
   const lbl=(S.mr||'max')==='max'?'since '+since.getFullYear():'in '+({'1y':'1 year','5y':'5 years','10y':'10 years'})[S.mr];
   el.innerHTML='<div class="mkh"><div><div class="mks">'+sym+' <span class="muted small">'+names[sym]+'</span></div><div class="mkp num">'+usd(last,true)+'</div>'+
-    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span><span><i class="sw sw-ma"></i>200-Day Average</span></div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
-  const svg=el.querySelector('svg'), W=Math.max(300,el.clientWidth), H=Math.round(Math.min(260,Math.max(180,W*.32))), m={l:4,r:52,t:10,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span><span><i class="sw sw-ma"></i>200-Day Average</span><span><i class="sw sw-dd"></i>10%+ Drop</span></div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
+  const svg=el.querySelector('svg'), W=Math.max(300,el.clientWidth), H=Math.round(Math.min(260,Math.max(180,W*.32))), m={l:4,r:52,t:24,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const mv=ma.filter(v=>v!=null); let lo=Math.min(...c,...mv), hi=Math.max(...c,...mv); const pad=(hi-lo)*.06; lo=Math.max(0,lo-pad); hi+=pad;
   const X=i=>m.l+i/(n-1)*iw, Y=v=>m.t+(1-(v-lo)/(hi-lo))*ih, g1=css('--g'), ink2=css('--ink2'), line=css('--line'), sf=css('--surface');
   let g=''; const st=[1,2,5,10,20,25,50,100].find(x=>(hi-lo)/x<=4)||200;
@@ -1404,6 +1409,12 @@ function mchart(el,sym,h){
   const yrs=(t[n-1]-t[0])/3.156e10, every=yrs>12?5:yrs>6?2:yrs>2?1:0;
   if(every){let last=-1;t.forEach((ts,i)=>{const y=new Date(ts).getFullYear();if(y!==last&&y%every===0&&i>0&&X(i)>m.l+16&&X(i)<W-m.r-20){last=y;g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">'+y+'</text>';}else if(y!==last&&y%every!==0)last=-1;});}
   else{[0,Math.floor(n/2),n-1].forEach((i,k)=>{g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="'+(k===0?'start':k===2?'end':'middle')+'" font-size="11" fill="'+ink2+'">'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',year:'2-digit'})+'</text>';});}
+  { const dn=css('--down'); let lx=-1e9;
+    for(const e of DD){ const a=Math.max(0,e.pk-s0), b=e.tr-s0, h=e.hit-s0; if(b<0)continue;
+      g+='<rect x="'+X(a).toFixed(1)+'" y="'+m.t+'" width="'+Math.max(1,X(b)-X(a)).toFixed(1)+'" height="'+ih+'" fill="'+dn+'" opacity=".09"/>';
+      if(h<0)continue; const hx=X(h);
+      g+='<line x1="'+hx.toFixed(1)+'" x2="'+hx.toFixed(1)+'" y1="'+(m.t-6)+'" y2="'+(m.t+ih)+'" stroke="'+dn+'" stroke-width="1.25" stroke-dasharray="3 3" opacity=".85"/>';
+      if(hx-lx>30&&hx<W-m.r){ g+='<text x="'+hx.toFixed(1)+'" y="'+(m.t-10)+'" text-anchor="middle" font-size="10" font-weight="600" fill="'+dn+'">−'+Math.round(-e.depth*100)+'%</text>'; lx=hx; } } }
   let p='';for(let i=0;i<n;i++)p+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(c[i]).toFixed(1);
   g+='<path d="'+p+'L'+X(n-1)+' '+(m.t+ih)+'L'+X(0)+' '+(m.t+ih)+'Z" fill="'+g1+'" opacity=".08"/><path d="'+p+'" fill="none" stroke="'+g1+'" stroke-width="2" stroke-linejoin="round"/>';
   { let mp='',on=false; for(let i=0;i<n;i++){if(ma[i]==null){on=false;continue;} mp+=(on?'L':'M')+X(i).toFixed(1)+' '+Y(ma[i]).toFixed(1); on=true;}
@@ -1413,7 +1424,7 @@ function mchart(el,sym,h){
   const wrap=el.querySelector('.mkw'), tip=el.querySelector('.mtip'), xh=svg.querySelector('.xh'), xd=svg.querySelector('.xd');
   wrap.onpointermove=wrap.onpointerdown=ev=>{const rc=svg.getBoundingClientRect(), i=Math.max(0,Math.min(n-1,Math.round((ev.clientX-rc.left-m.l)/iw*(n-1))));
     xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.setAttribute('visibility','visible');xd.setAttribute('cx',X(i));xd.setAttribute('cy',Y(c[i]));xd.setAttribute('visibility','visible');
-    tip.innerHTML='<b>'+usd(c[i],true)+'</b>'+(ma[i]!=null?'<br><span class="muted">200-day avg '+usd(ma[i],true)+'</span>':'')+'<br>'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'});tip.style.display='block';
+    tip.innerHTML='<b>'+usd(c[i],true)+'</b>'+(ma[i]!=null?'<br><span class="muted">200-day avg '+usd(ma[i],true)+'</span>':'')+(dd[i]<=-.01?'<br><span style="color:'+(dd[i]<=-.1?'var(--down)':'var(--ink2)')+'">'+(dd[i]*100).toFixed(1)+'% from high</span>':'')+'<br>'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'});tip.style.display='block';
     const tw=tip.offsetWidth;let x=X(i)+10;if(x+tw>W)x=X(i)-tw-10;tip.style.left=Math.max(0,x)+'px';};
   wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
   wrap.onpointerleave=()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
