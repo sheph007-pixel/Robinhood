@@ -711,6 +711,10 @@ body.vm-on .tabs{visibility:hidden}
 /* orb follows your voice level while listening */
 .vm{--lvl:0}
 .vm[data-s="listening"] .vmorb i:first-child{transform:scale(calc(.94 + var(--lvl)*.22))!important;transition:transform .08s linear}
+
+.memh{margin-top:18px}
+.aimem{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border-radius:10px;background:var(--soft);margin:6px 0;font-size:14px;line-height:1.4}
+.aimem span{flex:1}
 </style>
 </head>
 <body>
@@ -862,7 +866,7 @@ body.vm-on .tabs{visibility:hidden}
 
   <div id="tab-ai" class="panel aipanel">
     <div class="aitop"><button type="button" class="aiicon" id="aiHist" aria-label="Chat history" title="Chat history"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button><span class="aitt" id="aiTitle">Ask AI</span><span class="airt"><button type="button" class="aiicon" id="aiClear" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
-    <div class="aihist" id="aiHistPanel" hidden><div class="aihh"><b>Chats</b><button type="button" class="aiicon" id="aiHistClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><button type="button" class="ainew" id="aiNew"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New chat</button><div id="aiHistList"></div></div>
+    <div class="aihist" id="aiHistPanel" hidden><div class="aihh"><b>Chats</b><button type="button" class="aiicon" id="aiHistClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><button type="button" class="ainew" id="aiNew"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New chat</button><div id="aiHistList"></div><div class="aihg memh">What I Remember About You</div><div id="aiMemList"></div></div>
     <div id="aiEmpty" class="aiempty"><div class="aimark"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg></div><p>Ask about your portfolio, your goal or the markets.</p></div>
     <div id="aiLog" class="ailog" aria-live="polite"></div>
     <div id="aiSug" hidden></div>
@@ -1316,7 +1320,11 @@ async function aiHistory(){ $('aiHistPanel').hidden=false; $('aiHistList').inner
   let list=[]; try{list=(await (await fetch('/api/chats',{cache:'no-store'})).json()).chats||[];}catch(e){}
   const day=v=>{const d=new Date(v),n=new Date(),y=new Date(n-864e5); return d.toDateString()===n.toDateString()?'Today':d.toDateString()===y.toDateString()?'Yesterday':d.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
   let last=''; $('aiHistList').innerHTML=list.length?list.map(c=>{const g=day(c.updated),h=g!==last?'<div class="aihg">'+g+'</div>':'';last=g;
-    return h+'<div class="aihi'+(c.id===CID?' on':'')+'" data-id="'+c.id+'"><span>'+esc(c.title)+'</span><button type="button" class="aidel" data-del="'+c.id+'" aria-label="Delete chat">×</button></div>';}).join(''):'<p class="muted small">No saved chats yet.</p>'; }
+    return h+'<div class="aihi'+(c.id===CID?' on':'')+'" data-id="'+c.id+'"><span>'+esc(c.title)+'</span><button type="button" class="aidel" data-del="'+c.id+'" aria-label="Delete chat">×</button></div>';}).join(''):'<p class="muted small">No saved chats yet.</p>';
+  memList(); }
+async function memList(){ let n=[]; try{n=(await (await fetch('/api/memory',{cache:'no-store'})).json()).notes||[];}catch(e){}
+  $('aiMemList').innerHTML=n.length?n.slice().reverse().map(x=>'<div class="aimem"><span>'+esc(x.text)+'</span><button type="button" class="aidel" data-mem="'+x.id+'" aria-label="Forget this">×</button></div>').join(''):'<p class="muted small">Nothing yet. Tell it about your goals, plans and preferences, or say “remember…”, and it will keep that in mind in every chat.</p>'; }
+$('aiMemList').addEventListener('click',async e=>{const b=e.target.closest('[data-mem]'); if(!b)return; if(!confirm('Forget this?'))return; await fetch('/api/memory/'+b.dataset.mem,{method:'DELETE'}); memList();});
 // one-time: move an old on-device chat to the server
 (async()=>{try{const old=JSON.parse(localStorage.getItem('portfolio-chat')||'[]'); if(old.length&&!CID){AIM=old.filter(m=>m.content);await aiSave();} localStorage.removeItem('portfolio-chat');}catch(e){}})();
 let GOALPCT=null;
