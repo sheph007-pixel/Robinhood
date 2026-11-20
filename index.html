@@ -841,6 +841,9 @@ body.vm-on .tabs{visibility:hidden}
 .dcafund .g{color:var(--gt)} .dcafund .fr em{font-style:normal;font-weight:500;color:var(--ink2);font-size:12px;margin-left:4px}
 .dcafund .fn2 .sale,.dcafund .fn2 .up{display:inline-block;font-weight:700;color:#000;background:var(--g);border-radius:99px;padding:1px 8px;margin-right:4px;font-size:11px}
 .dcafund .dnote{grid-column:1/-1;margin:0;font-size:12px;color:var(--ink2)}
+.dcafund .d3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px} .dcafund .d3>div{display:flex;flex-direction:column;gap:1px;background:var(--surface);border-radius:8px;padding:6px 8px}
+.dcafund .d3 span{font-size:11px;color:var(--ink2)} .dcafund .d3 b{font-size:14px}
+.dcafund .dwin{font-size:12px;font-weight:600;color:var(--gt)} .dcafund .dwin::before{content:'★ '}
 @media (max-width:560px){.dcafund{grid-template-columns:1fr}}
 </style>
 </head>
@@ -1914,16 +1917,24 @@ async function ma200(sym){ if(MA200[sym]&&Date.now()-MA200[sym].at<6*3600e3)retu
   try{const h=HC[sym+'1y']||await (await fetch('/api/history?s='+sym+'&r=1y')).json(); HC[sym+'1y']=h; const c=h.c||[]; if(c.length<200)return null;
     const v=c.slice(-200).reduce((a,b)=>a+b,0)/200; MA200[sym]={v,at:Date.now()}; return v;}catch(e){return null;} }
 async function dcaFunds(){
-  // DCA scoreboard, kept simple: shares owned (only goes up), next milestone, shares added this year.
+  // DCA scoreboard: shares (only go up), your average price vs today vs the 200-day average,
+  // and a positive status either way: below your average = a discount day; above = you're ahead.
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price})));
-  const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4);
+  const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4), ac=S.avgCost||{};
   const nf=(v,d)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-  const box=(k,sh)=>{ const added=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0).reduce((t,b)=>t+(+b.a)/(+b.p),0);
+  const [m1,m2]=await Promise.all([ma200('VTI'),ma200('VXUS')]);
+  const box=(k,sh,ma)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0), avg=+ac[k]||0, now=price(k);
+    const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0), wins=avg?mine.filter(b=>+b.p<avg).length:0;
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
+    const st=avg&&now?(now<avg?['Discount day','Today\'s buy lowers your average.']:['You\'re ahead','Worth more than you paid.']):null;
+    const cell=(l,v)=>'<div><span>'+l+'</span><b>'+(v?usd(v,true):'—')+'</b></div>';
     return '<div><div class="dh"><b class="fn">'+k+'</b><span class="dsh">'+nf(sh,0)+' <small>shares</small></span></div>'+
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
-      '<div class="fr"><span>'+nf(Math.max(1,goal-sh),0)+' to go to '+goal.toLocaleString('en-US')+'</span>'+(added>0?'<span class="g">+'+nf(added,0)+' this year</span>':'')+'</div></div>'; };
-  $('dbFund').innerHTML=box('VTI',+S.shVTI||0)+box('VXUS',+S.shVXUS||0);
+      '<div class="fr"><span>'+nf(Math.max(1,goal-sh),0)+' to go to '+goal.toLocaleString('en-US')+'</span>'+(added>0?'<span class="g">+'+nf(added,0)+' this year</span>':'')+'</div>'+
+      '<div class="d3">'+cell('Your average',avg)+cell('Today',now)+cell('200-day',ma)+'</div>'+
+      (st?'<div class="fn2"><span class="up">'+st[0]+'</span>'+st[1]+'</div>':'')+
+      (wins?'<div class="dwin">'+wins+' buy'+(wins===1?'':'s')+' lowered your average this year</div>':'')+'</div>'; };
+  $('dbFund').innerHTML=box('VTI',+S.shVTI||0,m1)+box('VXUS',+S.shVXUS||0,m2);
 }
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
 function dcaBuys(){
