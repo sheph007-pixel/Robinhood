@@ -772,6 +772,10 @@ body.vm-on .tabs{visibility:hidden}
 .nwrow input.na{width:130px;background:var(--soft)!important;border:1px solid transparent!important;border-radius:10px;padding:6px 10px!important;color:var(--ink)}
 .nwadd{display:flex;gap:8px;margin-top:10px} .nwadd input{flex:1;min-width:0} .nwadd #nwAmt{max-width:130px} .nwadd .btn{width:auto;padding:10px 16px}
 .tabs button[hidden]{display:none!important}
+
+#dbSum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+#dbSum>div{background:var(--soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+#dbSum .k{font-size:12px;color:var(--ink2)} #dbSum .v{font-size:18px;font-weight:800;white-space:nowrap} #dbSum .s{font-size:12px;color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -805,7 +809,8 @@ body.vm-on .tabs{visibility:hidden}
     <button role="tab" data-tab="hold" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Net Worth</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
     <button role="tab" data-tab="invest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>Invest</span></button>
-    <button role="tab" data-tab="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
+    <button role="tab" data-tab="dca2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/></svg><span>DCA</span></button>
+    <button role="tab" data-tab="ai" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
   </nav>
 
 
@@ -910,7 +915,7 @@ body.vm-on .tabs{visibility:hidden}
   </div>
 
   <div id="tab-mkt" class="panel">
-  <section class="card brief">
+  <section class="card brief gone">
     <div class="head"><h2>Today's Market</h2><span class="muted small" id="brAt"></span></div>
     <div class="aimsg" id="brBody"><span class="typing">Loading today's brief…</span></div>
   </section>
@@ -969,6 +974,15 @@ body.vm-on .tabs{visibility:hidden}
     </div>
     <div class="wbtns"><button type="button" class="btn" id="wCalc">Calculate</button><button type="button" class="btn ghost" id="wClear">Clear</button></div>
     <div class="wres num" id="wres"></div>
+  </section>
+  </div>
+
+  <div id="tab-dca2" class="panel" hidden>
+  <section class="card">
+    <div class="head"><h2>Recurring Buys</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
+    <div class="dcasum num" id="dbSum"></div>
+    <div class="dcalist num" id="dbList"></div>
+    <p class="muted small">Actual buys your recurring investments made in Robinhood. Updates with every sync.</p>
   </section>
   </div>
 
@@ -1345,7 +1359,7 @@ function scroller(){return phoneScroll()?document.querySelector('main'):null;}
 function scrollTop0(){const m=scroller(); if(m)m.scrollTop=0; else window.scrollTo(0,0);}
 function scrollPos(){const m=scroller(); return m?m.scrollTop:window.scrollY;}
 function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; $('tab-dca2').hidden=t!=='dca2'; if(t==='dca2')dcaBuys(); if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt')markets(); if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 let BRIEF=null, briefAt=0;
@@ -1358,7 +1372,6 @@ async function loadBrief(force){
   catch(e){ if(!BRIEF)$('brBody').innerHTML='<span class="muted">'+(e===503?'Ask AI isn\'t set up, so the brief is unavailable.':'Today\'s brief isn\'t available right now. Try again later.')+'</span>'; }
 }
 async function markets(){
-  loadBrief(false);
   const r=S.mr||'max'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
   for(const sym of ['VTI','VXUS']){const el=$('mk'+sym), k=sym+r;
     if(!HC[k]){el.innerHTML='<div class="muted small">Loading '+sym+'…</div>';try{const x=await fetch('/api/history?s='+sym+'&r='+r);if(!x.ok)throw 0;HC[k]=await x.json();}catch(e){el.innerHTML='<div class="muted small">'+sym+' history unavailable</div>';continue;}}
@@ -1663,7 +1676,7 @@ function dcaRender(){
     '<p class="muted small">Worked out from the buys your recurring investments placed in Robinhood, and included in all projections. A change you make in Robinhood shows here after the next market day\u2019s buy (or missing buy).</p>';
   $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
 }
-showTab(S.tab==='money'||S.tab==='dca'?'invest':['mkt','ai','invest'].includes(S.tab)?S.tab:'home');
+showTab(S.tab==='money'?'invest':S.tab==='dca'?'dca2':['mkt','invest','dca2'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes();
 // Prices refresh after the open (9:30 ET) and the close (4:00 ET), or by hand.
 let lastQ=Date.now();
@@ -1725,6 +1738,17 @@ $('nwAdd').addEventListener('submit',e=>{e.preventDefault();const name=$('nwName
   if(!name||!(amt>0))return; S.accts=(S.accts||[]).concat([{id:Math.random().toString(36).slice(2,8),name,amt:Math.round(amt)}]); $('nwName').value='';$('nwAmt').value=''; save(); render(true); nwRender();});
 $('nwList').addEventListener('change',e=>{const i=e.target.closest('[data-amt]');if(!i)return;const a=(S.accts||[]).find(x=>x.id===i.dataset.amt);if(!a)return;const v=parseAmt(i.value);if(v>=0&&i.value.trim()!=='')a.amt=Math.round(v);save();render(true);nwRender();});
 $('nwList').addEventListener('click',e=>{const b=e.target.closest('[data-nwdel]');if(!b)return;if(!confirm('Remove this account?'))return;S.accts=(S.accts||[]).filter(x=>x.id!==b.dataset.nwdel);save();render(true);nwRender();});
+// DCA tab: real recurring buys from Robinhood (no guessed schedule)
+function dcaBuys(){
+  const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price}))).slice().sort((a,b)=>b.d.localeCompare(a.d));
+  if(!buys.length){$('dbSum').innerHTML='';$('dbList').innerHTML='<p class="muted">No recurring buys synced yet. Tap Refresh to sync with Robinhood.</p>';return;}
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), m=today.slice(0,7), y=today.slice(0,4), d30=new Date(Date.now()-30*864e5).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+  const sum=f=>buys.filter(f).reduce((t,b)=>t+(+b.a||0),0), days=f=>new Set(buys.filter(f).map(b=>b.d)).size;
+  const tile=(k,v,sub)=>'<div><span class="k">'+k+'</span><span class="v">'+usd(v)+'</span><span class="s">'+sub+'</span></div>';
+  $('dbSum').innerHTML=tile('This Month',sum(b=>b.d.startsWith(m)),days(b=>b.d.startsWith(m))+' buy days')+tile('Last 30 Days',sum(b=>b.d>=d30),days(b=>b.d>=d30)+' buy days')+tile('This Year',sum(b=>b.d.startsWith(y)),days(b=>b.d.startsWith(y))+' buy days');
+  const fd=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  $('dbList').innerHTML=buys.slice(0,40).map(b=>'<div><span>'+fd(b.d)+'</span><span><b>'+b.s+'</b></span><span>'+usd(+b.a)+'</span><span class="muted">'+(b.p?'@ '+usd(b.p,true):'')+'</span></div>').join('');
+}
 $('onTrack').addEventListener('click',()=>document.querySelector('.goal').scrollIntoView({behavior:'smooth',block:'start'}));
 $('ftInfo').addEventListener('click',e=>{e.stopPropagation();const f=document.querySelector('.ft'),o=!f.classList.contains('open');f.classList.toggle('open',o);$('ftInfo').setAttribute('aria-expanded',o);});
 document.addEventListener('click',e=>{const f=document.querySelector('.ft');if(f&&f.classList.contains('open')&&!e.target.closest('.ftpop')){f.classList.remove('open');$('ftInfo').setAttribute('aria-expanded','false');}});

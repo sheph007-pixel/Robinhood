@@ -137,9 +137,10 @@ module.exports = function makeRh(DATA_DIR) {
   // Pull the Core account and return the payload shape that /api/rh-sync expects.
   async function syncPayload() {
     const [pos, port] = await Promise.all([call('get_equity_positions', {}), call('get_portfolio', {})]);
-    const since = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10);
+    const d35 = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10), jan1 = new Date().getUTCFullYear() + '-01-01';
+    const since = jan1 < d35 ? jan1 : d35; // whole year so the DCA tab can show year-to-date totals
     const orders = []; let cursor;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 60; i++) {
       const r = await call('get_equity_orders', Object.assign({ placed_agent: 'recurring', created_at_gte: since }, cursor ? { cursor } : {}));
       const d = (r && r.data) || {};
       (d.orders || []).forEach(o => orders.push({ date: String(o.created_at).slice(0, 10), symbol: o.symbol, side: o.side, state: o.state,
