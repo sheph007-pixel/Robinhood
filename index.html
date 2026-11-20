@@ -123,6 +123,7 @@ details ul{padding-left:18px;margin:10px 0 0;display:flex;flex-direction:column;
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
 .tabs button{font:inherit;font-size:15px;font-weight:600;color:var(--ink2);background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;margin-bottom:-1px;cursor:pointer}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+@media (min-width:641px){.tabs button{color:var(--ink);opacity:.72;font-size:16px;border-bottom-width:3px} .tabs button[aria-selected="true"]{opacity:1} .tabs button:hover{opacity:1}}
 .panel{display:flex;flex-direction:column;gap:18px}
 .panel[hidden]{display:none}
 .hrow{display:contents}
@@ -139,6 +140,7 @@ input[type=text]{font-size:16px}
   .tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);border-bottom:0;
         padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:0;box-shadow:0 -2px 12px rgba(0,0,0,.06)}
   .tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;padding:6px 0;border:0;margin:0;color:var(--ink2)}
+  .tabs .nbadge{position:absolute;top:1px;left:calc(50% + 4px);margin:0;min-width:18px;height:18px;font-size:11px;box-shadow:0 0 0 2px var(--surface)}
   .tabs button[aria-selected="true"]{color:var(--accent)}
   .tabs svg{display:block}
   .hero{padding-top:20px;padding-bottom:20px}
@@ -770,7 +772,7 @@ body.vm-on .tabs{visibility:hidden}
 .dipalert{border:1px solid var(--g)!important;padding:0!important}
 .dabn{font:inherit;color:var(--ink);background:none;border:0;width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;text-align:left;font-size:15px}
 .dabn .che{margin-left:auto;color:var(--gt);font-weight:700} .dabn b{color:var(--gt)}
-.nbadge{position:absolute;top:2px;margin-left:16px;min-width:16px;height:16px;border-radius:8px;background:var(--g);color:#000;font-size:10px;font-weight:800;font-style:normal;display:inline-flex;align-items:center;justify-content:center;padding:0 4px}
+.nbadge{min-width:20px;height:20px;border-radius:10px;background:var(--g);color:#000;font-size:12px;font-weight:800;font-style:normal;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;margin-left:6px;vertical-align:1px}
 .tabs button{position:relative}
 .alsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .edtg{border-top:1px solid var(--line);padding-top:10px} .edtg summary{cursor:pointer;color:var(--gt);font-weight:700;font-size:14px;list-style:none} .edtg summary::-webkit-details-marker{display:none} .edtg[open] summary{margin-bottom:12px}
@@ -781,6 +783,14 @@ body.vm-on .tabs{visibility:hidden}
 .fb{background:var(--soft);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;font-size:12px;color:var(--ink2)} .fb b{font-size:13px;color:var(--ink)} .fb em{font-style:normal;font-weight:700;color:var(--gt)}
 .fb.on{box-shadow:inset 0 0 0 1px var(--g)}
 @media (max-width:560px){.flexl{grid-template-columns:repeat(3,1fr)} .fundt .fr{font-size:13px;grid-template-columns:.7fr .9fr 1fr 1.5fr}}
+.spxc{display:block;width:100%;height:auto} .spxlg{justify-content:flex-start} .sw-fc{border-top:2px dashed var(--g)}
+@media (max-width:560px){.dabn .dl{display:none}}
+.bfr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)} .bfr:first-child{border-top:0;padding-top:2px}
+.bfr>div:first-child{display:flex;flex-direction:column;gap:2px} .bfr b{font-size:17px} .bfr span{font-size:13px;color:var(--ink2)}
+.bamt{font-size:17px;text-align:right} .bamt s{color:var(--ink2)} .bfr.chg .bamt b{color:var(--gt)}
+.bact{display:flex;flex-direction:column;gap:6px;background:var(--soft);border:1px solid var(--g);border-radius:12px;padding:12px 14px} .bact span{font-size:14px;color:var(--ink2)}
+.bok{font-size:14px;color:var(--gt);font-weight:600}
+.bh{display:grid;grid-template-columns:auto 1fr auto;gap:10px;font-size:13px;padding:7px 0;border-top:1px solid var(--line)} .bh .g{color:var(--gt);font-weight:700}
 .alwhy{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink2);line-height:1.45} .alwhy b{color:var(--ink)}
 .als{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--ink2)} .als b{font-size:18px;color:var(--ink)} .als em{font-style:normal}
 .als.hit{box-shadow:inset 0 0 0 1px var(--g)} .als.hit b,.als.hit span{color:var(--gt)}
@@ -1086,14 +1096,17 @@ body.vm-on .tabs{visibility:hidden}
   </div>
 
   <div id="tab-alerts" class="panel" hidden>
-    <section class="card">
-      <div class="head"><h2>Buy Alerts</h2><span class="muted small" id="alNow"></span></div>
-      <div class="fundt num" id="alSteps"></div>
-      <div class="flexl num" id="alBands"></div>
-      <p class="pfnote">Each fund's daily buy flexes with how far that fund is below its own high, and goes back to normal as it recovers. "Normal" is your usual recurring amount. When the amounts should change, you get one alert with the exact numbers to set in Robinhood, and it checks itself off once Robinhood is buying them.</p>
-      <div class="alwhy"><b>Why buy more in a drop</b><span>Since 1950, a dollar invested when the S&amp;P was 20–30% below its high grew a median 44% over 3 years, versus 36% on an average day. 30%+ below, it averaged +99% over 5 years, versus +69%. Small drops were about average, so the early steps are small.</span></div>
+    <section class="card buyc">
+      <div class="head"><h2>Your Daily Buys</h2><span class="muted small" id="alNow"></span></div>
+      <div class="num" id="alSteps"></div>
+      <div id="alAct"></div>
+      <details class="edtg"><summary>How It Works</summary>
+        <div class="flexl num" id="alBands"></div>
+        <p class="pfnote">Each fund's daily buy goes up when that fund falls 10% or more below its high, and back to normal as it recovers. Normal is your usual recurring amount.</p>
+        <p class="pfnote">Why: since 1950, money invested when the S&amp;P was 20–30% below its high grew a median 44% over 3 years, versus 36% on an average day.</p>
+      </details>
+      <details class="edtg" id="alHistW"><summary>History</summary><div id="alList"></div></details>
     </section>
-    <div id="alList"></div>
   <section class="card">
     <div class="head"><h2>Add New Money</h2><span class="muted small">Enter an amount to see what to buy in Robinhood.</span></div>
     <div class="dep-in"><input type="text" inputmode="decimal" id="dep" placeholder="$0" aria-label="New money amount"></div>
@@ -1602,12 +1615,7 @@ async function portfolio(){
   const dy=(A.dy!=null&&B.dy!=null)?a*A.dy+b*B.dy:null, divs=dy!=null?st*dy/100:null, intr=h.cash*S.apy/100;
   // What matters when you buy a little every day: keep costs low, stay spread out, let payouts add up, keep buying.
   const tip=(ic,t,d)=>'<div class="wm"><span class="wi">'+ic+'</span><div><b>'+t+'</b><span>'+d+'</span></div></div>';
-  out+='<section class="card"><div class="head"><h2>What Matters for You</h2></div><div class="wml">'+
-    tip('1','Keep Buying, Every Day','Buying the same amount on a schedule means you get more shares when prices are low. Time in the market does the heavy lifting.')+
-    tip('2','Keep Costs Low','You pay about <b>'+usd(fee)+' a year</b> to own all '+nCo.toLocaleString('en-US')+' companies. That is very cheap, so more of your money keeps growing.')+
-    tip('3','Stay Spread Out','Your money is in '+nCo.toLocaleString('en-US')+' companies across '+ctyL.length+' countries. No single company can sink you.')+
-    (divs!=null?tip('4','Let the Payouts Add Up','The companies pay you about <b>'+usd(divs)+' a year</b>'+(intr>0?', plus '+usd(intr)+' in cash interest':'')+'. Reinvested, that buys even more shares.'):'')+
-    '</div></section>';
+  // (What Matters for You card removed)
   // Spread score, in plain words
   out+='<section class="card"><div class="head"><h2>How Spread Out You Are</h2></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">A score out of 100. Higher means your money doesn\'t depend on just a few companies or one country.</span></div></div><div class="hb">'+
     bar('Number of Companies',nCo.toLocaleString('en-US'),sB/100,'--g',sB)+
@@ -1640,6 +1648,31 @@ async function portfolio(){
   out+='<p class="pfnote" style="text-align:center;margin-top:12px">What\'s inside your funds comes from Vanguard (as of '+new Date(A.asOf+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+') and Robinhood.</p>';
   $('pfLook').innerHTML=out;
 }
+// Past year of the S&P with its 200-day average, the 52-week high, and a dashed path to the Wall Street year-end targets.
+function spxChart(x,T){
+  const S0=x.series||[]; if(S0.length<20)return '';
+  const W=Math.max(300,($('spx').clientWidth||600)), H=Math.round(Math.min(240,Math.max(170,W*.36))), m={l:4,r:56,t:14,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const t0=S0[0][0], tNow=S0[S0.length-1][0], tEnd=Date.UTC(T.year,11,31), tg=T.banks.map(b=>b[1]).concat(T.avg?[T.avg]:[]), tLo=Math.min(...tg), tHi=Math.max(...tg), tMid=T.avg||tg.reduce((a,b)=>a+b,0)/tg.length;
+  const vals=S0.map(p=>p[1]).concat(S0.map(p=>p[2]).filter(Boolean),[x.hi52,tLo,tHi]); let lo=Math.min(...vals), hi=Math.max(...vals); const pad=(hi-lo)*.08; lo-=pad; hi+=pad;
+  const X=t=>m.l+(t-t0)/(tEnd-t0)*iw, Y=v=>m.t+(1-(v-lo)/(hi-lo))*ih, n=v=>Math.round(v).toLocaleString('en-US');
+  const g1=css('--g'), ink=css('--ink'), ink2=css('--ink2'), line=css('--line');
+  let g=''; const st=[250,500,1000].find(s=>(hi-lo)/s<=5)||2000;
+  for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+n(v)+'</text>';
+  let p='';S0.forEach((q,i)=>{p+=(i?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[1]).toFixed(1);});
+  let mp='',on=false;S0.forEach(q=>{if(q[2]==null){on=false;return;}mp+=(on?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[2]).toFixed(1);on=true;});
+  g+='<line x1="'+X(t0)+'" x2="'+X(tNow)+'" y1="'+Y(x.hi52)+'" y2="'+Y(x.hi52)+'" stroke="'+ink2+'" stroke-dasharray="3 4" opacity=".8"/><text x="'+(X(t0)+4)+'" y="'+(Y(x.hi52)-5)+'" font-size="11" fill="'+ink2+'">52-wk high '+n(x.hi52)+'</text>';
+  if(tHi>tLo)g+='<path d="M'+X(tNow)+' '+Y(x.last)+'L'+X(tEnd)+' '+Y(tHi)+'L'+X(tEnd)+' '+Y(tLo)+'Z" fill="'+g1+'" opacity=".12"/>';
+  g+='<path d="M'+X(tNow)+' '+Y(x.last)+'L'+X(tEnd)+' '+Y(tMid)+'" stroke="'+g1+'" stroke-width="2" stroke-dasharray="5 5" fill="none"/>';
+  g+='<line x1="'+X(tNow)+'" x2="'+X(tNow)+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink2+'" opacity=".35"/>';
+  if(mp)g+='<path d="'+mp+'" fill="none" stroke="'+ink+'" stroke-width="1.5" stroke-opacity=".7"/>';
+  g+='<path d="'+p+'" fill="none" stroke="'+g1+'" stroke-width="2" stroke-linejoin="round"/>';
+  g+='<circle cx="'+X(tNow)+'" cy="'+Y(x.last)+'" r="4" fill="'+g1+'"/><circle cx="'+X(tEnd)+'" cy="'+Y(tMid)+'" r="4" fill="none" stroke="'+g1+'" stroke-width="2"/>';
+  g+='<text x="'+(X(tEnd)-6)+'" y="'+(Y(tMid)-9)+'" text-anchor="end" font-size="11" font-weight="700" fill="'+g1+'">'+n(tMid)+(T.avg?' avg':'')+' target</text>';
+  const dl=t=>new Date(t).toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  g+='<text x="'+X(t0)+'" y="'+(H-6)+'" font-size="11" fill="'+ink2+'">'+dl(t0)+'</text><text x="'+X(tNow)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">Today</text><text x="'+X(tEnd)+'" y="'+(H-6)+'" text-anchor="end" font-size="11" fill="'+ink2+'">End '+T.year+'</text>';
+  return '<svg class="spxc" viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="S&amp;P 500 over the last year with its 200-day average and the path to the year-end '+T.year+' forecast">'+g+'</svg>'+
+    '<div class="mklg spxlg"><span><i class="sw sw-px"></i>S&amp;P 500</span><span><i class="sw sw-ma"></i>200-Day Average</span><span><i class="sw sw-fc"></i>Forecast</span></div>';
+}
 async function spxCard(){
   if(!SPX||Date.now()-spxAt>5*60e3){ try{const r=await fetch('/api/spx');if(!r.ok)throw 0;SPX=await r.json();spxAt=Date.now();}catch(e){ if(!SPX){$('spx').innerHTML='<div class="muted small">S&amp;P 500 data is unavailable right now.</div>';return;} } }
   const x=SPX, n=v=>Math.round(v).toLocaleString('en-US'), pc=v=>(v>=0?'+':'−')+Math.abs(v*100).toFixed(1)+'%';
@@ -1647,7 +1680,7 @@ async function spxCard(){
   const cell=(k,v,sub)=>'<div class="sc"><span class="k">'+k+'</span><span class="v">'+v+'</span><span class="s">'+sub+'</span></div>';
   const fc=T.banks.map(([b,t])=>'<div class="fr"><span>'+b+'</span><span><b>'+n(t)+'</b> <em>'+pc(t/x.last-1)+'</em></span></div>').join('')+
     (T.avg?'<div class="fr avg"><span>Average of '+(T.avgOf?T.avgOf+' ':'')+'Strategists</span><span><b>'+n(T.avg)+'</b> <em>'+pc(T.avg/x.last-1)+'</em></span></div>':'');
-  $('spx').innerHTML='<div class="spx3">'+
+  $('spx').innerHTML=spxChart(x,T)+'<div class="spx3">'+
     cell('Now',n(x.last),day!=null&&day>=0?'<span class="g">'+pc(day)+' today</span>':'Live price')+
     cell('200-Day Average',n(x.ma200),vsMa>=0?'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% above':'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% below')+
     cell('52-Week High',n(x.hi52),offHi<.01?'At its high':(offHi*100).toFixed(1)+'% below the high')+'</div>'+
@@ -1663,7 +1696,7 @@ async function dipAlert(){
   const pend=A.alerts.filter(a=>a.status==='pending'&&a.type==='dca'), b=$('alBadge'); b.hidden=!pend.length; b.textContent=pend.length;
   if(!pend.length){el.hidden=true;return;}
   const a=pend[pend.length-1], up=a.to.VTI+a.to.VXUS>(a.base.VTI||0)+(a.base.VXUS||0);
-  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">'+(up?'🛒 Buy Alert':'✓ Back to Normal')+'</span><span><b>Set daily buys to '+dayAmt(a.to.VTI+a.to.VXUS)+'</b></span><span class="che">View ›</span></button>';
+  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">'+(up?'🛒 Buy Alert':'✓ Back to Normal')+'</span><span><b><span class="dl">Set daily buys to </span>'+dayAmt(a.to.VTI+a.to.VXUS)+'</b></span><span class="che">View ›</span></button>';
   $('dipGo').onclick=()=>showTab('alerts');
 }
 // Phone notifications (Web Push). iPhone needs the app added to the Home Screen first (iOS 16.4+).
@@ -1688,30 +1721,22 @@ async function pushUI(){
     }catch(e){} pushUI(); };
 }
 async function alertsTab(){
-  const A=await loadAlerts(true); if(!A){$('alList').innerHTML='<section class="card"><div class="muted small">Alerts are unavailable right now.</div></section>';return;}
-  const x=A.spx, F=A.flex, B=A.bands, fd=v=>new Date(v).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), n=v=>Math.round(v).toLocaleString('en-US');
-  if(x){const dd=(1-x.last/x.peak)*100; $('alNow').textContent='S&P 500 '+n(x.last)+(dd>=0.5?' · '+dd.toFixed(1)+'% below its high':' · at its high');}
-  if(F){
-    $('alSteps').innerHTML='<div class="fr hd"><span>Fund</span><span>Below High</span><span>Normal</span><span>Now Recommended</span></div>'+
-      ['VTI','VXUS'].map(f=>{const bi=F.flex.band[f]||0, bs=F.flex.base[f]||0; return '<div class="fr"><span><b>'+f+'</b></span><span>'+F.drops[f].dd.toFixed(1)+'%</span><span>'+dayAmt(bs)+'</span><span class="'+(bi?'g':'')+'"><b>'+dayAmt(F.target[f])+'</b>'+(bi?' · '+B[bi][1]+'×':'')+'</span></div>';}).join('');
-    $('alBands').innerHTML=B.map((b,i)=>{const on=['VTI','VXUS'].filter(f=>(F.flex.band[f]||0)===i); return '<div class="fb'+(on.length?' on':'')+'"><b>'+(i?b[0]+(B[i+1]?'–'+(B[i+1][0])+'%':'%+'):'Under 10%')+'</b><span>'+(i?b[1]+'× normal':'Normal')+'</span>'+(on.length?'<em>'+on.join(' · ')+'</em>':'')+'</div>';}).join('');
-  }
-  const amt=(k,from,to)=>'<div class="alr"><span><b>'+k+'</b> '+usd(from)+' → <b class="'+(to!==from?'g':'')+'">'+usd(to)+'</b> a day'+(to===from?' <span class="muted small">(no change)</span>':'')+'</span></div>';
-  const card=a=>{
-    if(a.type!=='dca') return '';
-    const up=a.to.VTI+a.to.VXUS>(a.base.VTI||0)+(a.base.VXUS||0), title=up?'Buy Alert':'Back to Normal', why='VTI '+a.dd.VTI+'% · VXUS '+a.dd.VXUS+'% below high';
-    if(a.status==='pending') return '<section class="card alc pend"><div class="alh"><span class="dab">'+title+'</span><span class="muted small">'+fd(a.at)+' · '+why+'</span></div>'+
-      '<div class="dam">Set daily buys to <b>'+dayAmt(a.to.VTI+a.to.VXUS)+'</b></div><div class="das">In Robinhood, change your recurring buys to:</div>'+
-      amt('VTI',a.from.VTI,a.to.VTI)+amt('VXUS',a.from.VXUS,a.to.VXUS)+
-      '<div class="das">Checks off after the next buy at the new amounts.'+(up?' Extra about '+usd((a.to.VTI+a.to.VXUS-(a.base.VTI||0)-(a.base.VXUS||0))*21)+'/mo over normal.':'')+'</div>'+
-      '<div class="dab2"><button type="button" class="btn" data-al="'+a.id+'" data-act="done">Mark Done</button><button type="button" class="btn ghost" data-al="'+a.id+'" data-act="skip">Skip</button></div></section>';
-    if(a.status==='done') return '<section class="card alc done"><div class="alh"><span class="okb">✓ Done</span><span class="muted small">'+title+' · '+fd(a.at)+'</span></div><div class="das">Daily buys set to <b>'+usd(a.to.VTI)+' VTI + '+usd(a.to.VXUS)+' VXUS</b>'+(a.doneAt?' on '+fd(a.doneAt):'')+' · '+why+'</div></section>';
-    if(a.status==='replaced') return '<section class="card alc skip"><div class="alh"><span class="muted small">'+title+' · '+fd(a.at)+' · replaced by a newer change</span></div></section>';
-    return '<section class="card alc skip"><div class="alh"><span class="muted small">Skipped · '+title+' · '+fd(a.at)+'</span><button type="button" class="rlink" data-al="'+a.id+'" data-act="reopen">Reopen</button></div></section>'; };
-  const all=A.alerts.filter(a=>a.type==='dca').sort((p,q)=>q.at.localeCompare(p.at)), pend=all.filter(a=>a.status==='pending'), rest=all.filter(a=>a.status!=='pending');
-  $('alList').innerHTML=(pend.length?'<h3 class="alsec">Pending</h3>'+pend.map(card).join(''):'')+(rest.length?'<h3 class="alsec">History</h3>'+rest.map(card).join(''):'')+
-    (!all.length?'<section class="card"><div class="muted">No changes needed. You\'ll get an alert when VTI or VXUS falls 10% below its high.</div></section>':'');
-  $('alList').querySelectorAll('[data-al]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{await fetch('/api/alerts/'+b.dataset.al+'/'+b.dataset.act,{method:'POST'});}catch(e){} await loadAlerts(true); alertsTab(); dipAlert(); });
+  const A=await loadAlerts(true); if(!A){$('alSteps').innerHTML='<div class="muted small">Unavailable right now.</div>';return;}
+  const F=A.flex, B=A.bands, fd=v=>new Date(v).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const all=A.alerts.filter(a=>a.type==='dca').sort((p,q)=>q.at.localeCompare(p.at)), pend=all.find(a=>a.status==='pending');
+  const now=A.daily||{VTI:0,VXUS:0};
+  $('alNow').textContent=pend?'Change needed':'All set';
+  if(F) $('alSteps').innerHTML=['VTI','VXUS'].map(f=>{ const bi=F.flex.band[f]||0, dd=F.drops[f].dd, tgt=pend?pend.to[f]:F.target[f], cur=now[f], chg=pend&&tgt!==cur;
+    return '<div class="bfr'+(chg?' chg':'')+'"><div><b>'+f+'</b><span>'+(dd<0.5?'At its high':dd.toFixed(1)+'% below high')+(bi?' · '+B[bi][1]+'× buys':'')+'</span></div>'+
+      '<div class="bamt">'+(chg?'<s>'+usd(cur)+'</s> → ':'')+'<b>'+dayAmt(tgt)+'</b></div></div>'; }).join('');
+  $('alAct').innerHTML=pend?'<div class="bact"><b>Change these in Robinhood</b><span>Edit your recurring buys for VTI and VXUS to the amounts above. This checks itself off after the next buy.</span>'+
+      '<div class="dab2"><button type="button" class="btn" data-al="'+pend.id+'" data-act="done">Mark Done</button><button type="button" class="btn ghost" data-al="'+pend.id+'" data-act="skip">Skip</button></div></div>'
+    :'<div class="bok">✓ Nothing to change. Robinhood is buying the right amounts.</div>';
+  if(F) $('alBands').innerHTML=B.map((b,i)=>{const on=['VTI','VXUS'].filter(f=>(F.flex.band[f]||0)===i); return '<div class="fb'+(on.length?' on':'')+'"><b>'+(i?b[0]+(B[i+1]?'–'+B[i+1][0]+'%':'%+'):'Under 10%')+'</b><span>'+(i?b[1]+'× normal':'Normal')+'</span>'+(on.length?'<em>'+on.join(' · ')+'</em>':'')+'</div>';}).join('');
+  const hist=all.filter(a=>a.status!=='pending'), lbl={done:'✓ Done',replaced:'Replaced',skipped:'Skipped'};
+  $('alHistW').hidden=!hist.length;
+  $('alList').innerHTML=hist.map(a=>'<div class="bh"><span>'+fd(a.at)+'</span><span>VTI '+usd(a.to.VTI)+' · VXUS '+usd(a.to.VXUS)+' /day</span><span class="'+(a.status==='done'?'g':'muted')+'">'+(lbl[a.status]||a.status)+(a.status==='skipped'?' <button type="button" class="rlink" data-al="'+a.id+'" data-act="reopen">Reopen</button>':'')+'</span></div>').join('');
+  document.querySelectorAll('#tab-alerts [data-al]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{await fetch('/api/alerts/'+b.dataset.al+'/'+b.dataset.act,{method:'POST'});}catch(e){} await loadAlerts(true); alertsTab(); dipAlert(); });
 }
 // Keep It Going: a streak, milestones and badges that only go up. Up days and down days are both wins.
 let KDD=null;
@@ -1750,9 +1775,9 @@ async function keepGoing(){
       '<div class="kt"><span class="k">Next Milestone</span><b>'+big(pnext)+'</b>'+bar((T-pprev)/(pnext-pprev),' sm')+'<span class="m">'+Math.round(T/pnext*100)+'% there · '+big(pnext-T)+' to go</span></div>'+
       (daily?'<div class="kt"><span class="k">Future You</span><b>'+big(grow(daily))+'</b><span class="m">What today\'s '+usd(daily)+' could grow to by age '+S.age+'</span></div>':'')+
     '</div>'+
-    (yrs>0?'<button type="button" class="kbump" id="kBump">Add '+usd(bump)+'/day → about <b>+'+big(bumpGain)+'</b> by age '+S.age+'<span>See it on the chart ›</span></button>':'')+
+
     '<div class="kbadges">'+B.map(b=>'<span class="kb'+(b[2]?' on':'')+'" title="'+b[1]+(b[2]?' (earned)':' (locked)')+'"><i>'+b[0]+'</i>'+b[1]+'</span>').join('')+'</div>';
-  const kb=$('kBump'); if(kb)kb.onclick=()=>{ const u=S.us/100; $('dcaVTI').value=usd(Math.round(bump*u)); $('dcaVXUS').value=usd(bump-Math.round(bump*u)); $('wClear').hidden=false; $('wCalc').click(); $('wrap').scrollIntoView({behavior:'smooth',block:'center'}); };
+  const kb=null; if(kb)kb.onclick=()=>{ const u=S.us/100; $('dcaVTI').value=usd(Math.round(bump*u)); $('dcaVXUS').value=usd(bump-Math.round(bump*u)); $('wClear').hidden=false; $('wCalc').click(); $('wrap').scrollIntoView({behavior:'smooth',block:'center'}); };
   // Celebrate anything newly earned since the last visit.
   const earned=[...B.filter(b=>b[2]).map(b=>b[1]),'Level '+(li+1)+' '+LV[li][1],'Passed '+big(pprev)].filter(x=>!/Passed \$0/.test(x));
   if(!synced||!(T>0))return; // wait for the synced account before deciding what's new

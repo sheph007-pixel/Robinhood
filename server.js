@@ -319,12 +319,16 @@ async function spxSnapshot(fresh) {
   if (!fresh && spxCache && Date.now() - spxCache.at < 5 * 60e3) return { ...spxCache.data, targets: targetsNow() };
   const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=2y&interval=1d', { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!r.ok) throw new Error('yahoo ' + r.status);
-  const j = (await r.json()).chart.result[0], c = j.indicators.quote[0].close.filter(v => v != null), m = j.meta;
+  const j = (await r.json()).chart.result[0], m = j.meta, ts = [], c = [];
+  j.timestamp.forEach((t0, i) => { const v = j.indicators.quote[0].close[i]; if (v != null) { ts.push(t0 * 1000); c.push(v); } });
   const last = m.regularMarketPrice || c[c.length - 1], prev = c.length > 1 ? c[c.length - 2] : null;
   const ma200 = c.slice(-200).reduce((a, b) => a + b, 0) / Math.min(200, c.length);
   const hi52 = m.fiftyTwoWeekHigh || Math.max(...c.slice(-252));
   const peak = Math.max(...c, last); // highest close in the last 2 years: the high a drop is measured from
-  const data = { last, prev, ma200, hi52, peak, at: Date.now() };
+  // Last year of closes with the 200-day average, for the chart in the S&P box.
+  const k0 = Math.max(0, c.length - 252), series = [];
+  for (let k = k0; k < c.length; k++) { let ma = null; if (k >= 199) { let sum = 0; for (let q = k - 199; q <= k; q++) sum += c[q]; ma = Math.round(sum / 2) / 100; } series.push([ts[k], Math.round(c[k] * 100) / 100, ma]); }
+  const data = { last, prev, ma200, hi52, peak, series, at: Date.now() };
   spxCache = { at: Date.now(), data }; return { ...data, targets: targetsNow() };
 }
 const ddCache = new Map();
