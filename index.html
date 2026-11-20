@@ -773,6 +773,8 @@ body.vm-on .tabs{visibility:hidden}
 .nbadge{position:absolute;top:2px;margin-left:16px;min-width:16px;height:16px;border-radius:8px;background:var(--g);color:#000;font-size:10px;font-weight:800;font-style:normal;display:inline-flex;align-items:center;justify-content:center;padding:0 4px}
 .tabs button{position:relative}
 .alsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.edtg{border-top:1px solid var(--line);padding-top:10px} .edtg summary{cursor:pointer;color:var(--gt);font-weight:700;font-size:14px;list-style:none} .edtg summary::-webkit-details-marker{display:none} .edtg[open] summary{margin-bottom:12px}
+.pushbox{display:flex;flex-direction:column;gap:8px} .pon{color:var(--gt);font-weight:700}
 .alwhy{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink2);line-height:1.45} .alwhy b{color:var(--ink)}
 .als{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--ink2)} .als b{font-size:18px;color:var(--ink)} .als em{font-style:normal}
 .als.hit{box-shadow:inset 0 0 0 1px var(--g)} .als.hit b,.als.hit span{color:var(--gt)}
@@ -940,8 +942,7 @@ body.vm-on .tabs{visibility:hidden}
     <button role="tab" data-tab="hold" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Net Worth</span></button>
     <button role="tab" data-tab="port"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 2.5A9 9 0 0 1 21.5 9H15z"/></svg><span>Holdings</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
-    <button role="tab" data-tab="alerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span>Alerts</span><i class="nbadge" id="alBadge" hidden></i></button>
-    <button role="tab" data-tab="invest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>Invest</span></button>
+    <button role="tab" data-tab="alerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span>Buy</span><i class="nbadge" id="alBadge" hidden></i></button>
     <button role="tab" data-tab="dca2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/></svg><span>DCA</span></button>
     <button role="tab" data-tab="ai" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
   </nav>
@@ -995,8 +996,17 @@ body.vm-on .tabs{visibility:hidden}
   </section>
   <!-- Your Mix: what you hold vs. your targets (Invest tab) -->
   <section class="card mix">
-    <div class="head"><h2>Your Mix</h2></div>
+    <div class="head"><h2>Your Mix</h2><span class="muted small" id="drift" hidden></span></div>
     <div class="mixl num" id="mix"></div>
+    <details class="edtg"><summary>Edit Targets</summary>
+    <div class="grid2">
+      <div class="ctl"><div class="row"><label for="us">US / International</label><output id="usO"></output></div>
+        <input type="range" id="us" min="0" max="100" step="5"></div>
+      <div class="ctl"><div class="row"><label for="eq">Stocks / Cash</label><output id="eqO"></output></div>
+        <input type="range" id="eq" min="0" max="100" step="5"></div>
+    </div>
+    <div hidden><div id="barNow"></div><div id="barTgt"></div></div>
+    </details>
   </section>
   <div hidden><span id="gPct"></span><span id="gTxt"></span><div id="gBar"></div><div id="gSub"></div><div id="gNeed"></div></div>
 
@@ -1077,7 +1087,32 @@ body.vm-on .tabs{visibility:hidden}
       <div class="alwhy"><b>Why these steps</b><span>We tested every 10%+ S&amp;P drop since 1928. Putting half in at −10% and saving the rest for −20% and −30% earned more on average than waiting or spreading thinner, and since 1950 it was ahead 5 years later in every drop.</span></div>
     </section>
     <div id="alList"></div>
+  <section class="card">
+    <div class="head"><h2>Add New Money</h2><span class="muted small">Enter an amount to see what to buy in Robinhood.</span></div>
+    <div class="dep-in"><input type="text" inputmode="decimal" id="dep" placeholder="$0" aria-label="New money amount"></div>
+    <div class="plan num" id="plan"></div>
+    <p class="callout" id="planNote" hidden></p>
+    <button id="apply" hidden></button>
+  </section>
+    <section class="card">
+      <div class="head"><h2>Phone Notifications</h2></div>
+      <div id="pushBox" class="pushbox"><span class="muted small">Checking…</span></div>
+    </section>
   </div>
+  <div hidden><!-- retired Invest-tab pieces kept so older code paths find their elements -->
+  <section class="card habit gone" id="habit" hidden>
+    <div class="streak num"><span class="fire" aria-hidden="true">🔥</span><div class="sk"><b id="skN"></b><span id="skT"></span></div><div class="sr" id="skR"></div></div>
+  </section>
+  <section class="card gone">
+    <div class="head"><h2>Your Auto-Invest</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
+    <div id="dcaBody"></div>
+    <details class="recent"><summary>Recent Buys</summary><div id="dcaRecent"></div></details>
+  </section>
+
+
+
+  </div>
+
 
   <div id="tab-mkt" class="panel">
   <section class="card spx">
@@ -1107,34 +1142,6 @@ body.vm-on .tabs{visibility:hidden}
 
 
 
-  <div id="tab-invest" class="panel">
-  <section class="card habit gone" id="habit" hidden>
-    <div class="streak num"><span class="fire" aria-hidden="true">🔥</span><div class="sk"><b id="skN"></b><span id="skT"></span></div><div class="sr" id="skR"></div></div>
-  </section>
-  <section class="card gone">
-    <div class="head"><h2>Your Auto-Invest</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
-    <div id="dcaBody"></div>
-    <details class="recent"><summary>Recent Buys</summary><div id="dcaRecent"></div></details>
-  </section>
-  <section class="card">
-    <div class="head"><h2>Add New Money</h2><span class="muted small">Enter an amount to see what to buy in Robinhood.</span></div>
-    <div class="dep-in"><input type="text" inputmode="decimal" id="dep" placeholder="$0" aria-label="New money amount"></div>
-    <div class="plan num" id="plan"></div>
-    <p class="callout" id="planNote" hidden></p>
-    <button id="apply" hidden></button>
-  </section>
-  <section class="card">
-    <div class="head"><h2>Targets</h2><span class="muted small" id="drift" hidden></span></div>
-    <div class="grid2">
-      <div class="ctl"><div class="row"><label for="us">US / International</label><output id="usO"></output></div>
-        <input type="range" id="us" min="0" max="100" step="5"></div>
-      <div class="ctl"><div class="row"><label for="eq">Stocks / Cash</label><output id="eqO"></output></div>
-        <input type="range" id="eq" min="0" max="100" step="5"></div>
-    </div>
-    <div hidden><div id="barNow"></div><div id="barTgt"></div></div>
-  </section>
-
-  </div>
 
   <div id="tab-dca2" class="panel" hidden>
   <section class="card">
@@ -1536,7 +1543,7 @@ function scroller(){return phoneScroll()?document.querySelector('main'):null;}
 function scrollTop0(){const m=scroller(); if(m)m.scrollTop=0; else window.scrollTo(0,0);}
 function scrollPos(){const m=scroller(); return m?m.scrollTop:window.scrollY;}
 function showTab(t){const changed=S.tab!==t;S.tab=t;try{localStorage.setItem('portfolio-v1',JSON.stringify(S));}catch(e){}document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-port').hidden=t!=='port'; if(t==='port')portfolio(); $('tab-alerts').hidden=t!=='alerts'; if(t==='alerts')alertsTab(); $('tab-ai').hidden=t!=='ai'; $('tab-invest').hidden=t!=='invest'; $('tab-dca2').hidden=t!=='dca2'; if(t==='dca2')dcaBuys(); if(t==='invest'){dcaRender();draw();} document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt'){if(changed)S.mr='20y';markets();} if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
+  $('tab-home').hidden=t!=='home'; $('tab-hold').hidden=t!=='hold'; $('tab-mkt').hidden=t!=='mkt'; $('tab-port').hidden=t!=='port'; if(t==='port')portfolio(); $('tab-alerts').hidden=t!=='alerts'; if(t==='alerts'){alertsTab();pushUI();} $('tab-ai').hidden=t!=='ai';  $('tab-dca2').hidden=t!=='dca2'; if(t==='dca2')dcaBuys();  document.body.classList.toggle('on-ai',t==='ai'); if(t==='ai')aiShow(); if(t==='mkt'){if(changed)S.mr='20y';markets();} if(t==='hold')nwLoad(false); if(t==='home')draw(); if(changed)scrollTop0();}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 const HC={};
 let BRIEF=null, briefAt=0;
@@ -1650,6 +1657,27 @@ async function dipAlert(){
   const tot=pend.reduce((t,a)=>t+a.amtVTI+a.amtVXUS-a.gotVTI-a.gotVXUS,0);
   el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">🛒 Buy Alert</span><span><b>Invest '+usd(Math.max(0,tot))+'</b> · '+pend.length+' pending</span><span class="che">View ›</span></button>';
   $('dipGo').onclick=()=>showTab('alerts');
+}
+// Phone notifications (Web Push). iPhone needs the app added to the Home Screen first (iOS 16.4+).
+const b64u=k=>{const p='='.repeat((4-k.length%4)%4), r=atob((k+p).replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from([...r].map(c=>c.charCodeAt(0)));};
+async function pushUI(){
+  const el=$('pushBox'), ios=/iPhone|iPad|iPod/.test(navigator.userAgent), standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
+    el.innerHTML='<span class="muted small">'+(ios&&!standalone?'On iPhone: tap Share, then <b>Add to Home Screen</b>. Open Hood Investing from your home screen and turn notifications on here.':'This browser can\'t show notifications. Try Chrome or Safari, or add the app to your home screen.')+'</span>'; return; }
+  let reg; try{ reg=await navigator.serviceWorker.register('/sw.js'); await navigator.serviceWorker.ready; }catch(e){ el.innerHTML='<span class="muted small">Notifications couldn\'t start on this device.</span>'; return; }
+  const sub=await reg.pushManager.getSubscription(), perm=Notification.permission;
+  if(perm==='denied'){ el.innerHTML='<span class="muted small">Notifications are blocked for this site. Turn them on in your phone or browser settings, then come back.</span>'; return; }
+  if(sub&&perm==='granted'){
+    el.innerHTML='<span class="pon">✓ On for this device</span><span class="muted small">You\'ll get a notification when a Buy Alert starts and when it\'s done.</span><div class="dab2"><button type="button" class="btn ghost" id="pTest">Send Test</button><button type="button" class="btn ghost" id="pOff">Turn Off</button></div>';
+    $('pTest').onclick=async function(){this.disabled=true;this.textContent='Sending…';try{await fetch('/api/push/test',{method:'POST'});}catch(e){} this.textContent='Sent';};
+    $('pOff').onclick=async()=>{ try{await fetch('/api/push/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:sub.endpoint})}); await sub.unsubscribe();}catch(e){} pushUI(); };
+    return; }
+  el.innerHTML='<span class="muted small">Get a notification on this device the moment a Buy Alert starts, even when the app is closed.</span><div class="dab2"><button type="button" class="btn" id="pOn">Turn On Notifications</button></div>';
+  $('pOn').onclick=async function(){ this.disabled=true;
+    try{ if(await Notification.requestPermission()!=='granted'){pushUI();return;}
+      const k=await (await fetch('/api/push/key')).json(), s2=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(k.key)});
+      await fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(s2)}); await fetch('/api/push/test',{method:'POST'});
+    }catch(e){} pushUI(); };
 }
 async function alertsTab(){
   const A=await loadAlerts(true); if(!A){$('alList').innerHTML='<section class="card"><div class="muted small">Alerts are unavailable right now.</div></section>';return;}
@@ -2045,7 +2073,7 @@ function dcaRender(){
     '<p class="muted small">Worked out from the buys your recurring investments placed in Robinhood, and included in all projections. A change you make in Robinhood shows here after the next market day\u2019s buy (or missing buy).</p>';
   $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
 }
-showTab(S.tab==='money'?'invest':S.tab==='dca'?'dca2':['mkt','port','alerts','invest','dca2'].includes(S.tab)?S.tab:'home');
+showTab(S.tab==='money'||S.tab==='invest'?'alerts':S.tab==='dca'?'dca2':['mkt','port','alerts','dca2'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes();
 // Prices refresh after the open (9:30 ET) and the close (4:00 ET), or by hand.
 let lastQ=Date.now();
@@ -2063,7 +2091,8 @@ let lastSJ=null, RHC=false;
 async function rhStatus(){try{const j=await (await fetch('/api/rh/status',{cache:'no-store'})).json();RHC=!!j.connected;$('rhConnect').hidden=RHC;}catch(e){}}
 // Sync Robinhood on every page load and refresh (the server reuses a sync from the last 2 minutes).
 async function rhSync(){ if(!RHC)return; try{const r=await fetch('/api/rh/sync',{method:'POST'}); const j=await r.json().catch(()=>({})); if(r.ok&&!j.cached&&synced)await pull();}catch(e){} }
-rhStatus().then(rhSync); if(/[?&]rh=connected/.test(location.search))history.replaceState(null,'',location.pathname);
+rhStatus().then(rhSync);
+{ const tq=new URLSearchParams(location.search).get('tab'); if(tq==='alerts'){ history.replaceState(null,'',location.pathname); setTimeout(()=>showTab('alerts'),0); } } if(/[?&]rh=connected/.test(location.search))history.replaceState(null,'',location.pathname);
 function syncNote(){const el=$('rhs'); if(!el)return; if(!S.rhSync){el.textContent='Not synced yet';return;}
   const d=new Date(S.rhSync); el.textContent='Synced '+d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
 async function pull(){

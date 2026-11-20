@@ -349,6 +349,7 @@ const STATIC = {
   '/icon.svg': ['icon.svg', 'image/svg+xml'],
   '/icon-180.png': ['icon-180.png', 'image/png'],
   '/icon-512.png': ['icon-512.png', 'image/png'],
+  '/sw.js': ['sw.js', 'text/javascript'],
 };
 
 // ---- Saved portfolio (one JSON file on a persistent volume) ----
@@ -678,6 +679,23 @@ async function serverSync() {
 // average at 1, 3 and 5 years, and since 1950 was still ahead 5 years after the first -10% day in every drop.
 // The budget is 30% of the stocks you own: 15% / 7.5% / 7.5%.
 const DIP_STEPS = [[10, 0.15], [20, 0.075], [30, 0.075]];
+// ---------- Phone notifications (Web Push) ----------
+// VAPID keys are made on first use and kept with the subscribed devices in DATA_DIR/push.json.
+const webpush = require('web-push');
+const pushFile = () => path.join(DATA_DIR, 'push.json');
+function savePush(d) { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(pushFile() + '.tmp', JSON.stringify(d), { mode: 0o600 }); fs.renameSync(pushFile() + '.tmp', pushFile()); }
+function pushStore() { let d = null; try { d = JSON.parse(fs.readFileSync(pushFile(), 'utf8')); } catch (e) { /* first use */ }
+  if (!d || !d.publicKey) { const k = webpush.generateVAPIDKeys(); d = { publicKey: k.publicKey, privateKey: k.privateKey, subject: '', subs: [] }; savePush(d); } return d; }
+async function notify(title, body, url, tag) {
+  const d = pushStore(); if (!d.subs.length) return 0;
+  webpush.setVapidDetails(d.subject || 'https://robinhood.up.railway.app', d.publicKey, d.privateKey);
+  let sent = 0, gone = [];
+  await Promise.all(d.subs.map(async s => { try { await webpush.sendNotification(s, JSON.stringify({ title, body, url: url || '/', tag })); sent++; }
+    catch (e) { if (e.statusCode === 404 || e.statusCode === 410) gone.push(s.endpoint); else console.error('push failed', e.statusCode || e.message); } }));
+  if (gone.length) { d.subs = d.subs.filter(s => !gone.includes(s.endpoint)); savePush(d); }
+  return sent;
+}
+const money = v => '$' + Math.round(v).toLocaleString('en-US');
 const alertsFile = () => path.join(DATA_DIR, 'alerts.json');
 function readAlerts() { try { return JSON.parse(fs.readFileSync(alertsFile(), 'utf8')); } catch (e) { return []; } }
 function writeAlerts(a) { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(alertsFile() + '.tmp', JSON.stringify(a)); fs.renameSync(alertsFile() + '.tmp', alertsFile()); }
@@ -686,7 +704,7 @@ async function checkAlerts() {
   const dd = (1 - x.last / x.peak) * 100, peak = Math.round(x.peak), st = readState(), alerts = readAlerts();
   const q = await quotes().catch(() => ({})), pv = s => (q[s] && q[s].price) || (st.px && st.px[s]) || 0;
   const stocks = (+st.shVTI || 0) * pv('VTI') + (+st.shVXUS || 0) * pv('VXUS'); if (!(stocks > 0)) return;
-  const us = (st.us != null ? +st.us : 70) / 100, vtiNow = (+st.shVTI || 0) * pv('VTI'); let added = 0;
+  const us = (st.us != null ? +st.us : 70) / 100, vtiNow = (+st.shVTI || 0) * pv('VTI'); let added = 0; const fresh = [];
   // Split each buy to move VTI/VXUS back toward the US/International target (buy whichever fell further behind first).
   const split = total => { const want = us * (stocks + total) - vtiNow, v = Math.max(0, Math.min(total, want)); return Math.round(v / 100) * 100; };
   for (const a of alerts) { // resize pending alerts from an older ladder that nothing has been bought against yet
@@ -699,9 +717,10 @@ async function checkAlerts() {
     const total = Math.round(stocks * pct / 100) * 100, vti = split(total);
     alerts.push({ id: crypto.randomBytes(4).toString('hex'), level: lvl, pct, peak, spx: Math.round(x.last), at: new Date().toISOString(),
       amtVTI: vti, amtVXUS: total - vti, gotVTI: 0, gotVXUS: 0, orders: [], status: 'pending' });
-    added++;
+    added++; fresh.push([lvl, total, vti]);
   }
-  if (added) { writeAlerts(alerts); console.log('Buy Alert created', added); }
+  if (added) { writeAlerts(alerts); console.log('Buy Alerts written', added); }
+  for (const [lvl, total, vti] of fresh) notify('Buy Alert: S&P 500 down ' + lvl + '%', 'Invest ' + money(total) + ' now: ' + money(vti) + ' VTI + ' + money(total - vti) + ' VXUS.', '/?tab=alerts', 'alert-' + lvl).catch(() => {});
 }
 function matchAlerts(manual) {
   const alerts = readAlerts(), used = new Set(alerts.flatMap(a => a.orders || [])); let changed = false;
@@ -711,7 +730,8 @@ function matchAlerts(manual) {
       if (o.symbol === 'VTI') a.gotVTI = Math.round((a.gotVTI + o.amount) * 100) / 100; else a.gotVXUS = Math.round((a.gotVXUS + o.amount) * 100) / 100;
       a.orders.push(o.id); used.add(o.id); a.lastBuy = o.at; changed = true;
     }
-    if (a.gotVTI + a.gotVXUS >= (a.amtVTI + a.amtVXUS) * 0.95) { a.status = 'done'; a.doneAt = a.lastBuy || new Date().toISOString(); a.auto = true; changed = true; }
+    if (a.gotVTI + a.gotVXUS >= (a.amtVTI + a.amtVXUS) * 0.95) { a.status = 'done'; a.doneAt = a.lastBuy || new Date().toISOString(); a.auto = true; changed = true;
+      notify('✓ Buy Alert done', 'You invested ' + money(a.gotVTI + a.gotVXUS) + ' in the −' + a.level + '% drop. Nice work.', '/?tab=alerts', 'done-' + a.id).catch(() => {}); }
   }
   if (changed) writeAlerts(alerts);
 }
@@ -811,6 +831,19 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL, stt: !!sttKey(), tts: !!sttKey() });
   if (url.pathname === '/api/stt' && req.method === 'POST') return handleStt(req, res);
   if (url.pathname === '/api/tts' && (req.method === 'POST' || req.method === 'GET')) return handleTts(req, res, url);
+  if (url.pathname === '/api/push/key') { const d = pushStore(); return json(res, 200, { key: d.publicKey, devices: d.subs.length }); }
+  if (url.pathname === '/api/push/subscribe' && req.method === 'POST') {
+    try { const sub = JSON.parse(await readBody(req)); if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint) || !sub.keys) return json(res, 400, { error: 'bad subscription' });
+      const d = pushStore(); d.subject = baseUrl(req); d.subs = d.subs.filter(s => s.endpoint !== sub.endpoint).concat([{ endpoint: sub.endpoint, keys: sub.keys }]).slice(-10); savePush(d);
+      return json(res, 200, { ok: true, devices: d.subs.length }); } catch (e) { return json(res, 400, { error: 'bad subscription' }); }
+  }
+  if (url.pathname === '/api/push/unsubscribe' && req.method === 'POST') {
+    try { const { endpoint } = JSON.parse(await readBody(req)); const d = pushStore(); d.subs = d.subs.filter(s => s.endpoint !== endpoint); savePush(d); return json(res, 200, { ok: true }); }
+    catch (e) { return json(res, 400, { error: 'bad request' }); }
+  }
+  if (url.pathname === '/api/push/test' && req.method === 'POST') {
+    const n = await notify('Hood Investing', 'Notifications are on. Buy Alerts will show up here.', '/?tab=alerts', 'test'); return json(res, 200, { sent: n });
+  }
   if (url.pathname === '/api/alerts' && req.method === 'GET') {
     let x = null; try { x = await spxSnapshot(); } catch (e) { /* show alerts without the S&P line */ }
     return json(res, 200, { alerts: readAlerts(), steps: DIP_STEPS, spx: x ? { last: x.last, peak: x.peak } : null });
