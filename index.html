@@ -1454,7 +1454,7 @@ async function portfolio(){
   $('pfList').innerHTML=rows.map(([k,nm,key,c,sh])=>{const v=h[key], cost=sh&&ac[k]?ac[k]*sh:0, g=cost?v-cost:null;
     return '<div class="pfr"><span class="n"><i style="background:var('+c+')"></i>'+k+'</span><span class="v">'+usd(v)+'</span><span class="p">'+(T?pc1(v/T):'0%')+'</span>'+
       '<span class="d">'+nm+(sh?' · '+(+sh).toLocaleString('en-US',{maximumFractionDigits:3})+' shares':'')+'</span>'+
-      (g!=null?'<span class="g '+(g>=0?'up':'dn')+'">'+(g>=0?'+':'−')+usd(Math.abs(g))+' ('+(g>=0?'+':'−')+Math.abs(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+(key==='cash'?(100-S.eq)+'% of total':key==='vti'?S.us+'% of stocks':(100-S.us)+'% of stocks')+'</span>')+'</div>';}).join('');
+      (g>0?'<span class="g up">+'+usd(g)+' (+'+(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+(key==='cash'?(100-S.eq)+'% of total':key==='vti'?S.us+'% of stocks':(100-S.us)+'% of stocks')+'</span>')+'</div>';}).join('');
   const fee=h.vti*FEE.us+h.vxus*FEE.intl;
   const tiles=(co,ct,sc,scl)=>[['Companies',co,'you own a piece of'],['Countries',ct,'where they are based'],['Diversification',sc,scl],['Yearly Fund Cost',usd(fee),T?(fee/T*100).toFixed(3)+'% of total':'']]
     .map(t=>'<div><span class="k">'+t[0]+'</span><span class="v">'+t[1]+'</span><span class="m">'+t[2]+'</span></div>').join('');
