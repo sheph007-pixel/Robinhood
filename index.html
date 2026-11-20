@@ -790,6 +790,10 @@ body.vm-on .tabs{visibility:hidden}
 .bamt{font-size:17px;text-align:right} .bamt s{color:var(--ink2)} .bfr.chg .bamt b{color:var(--gt)}
 .bact{display:flex;flex-direction:column;gap:6px;background:var(--soft);border:1px solid var(--g);border-radius:12px;padding:12px 14px} .bact span{font-size:14px;color:var(--ink2)}
 .vixl{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink2);padding:0 0 10px} .vixl.on span:last-child{color:var(--gt);font-weight:700} .vixl b{color:var(--ink)}
+.dvt{display:flex;flex-direction:column} .dvr{display:grid;grid-template-columns:1.3fr 1.4fr 1.1fr .5fr;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:14px;align-items:baseline}
+.dvr.hd{border-top:0;font-size:12px;color:var(--ink2);font-weight:600;padding-top:0} .dvr span:nth-child(3){color:var(--ink2)} .dvr span:last-child{text-align:right;font-weight:700} .dvr .g{color:var(--gt)} .dvr .o{color:#d08a00}
+.dvc{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;background:var(--soft);border-radius:10px;padding:10px 12px} .dvc span:first-child{font-weight:700}
+@media (max-width:560px){.dvr{grid-template-columns:1.2fr 1.3fr .45fr;font-size:13px} .dvr span:nth-child(3){display:none}}
 .bok{font-size:14px;color:var(--gt);font-weight:600}
 .bh{display:grid;grid-template-columns:auto 1fr auto;gap:10px;font-size:13px;padding:7px 0;border-top:1px solid var(--line)} .bh .g{color:var(--gt);font-weight:700}
 .alwhy{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink2);line-height:1.45} .alwhy b{color:var(--ink)}
@@ -1216,6 +1220,11 @@ const VOL={us:.16,intl:.17}, RHO=.85, FEE={us:.0003,intl:.0005}, INFL=.025;
 
 const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',goal:3000000,goalAge:60,dcaVTI:null,dcaVXUS:null,lump:0,px:{},tab:'home',v:2};
 let S=Object.assign({},DEF);
+const PLAIN_SECTOR={'Electronic Technology':'Computers, Phones & Chips','Technology Services':'Software & Internet','Finance':'Banks, Insurance & Payments','Health Technology':'Medicines & Medical Devices',
+  'Health Services':'Hospitals & Health Plans','Retail Trade':'Stores & Online Shopping','Consumer Non-Durables':'Food, Drinks & Household Goods','Consumer Durables':'Cars, Homes & Appliances',
+  'Consumer Services':'Restaurants, Travel & Entertainment','Energy Minerals':'Oil & Gas','Utilities':'Electricity & Water','Producer Manufacturing':'Factories & Machinery',
+  'Industrial Services':'Construction & Engineering','Process Industries':'Chemicals & Materials','Non-Energy Minerals':'Mining & Metals','Transportation':'Airlines, Rail & Shipping',
+  'Communications':'Phone & Cable','Commercial Services':'Business Services','Distribution Services':'Wholesale & Delivery','Miscellaneous':'Other'};
 let SPX=null, spxAt=0; // S&P 500 snapshot (Markets box and Buy Alert)
 const MA200={}; // 200-day averages for the DCA tab (declared early: that tab can draw during startup)
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
@@ -1591,7 +1600,7 @@ async function portfolio(){
       '<span class="d">'+nm+(sh?' · '+(+sh).toLocaleString('en-US',{maximumFractionDigits:3})+' shares':'')+'</span>'+
       (g>0?'<span class="g up">+'+usd(g)+' (+'+(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+(key==='cash'?(100-S.eq)+'% of total':key==='vti'?S.us+'% of stocks':(100-S.us)+'% of stocks')+'</span>')+'</div>';}).join('');
   const fee=h.vti*FEE.us+h.vxus*FEE.intl;
-  const tiles=(co,ct,sc,scl)=>[['Companies',co,'you own a piece of'],['Countries',ct,'where they are based'],['Spread Score',sc,scl],['Yearly Cost',usd(fee),'to own it all']]
+  const tiles=(co,ct,sc,scl)=>[['Companies',co,'you own a piece of'],['Countries',ct,'where they are based'],['Diversification',sc,scl],['Yearly Cost',usd(fee),'to own it all']]
     .map(t=>'<div><span class="k">'+t[0]+'</span><span class="v">'+t[1]+'</span><span class="m">'+t[2]+'</span></div>').join('');
   $('pfStats').innerHTML=tiles('…','…','…','score out of 100');
   if(!LT||Date.now()-ltAt>6*3600e3){ try{const r=await fetch('/api/lookthrough');if(!r.ok)throw 0;LT=await r.json();ltAt=Date.now();}
@@ -1605,9 +1614,18 @@ async function portfolio(){
   const co={}; [[A,a],[B,b]].forEach(([f,x])=>{if(!x)return;f.top.forEach(e=>{const k=e.name;co[k]=co[k]||{name:e.name,ticker:e.ticker,w:0};co[k].w+=e.w*x;});});
   const top=Object.values(co).sort((p,q)=>q.w-p.w), t10=top.slice(0,10).reduce((s,e)=>s+e.w,0);
   const effN=1/((a*a*A.hh)+(b*b*B.hh)), nCo=(a?A.count:0)+(b?B.count:0);
-  // Score: breadth, geography vs the world (~37% outside the US), concentration of the top 10
-  const sB=Math.min(100,Math.round(100*Math.log(effN)/Math.log(250))), sG=Math.max(0,Math.round(100-Math.abs(b-.37)*200)), sC=Math.max(0,Math.min(100,Math.round(100*(1-(t10-.1)/.4))));
-  const score=Math.round((sB+sG+sC)/3), lbl=score>=80?'Excellent':score>=65?'Good':score>=50?'Fair':'Low';
+  // Diversification score for the stock side, graded the way an advisor would: breadth (effective number of companies),
+  // single-company and top-10 concentration, global mix vs the world (~37% outside the US), and largest sector.
+  // Each check scores 100 at the guideline and falls to 0 at a clearly concentrated level; the score is their average.
+  const lin=(v,good,bad)=>Math.max(0,Math.min(100,Math.round(100*(bad-v)/(bad-good))));
+  const top1=top[0]?top[0].w:0, secL=A.sectors&&a?Object.entries(A.sectors).sort((p,q)=>q[1]-p[1])[0]:null;
+  const CK=[
+    ['Effective Companies',Math.round(effN)+'','100+',lin(-Math.log(effN),-Math.log(100),-Math.log(10))],
+    ['Largest Company',(top1*100).toFixed(1)+'% '+(top[0]?({META:'Meta Platforms'}[top[0].ticker]||top[0].name).replace(/,? (Inc|Corp|Co|Ltd|Corporation|Holding|Holdings|plc|SA|AG|NV|SE)\.?$/,''):''),'Under 5%',lin(top1,.05,.20)],
+    ['Top 10 Companies',Math.round(t10*100)+'%','Under 30%',lin(t10,.30,.60)],
+    ['Outside the US',Math.round(b*100)+'%','About 37% (world)',lin(Math.abs(b-.37),.05,.35)]];
+  if(secL)CK.push(['Largest Sector (US)',Math.round(secL[1]*100)+'% '+(PLAIN_SECTOR[secL[0]]||secL[0]),'Under 30%',lin(secL[1],.30,.50)]);
+  const score=Math.round(CK.reduce((t,c)=>t+c[3],0)/CK.length), lbl=score>=90?'Excellent':score>=75?'Strong':score>=60?'Good':'Fair';
   $('pfStats').innerHTML=tiles(nCo.toLocaleString('en-US'),String(ctyL.length),score+'<span class="m"> /100</span>',lbl);
   // label, detail, bar length (0–1), color, number shown on the right
   const bar=(l,r,len,c,num)=>'<div class="hbr"><div class="l"><span>'+l+'</span><span>'+r+'</span></div><div class="t"><div style="width:'+Math.max(1,len*100).toFixed(1)+'%;background:var('+c+')"></div></div><span class="pc">'+num+'</span></div>';
@@ -1619,10 +1637,12 @@ async function portfolio(){
   const tip=(ic,t,d)=>'<div class="wm"><span class="wi">'+ic+'</span><div><b>'+t+'</b><span>'+d+'</span></div></div>';
   // (What Matters for You card removed)
   // Spread score, in plain words
-  out+='<section class="card"><div class="head"><h2>How Spread Out You Are</h2></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">A score out of 100. Higher means your money doesn\'t depend on just a few companies or one country.</span></div></div><div class="hb">'+
-    bar('Number of Companies',nCo.toLocaleString('en-US'),sB/100,'--g',sB)+
-    bar('Outside the US',Math.round(b*100)+'% of your stocks (the world is about 37%)',sG/100,'--g',sG)+
-    bar('Biggest 10 Companies',Math.round(t10*100)+'% of your stocks',sC/100,'--g',sC)+'</div></section>';
+  const cashP=T?h.cash/T:0, cashT=1-S.eq/100;
+  out+='<section class="card"><div class="head"><h2>Diversification Score</h2><span class="muted small">Stocks</span></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">How well your stocks are spread across companies, countries and sectors, graded against common advisor guidelines.</span></div></div>'+
+    '<div class="dvt num"><div class="dvr hd"><span>Check</span><span>You</span><span>Guideline</span><span>Score</span></div>'+
+    CK.map(c=>'<div class="dvr"><span>'+c[0]+'</span><span>'+c[1]+'</span><span>'+c[2]+'</span><span class="'+(c[3]>=75?'g':c[3]>=50?'':'o')+'">'+c[3]+'</span></div>').join('')+'</div>'+
+    '<div class="dvc"><span>Cash</span><span>'+Math.round(cashP*100)+'% of your portfolio · target '+Math.round(cashT*100)+'%</span></div>'+
+    '<p class="pfnote">Cash isn\'t part of the score. It\'s about how much you hold outside stocks, not how spread out the stocks are.</p></section>';
   // Top 10
   out+='<section class="card"><div class="head"><h2>Your 10 Biggest Companies</h2><span class="muted small">'+Math.round(t10*100)+'% of your stocks</span></div><div class="top10 num">'+
     top.slice(0,10).map((e,i)=>'<div class="t10"><span class="r">'+(i+1)+'</span><span class="nm">'+({META:'Meta Platforms'}[e.ticker]||e.name.replace(/,? (Inc|Corp|Co|Ltd|Corporation|Holding|Holdings|plc|SA|AG|NV|SE)\.?( NV| AG| Co\.?| Ltd\.?)*$/,'').replace(/\s*&$/,''))+(/^[A-Z.]{1,5}$/.test(e.ticker||'')?'<small>'+e.ticker+'</small>':'')+'</span><span>'+usd(e.w*st)+'</span><span class="pc">'+pc1(e.w)+'</span></div>').join('')+'</div></section>';
@@ -1632,7 +1652,7 @@ async function portfolio(){
     cTop.map(([c,v])=>bar(CNAME(c),usd(v*st),v/cMax,c==='US'?'--s1':'--s2',pc1(v))).join('')+
     (cRest?bar('Other '+(ctyL.length-10)+' countries',usd(cRest*st),cRest/cMax,'--s2',pc1(cRest)):'')+'</div></section>';
   // What the companies do (US), with plain names for Robinhood's sector labels
-  const PLAIN={'Electronic Technology':'Computers, Phones & Chips','Technology Services':'Software & Internet','Finance':'Banks, Insurance & Payments','Health Technology':'Medicines & Medical Devices',
+  const PLAIN=PLAIN_SECTOR, _PL={'Electronic Technology':'Computers, Phones & Chips','Technology Services':'Software & Internet','Finance':'Banks, Insurance & Payments','Health Technology':'Medicines & Medical Devices',
     'Health Services':'Hospitals & Health Plans','Retail Trade':'Stores & Online Shopping','Consumer Non-Durables':'Food, Drinks & Household Goods','Consumer Durables':'Cars, Homes & Appliances',
     'Consumer Services':'Restaurants, Travel & Entertainment','Energy Minerals':'Oil & Gas','Utilities':'Electricity & Water','Producer Manufacturing':'Factories & Machinery',
     'Industrial Services':'Construction & Engineering','Process Industries':'Chemicals & Materials','Non-Energy Minerals':'Mining & Metals','Transportation':'Airlines, Rail & Shipping',
