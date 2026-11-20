@@ -789,6 +789,7 @@ body.vm-on .tabs{visibility:hidden}
 .bfr>div:first-child{display:flex;flex-direction:column;gap:2px} .bfr b{font-size:17px} .bfr span{font-size:13px;color:var(--ink2)}
 .bamt{font-size:17px;text-align:right} .bamt s{color:var(--ink2)} .bfr.chg .bamt b{color:var(--gt)}
 .bact{display:flex;flex-direction:column;gap:6px;background:var(--soft);border:1px solid var(--g);border-radius:12px;padding:12px 14px} .bact span{font-size:14px;color:var(--ink2)}
+.vixl{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink2);padding:0 0 10px} .vixl.on span:last-child{color:var(--gt);font-weight:700} .vixl b{color:var(--ink)}
 .bok{font-size:14px;color:var(--gt);font-weight:600}
 .bh{display:grid;grid-template-columns:auto 1fr auto;gap:10px;font-size:13px;padding:7px 0;border-top:1px solid var(--line)} .bh .g{color:var(--gt);font-weight:700}
 .alwhy{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink2);line-height:1.45} .alwhy b{color:var(--ink)}
@@ -1103,7 +1104,8 @@ body.vm-on .tabs{visibility:hidden}
       <details class="edtg"><summary>How It Works</summary>
         <div class="flexl num" id="alBands"></div>
         <p class="pfnote">Each fund's daily buy goes up when that fund falls 10% or more below its high, and back to normal as it recovers. Normal is your usual recurring amount.</p>
-        <p class="pfnote">Why: since 1950, money invested when the S&amp;P was 20–30% below its high grew a median 44% over 3 years, versus 36% on an average day.</p>
+        <p class="pfnote">Fear boost: when the VIX is 30 or higher, a fund that's already 10%+ below its high moves up one step (max 2×), until the VIX is back under 25.</p>
+        <p class="pfnote">Why: since 1950, money invested when the S&amp;P was 20–30% below its high grew a median 44% over 3 years, versus 36% on an average day. Since 1990, with the S&amp;P 10–30% below its high and the VIX at 30+, the next year's median return was 21–36%, versus −1% to 17% when the VIX was lower.</p>
       </details>
       <details class="edtg" id="alHistW"><summary>History</summary><div id="alList"></div></details>
     </section>
@@ -1726,13 +1728,13 @@ async function alertsTab(){
   const all=A.alerts.filter(a=>a.type==='dca').sort((p,q)=>q.at.localeCompare(p.at)), pend=all.find(a=>a.status==='pending');
   const now=A.daily||{VTI:0,VXUS:0};
   $('alNow').textContent=pend?'Change needed':'All set';
-  if(F) $('alSteps').innerHTML=['VTI','VXUS'].map(f=>{ const bi=F.flex.band[f]||0, dd=F.drops[f].dd, tgt=pend?pend.to[f]:F.target[f], cur=now[f], chg=pend&&tgt!==cur;
+  if(F) $('alSteps').innerHTML=(F.vix!=null?'<div class="vixl'+(F.flex.panic?' on':'')+'"><span>Fear index (VIX) <b>'+F.vix.toFixed(1)+'</b></span><span>'+(F.flex.panic?'High fear: one step more for funds in a drop':(F.vix>=20?'Elevated':'Calm'))+'</span></div>':'')+['VTI','VXUS'].map(f=>{ const bi=(F.flex.eff||F.flex.band)[f]||0, dd=F.drops[f].dd, tgt=pend?pend.to[f]:F.target[f], cur=now[f], chg=pend&&tgt!==cur;
     return '<div class="bfr'+(chg?' chg':'')+'"><div><b>'+f+'</b><span>'+(dd<0.5?'At its high':dd.toFixed(1)+'% below high')+(bi?' · '+B[bi][1]+'× buys':'')+'</span></div>'+
       '<div class="bamt">'+(chg?'<s>'+usd(cur)+'</s> → ':'')+'<b>'+dayAmt(tgt)+'</b></div></div>'; }).join('');
   $('alAct').innerHTML=pend?'<div class="bact"><b>Change these in Robinhood</b><span>Edit your recurring buys for VTI and VXUS to the amounts above. This checks itself off after the next buy.</span>'+
       '<div class="dab2"><button type="button" class="btn" data-al="'+pend.id+'" data-act="done">Mark Done</button><button type="button" class="btn ghost" data-al="'+pend.id+'" data-act="skip">Skip</button></div></div>'
     :'<div class="bok">✓ Nothing to change. Robinhood is buying the right amounts.</div>';
-  if(F) $('alBands').innerHTML=B.map((b,i)=>{const on=['VTI','VXUS'].filter(f=>(F.flex.band[f]||0)===i); return '<div class="fb'+(on.length?' on':'')+'"><b>'+(i?b[0]+(B[i+1]?'–'+B[i+1][0]+'%':'%+'):'Under 10%')+'</b><span>'+(i?b[1]+'× normal':'Normal')+'</span>'+(on.length?'<em>'+on.join(' · ')+'</em>':'')+'</div>';}).join('');
+  if(F) $('alBands').innerHTML=B.map((b,i)=>{const on=['VTI','VXUS'].filter(f=>((F.flex.eff||F.flex.band)[f]||0)===i); return '<div class="fb'+(on.length?' on':'')+'"><b>'+(i?b[0]+(B[i+1]?'–'+B[i+1][0]+'%':'%+'):'Under 10%')+'</b><span>'+(i?b[1]+'× normal':'Normal')+'</span>'+(on.length?'<em>'+on.join(' · ')+'</em>':'')+'</div>';}).join('');
   const hist=all.filter(a=>a.status!=='pending'), lbl={done:'✓ Done',replaced:'Replaced',skipped:'Skipped'};
   $('alHistW').hidden=!hist.length;
   $('alList').innerHTML=hist.map(a=>'<div class="bh"><span>'+fd(a.at)+'</span><span>VTI '+usd(a.to.VTI)+' · VXUS '+usd(a.to.VXUS)+' /day</span><span class="'+(a.status==='done'?'g':'muted')+'">'+(lbl[a.status]||a.status)+(a.status==='skipped'?' <button type="button" class="rlink" data-al="'+a.id+'" data-act="reopen">Reopen</button>':'')+'</span></div>').join('');
