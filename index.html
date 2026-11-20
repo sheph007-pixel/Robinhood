@@ -863,7 +863,7 @@ body.vm-on .tabs{visibility:hidden}
     <form class="nwadd" id="nwAdd" autocomplete="off"><input type="text" id="nwName" placeholder="Account name" aria-label="Account name"><input type="text" id="nwAmt" inputmode="decimal" placeholder="$ Amount" aria-label="Amount"><button type="submit" class="btn">Add</button></form>
   </section>
   <!-- 2. Holdings -->
-  <section class="card">
+  <section class="card gone">
     <div class="head"><h2>Holdings</h2><span class="rhbadge" id="rhBadge" hidden>From Robinhood · Core ••8555</span></div>
     <div class="hold num" id="hold">
       <div class="hrow hh"><div class="h">Holding</div><div class="h r">Shares / Balance</div><div class="h r">Price / APY</div><div class="h r">Value</div><div class="h r">% of Total</div></div>
@@ -900,21 +900,12 @@ body.vm-on .tabs{visibility:hidden}
       </div>
   </section>
 
-  <section class="card">
+  <section class="card gone">
     <div class="head"><h2>Your Split</h2></div>
     <div class="splits" id="splits"></div>
   </section>
 
-  <section class="card">
-    <div class="head"><h2>Targets</h2><span class="muted small" id="drift" hidden></span></div>
-    <div class="grid2">
-      <div class="ctl"><div class="row"><label for="us">US / International</label><output id="usO"></output></div>
-        <input type="range" id="us" min="0" max="100" step="5"></div>
-      <div class="ctl"><div class="row"><label for="eq">Stocks / Cash</label><output id="eqO"></output></div>
-        <input type="range" id="eq" min="0" max="100" step="5"></div>
-    </div>
-    <div hidden><div id="barNow"></div><div id="barTgt"></div></div>
-  </section>
+  
   </div>
 
   <div id="tab-mkt" class="panel">
@@ -957,6 +948,17 @@ body.vm-on .tabs{visibility:hidden}
     <p class="callout" id="planNote"></p>
     <button id="apply" hidden></button>
   </section>
+  <section class="card">
+    <div class="head"><h2>Targets</h2><span class="muted small" id="drift" hidden></span></div>
+    <div class="grid2">
+      <div class="ctl"><div class="row"><label for="us">US / International</label><output id="usO"></output></div>
+        <input type="range" id="us" min="0" max="100" step="5"></div>
+      <div class="ctl"><div class="row"><label for="eq">Stocks / Cash</label><output id="eqO"></output></div>
+        <input type="range" id="eq" min="0" max="100" step="5"></div>
+    </div>
+    <div hidden><div id="barNow"></div><div id="barTgt"></div></div>
+  </section>
+
   <section class="card whatif">
     <div class="head"><h2>What If You Add More?</h2></div>
     <div class="wgrid">
