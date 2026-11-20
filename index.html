@@ -776,6 +776,13 @@ body.vm-on .tabs{visibility:hidden}
 #dbSum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
 #dbSum>div{background:var(--soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
 #dbSum .k{font-size:12px;color:var(--ink2)} #dbSum .v{font-size:18px;font-weight:800;white-space:nowrap} #dbSum .s{font-size:12px;color:var(--ink2)}
+
+.dcafund{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.dcafund>div{background:var(--soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.dcafund .fn{font-size:16px}
+.dcafund .fr{display:flex;justify-content:space-between;gap:6px;font-size:13px} .dcafund .fr span:first-child{color:var(--ink2);white-space:nowrap} .dcafund .fr span:last-child{font-weight:700;white-space:nowrap}
+.dcafund em{font-style:normal;font-weight:700} .dcafund em.up{color:var(--gt)} .dcafund em.dn{color:var(--ink2)}
+.dcafund .fn2{font-size:12px;color:var(--ink2);line-height:1.35;margin-top:2px}
 </style>
 </head>
 <body>
@@ -980,6 +987,7 @@ body.vm-on .tabs{visibility:hidden}
   <div id="tab-dca2" class="panel" hidden>
   <section class="card">
     <div class="head"><h2>Recurring Buys</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
+    <div class="dcafund num" id="dbFund"></div>
     <div class="dcasum num" id="dbSum"></div>
     <div class="dcalist num" id="dbList"></div>
     <p class="muted small">Actual buys your recurring investments made in Robinhood. Updates with every sync.</p>
@@ -1738,14 +1746,31 @@ $('nwAdd').addEventListener('submit',e=>{e.preventDefault();const name=$('nwName
   if(!name||!(amt>0))return; S.accts=(S.accts||[]).concat([{id:Math.random().toString(36).slice(2,8),name,amt:Math.round(amt)}]); $('nwName').value='';$('nwAmt').value=''; save(); render(true); nwRender();});
 $('nwList').addEventListener('change',e=>{const i=e.target.closest('[data-amt]');if(!i)return;const a=(S.accts||[]).find(x=>x.id===i.dataset.amt);if(!a)return;const v=parseAmt(i.value);if(v>=0&&i.value.trim()!=='')a.amt=Math.round(v);save();render(true);nwRender();});
 $('nwList').addEventListener('click',e=>{const b=e.target.closest('[data-nwdel]');if(!b)return;if(!confirm('Remove this account?'))return;S.accts=(S.accts||[]).filter(x=>x.id!==b.dataset.nwdel);save();render(true);nwRender();});
+// DCA tab: your average cost vs today's price and the 200-day average (a simple, proven-discipline scoreboard)
+const MA200={};
+async function ma200(sym){ if(MA200[sym]&&Date.now()-MA200[sym].at<6*3600e3)return MA200[sym].v;
+  try{const h=HC[sym+'1y']||await (await fetch('/api/history?s='+sym+'&r=1y')).json(); HC[sym+'1y']=h; const c=h.c||[]; if(c.length<200)return null;
+    const v=c.slice(-200).reduce((a,b)=>a+b,0)/200; MA200[sym]={v,at:Date.now()}; return v;}catch(e){return null;} }
+async function dcaFunds(){
+  const box=(sym,cost,now,ma)=>{ const vs=cost&&now?(now/cost-1)*100:null, vm=ma&&now?(now/ma-1)*100:null;
+    return '<div><b class="fn">'+sym+'</b>'+
+      '<div class="fr"><span>Avg cost</span><span>'+(cost?usd(cost,true):'—')+'</span></div>'+
+      '<div class="fr"><span>Now</span><span>'+(now?usd(now,true):'—')+(vs!=null?' <em class="'+(vs>=0?'up':'dn')+'">'+(vs>=0?'+':'−')+Math.abs(vs).toFixed(0)+'%</em>':'')+'</span></div>'+
+      '<div class="fr"><span>200-day</span><span>'+(ma?usd(ma,true):'—')+'</span></div>'+
+      (vm!=null?'<div class="fn2">'+(vm<0?'On sale: '+Math.abs(vm).toFixed(1)+'% below its 200-day average. Your daily buys get more shares.':'Above its 200-day average by '+vm.toFixed(1)+'%. Keep buying on schedule.')+'</div>':'')+'</div>'; };
+  const ac=S.avgCost||{}, [m1,m2]=await Promise.all([ma200('VTI'),ma200('VXUS')]);
+  $('dbFund').innerHTML=box('VTI',ac.VTI,price('VTI'),m1)+box('VXUS',ac.VXUS,price('VXUS'),m2);
+}
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
 function dcaBuys(){
+  dcaFunds();
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price}))).slice().sort((a,b)=>b.d.localeCompare(a.d));
   if(!buys.length){$('dbSum').innerHTML='';$('dbList').innerHTML='<p class="muted">No recurring buys synced yet. Tap Refresh to sync with Robinhood.</p>';return;}
   const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), m=today.slice(0,7), y=today.slice(0,4), d30=new Date(Date.now()-30*864e5).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
   const sum=f=>buys.filter(f).reduce((t,b)=>t+(+b.a||0),0), days=f=>new Set(buys.filter(f).map(b=>b.d)).size;
+  const bd=n=>n+' buy day'+(n===1?'':'s');
   const tile=(k,v,sub)=>'<div><span class="k">'+k+'</span><span class="v">'+usd(v)+'</span><span class="s">'+sub+'</span></div>';
-  $('dbSum').innerHTML=tile('This Month',sum(b=>b.d.startsWith(m)),days(b=>b.d.startsWith(m))+' buy days')+tile('Last 30 Days',sum(b=>b.d>=d30),days(b=>b.d>=d30)+' buy days')+tile('This Year',sum(b=>b.d.startsWith(y)),days(b=>b.d.startsWith(y))+' buy days');
+  $('dbSum').innerHTML=tile('This Month',sum(b=>b.d.startsWith(m)),bd(days(b=>b.d.startsWith(m))))+tile('Last 30 Days',sum(b=>b.d>=d30),bd(days(b=>b.d>=d30)))+tile('This Year',sum(b=>b.d.startsWith(y)),bd(days(b=>b.d.startsWith(y))));
   const fd=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
   $('dbList').innerHTML=buys.slice(0,40).map(b=>'<div><span>'+fd(b.d)+'</span><span><b>'+b.s+'</b></span><span>'+usd(+b.a)+'</span><span class="muted">'+(b.p?'@ '+usd(b.p,true):'')+'</span></div>').join('');
 }
