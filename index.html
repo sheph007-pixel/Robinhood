@@ -1266,10 +1266,10 @@ function render(reproject){
   // US vs International within your stocks, and Stocks vs Cash across everything.
   { const st=h.vti+h.vxus;
     const split=(title,an,av,ac,bn,bv,bc,tgt)=>{const tot=av+bv, ap=tot?av/tot:0, t=tgt/100, on=Math.abs(ap-t)<.02, mv=t*tot-av;
-      return '<div class="mxr"><div class="mxt"><span class="mxn">'+title+'</span><span class="mxv">'+(tot?Math.round(ap*100)+' / '+Math.round((1-ap)*100):'—')+'</span></div>'+
+      return '<div class="mxr"><div class="mxt"><span class="mxn">'+title+'</span><span class="mxv">'+(tot?Math.round(ap*100)+'% / '+Math.round((1-ap)*100)+'%':'—')+'</span></div>'+
         '<div class="mxb mx2"><div style="width:'+(ap*100).toFixed(1)+'%;background:var('+ac+')"></div><div style="width:'+((1-ap)*100).toFixed(1)+'%;background:var('+bc+')"></div><i style="left:'+tgt+'%" title="Target"></i></div>'+
         '<div class="mxs"><span><i class="dot" style="background:var('+ac+')"></i>'+an+' '+usd(av)+'</span><span><i class="dot" style="background:var('+bc+')"></i>'+bn+' '+usd(bv)+'</span></div>'+
-        '<div class="mxs"><span>Target '+tgt+' / '+(100-tgt)+'</span><span class="'+(on?'ok':'off')+'">'+(!tot?'':on?'✓ On target':'Move '+usd(Math.abs(mv))+' to '+(mv>0?an:bn))+'</span></div></div>';};
+        '<div class="mxs"><span>Target '+tgt+'% / '+(100-tgt)+'%</span><span class="'+(on?'ok':'off')+'">'+(!tot?'':on?'✓ On target':'Move '+usd(Math.abs(mv))+' to '+(mv>0?an:bn))+'</span></div></div>';};
     $('mix').innerHTML=split('US / International','VTI',h.vti,'--s1','VXUS',h.vxus,'--s2',S.us)+split('Stocks / Cash','Stocks',st,'--g','Cash',h.cash,'--s3',S.eq); }
   $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On target':'')):'';
 
