@@ -772,14 +772,15 @@ body.vm-on .tabs{visibility:hidden}
 .dabn .che{margin-left:auto;color:var(--gt);font-weight:700} .dabn b{color:var(--gt)}
 .nbadge{position:absolute;top:2px;margin-left:16px;min-width:16px;height:16px;border-radius:8px;background:var(--g);color:#000;font-size:10px;font-weight:800;font-style:normal;display:inline-flex;align-items:center;justify-content:center;padding:0 4px}
 .tabs button{position:relative}
-.alsteps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.alsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.alwhy{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink2);line-height:1.45} .alwhy b{color:var(--ink)}
 .als{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--ink2)} .als b{font-size:18px;color:var(--ink)} .als em{font-style:normal}
 .als.hit{box-shadow:inset 0 0 0 1px var(--g)} .als.hit b,.als.hit span{color:var(--gt)}
 .alsec{font-size:14px;color:var(--ink2);margin:14px 2px 6px;font-weight:700}
 .alc{gap:10px} .alc.pend{border:1px solid var(--g)!important} .alh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .alr{display:flex;justify-content:space-between;font-size:14px} .alr .g{color:var(--gt);font-weight:700}
 .okb{font-size:13px;font-weight:800;color:var(--gt)} .alc.skip{opacity:.6}
-@media (max-width:560px){.alsteps{grid-template-columns:repeat(2,1fr)} .dabn{font-size:14px;gap:8px;padding:12px} .dabn .dab{font-size:12px;padding:3px 9px}}
+@media (max-width:560px){.alsteps{grid-template-columns:repeat(3,1fr);gap:6px} .als{padding:8px} .als b{font-size:16px} .dabn{font-size:14px;gap:8px;padding:12px} .dabn .dab{font-size:12px;padding:3px 9px}}
 .dah{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .dab{font-size:13px;font-weight:800;color:#000;background:var(--g);border-radius:99px;padding:4px 12px;white-space:nowrap}
 .dam{font-size:28px;font-weight:800;letter-spacing:-.01em} .dam b{color:var(--gt)}
@@ -1072,7 +1073,8 @@ body.vm-on .tabs{visibility:hidden}
     <section class="card">
       <div class="head"><h2>Buy Alerts</h2><span class="muted small" id="alNow"></span></div>
       <div class="alsteps num" id="alSteps"></div>
-      <p class="pfnote">When the S&amp;P 500 falls 10%, 15%, 20% or 30% below its high, you get an alert to invest a set slice of your stocks, split VTI / VXUS by your target. Buy it in Robinhood and it's checked off automatically at the next sync. Your daily buys keep going no matter what.</p>
+      <p class="pfnote">When the S&amp;P 500 falls 10%, 20% or 30% below its high, you get an alert to invest a set slice of your stocks, split to bring VTI / VXUS back to your target. Buy it in Robinhood and it's checked off automatically at the next sync. Your daily buys keep going no matter what.</p>
+      <div class="alwhy"><b>Why these steps</b><span>We tested every 10%+ S&amp;P drop since 1928. Putting half in at −10% and saving the rest for −20% and −30% earned more on average than waiting or spreading thinner, and since 1950 it was ahead 5 years later in every drop.</span></div>
     </section>
     <div id="alList"></div>
   </div>
@@ -1654,7 +1656,7 @@ async function alertsTab(){
   const x=A.spx, fd=v=>new Date(v).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), n=v=>Math.round(v).toLocaleString('en-US');
   if(x){ const dd=(1-x.last/x.peak)*100;
     $('alNow').textContent='S&P 500 '+n(x.last)+(dd>=0.5?' · '+dd.toFixed(1)+'% below its high':' · at its high');
-    $('alSteps').innerHTML=A.steps.map(([l,p])=>{const hit=dd>=l, lvl=x.peak*(1-l/100); return '<div class="als'+(hit?' hit':'')+'"><b>−'+l+'%</b><span>'+(hit?'Reached':'At '+n(lvl))+'</span><em>Invest '+Math.round(p*100)+'% of stocks</em></div>';}).join(''); }
+    $('alSteps').innerHTML=A.steps.map(([l,p])=>{const hit=dd>=l, lvl=x.peak*(1-l/100); return '<div class="als'+(hit?' hit':'')+'"><b>−'+l+'%</b><span>'+(hit?'Reached':'At '+n(lvl))+'</span><em>Invest '+(Math.round(p*1000)/10)+'% of stocks</em></div>';}).join(''); }
   const card=a=>{ const tot=a.amtVTI+a.amtVXUS, got=a.gotVTI+a.gotVXUS, row=(k,need,have)=>'<div class="alr"><span><b>'+k+'</b> '+usd(need)+'</span><span class="'+(have>=need*.95?'g':'')+'">'+(have>0?usd(have)+' bought':'Not yet')+'</span></div><div class="kbar sm"><div style="width:'+Math.min(100,Math.max(2,have/need*100)).toFixed(1)+'%"></div></div>';
     const since=x&&x.last>a.spx?' · S&amp;P is up '+((x.last/a.spx-1)*100).toFixed(1)+'% since':'';
     if(a.status==='pending') return '<section class="card alc pend"><div class="alh"><span class="dab">−'+a.level+'% Buy Alert</span><span class="muted small">'+fd(a.at)+' · S&amp;P '+n(a.spx)+'</span></div>'+
