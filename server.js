@@ -323,7 +323,8 @@ async function spxSnapshot(fresh) {
   const last = m.regularMarketPrice || c[c.length - 1], prev = c.length > 1 ? c[c.length - 2] : null;
   const ma200 = c.slice(-200).reduce((a, b) => a + b, 0) / Math.min(200, c.length);
   const hi52 = m.fiftyTwoWeekHigh || Math.max(...c.slice(-252));
-  const data = { last, prev, ma200, hi52, at: Date.now() };
+  const peak = Math.max(...c, last); // highest close in the last 2 years: the high a drop is measured from
+  const data = { last, prev, ma200, hi52, peak, at: Date.now() };
   spxCache = { at: Date.now(), data }; return { ...data, targets: targetsNow() };
 }
 const ddCache = new Map();
