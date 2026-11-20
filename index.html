@@ -330,7 +330,8 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 .wgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .wf{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:600}
 .wf input{max-width:none;text-align:left}
-.wres{display:flex;flex-direction:column;gap:4px;font-size:15px} .wres:empty{display:none}
+.wres{display:flex;flex-direction:column;gap:4px;font-size:15px}
+.wsum{display:flex;align-items:center;gap:14px;font-size:14px;line-height:1.4} .wsum .wbig{flex:none} .wres:empty{display:none}
 .wiq{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:14px;padding:12px 14px;border-radius:12px;background:var(--soft)}
 .wiqk{font-weight:600}
 .wiq label{display:flex;align-items:center;gap:6px;color:var(--ink2);font-weight:500}
@@ -447,7 +448,7 @@ input::placeholder,textarea::placeholder{color:var(--ink2);opacity:.8}
 .sw-rng{height:10px!important;border-radius:3px!important;background:var(--g)!important;opacity:.35}
 .sw-poor{border-top:2px solid var(--ink2)}
 .sw-put{border-top:2px dashed var(--ink2)}
-.sw-scen{border-top:2px dotted var(--g)}
+.sw-scen{border-top:2px dotted var(--ink);opacity:.6}
 .ls{display:none}
 @media (max-width:640px){
   .clegend{flex-wrap:nowrap;justify-content:space-between;gap:6px;font-size:12px;white-space:nowrap}
@@ -892,7 +893,7 @@ body.vm-on .tabs{visibility:hidden}
     <div hidden><button type="button" class="ontrack" id="onTrack" aria-expanded="false" aria-controls="goalEd" hidden></button>
     <div class="goalin goaled" id="goalEd" hidden><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt" placeholder="$3M"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
-    <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">With Added Money</span><span class="ls">Added</span></span></div>
+    <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">Current Plan</span><span class="ls">Current</span></span></div>
     <div class="wiq num"><span class="wiqk">What if you add</span>
       <label><input type="text" inputmode="decimal" id="dcaVTI" aria-label="Extra per day to VTI"><span>/day VTI</span></label>
       <label><input type="text" inputmode="decimal" id="dcaVXUS" aria-label="Extra per day to VXUS"><span>/day VXUS</span></label>
@@ -1123,7 +1124,7 @@ bindNum('monthly','monthly',v=>usd(v),true);
 let SC=null, scen=null; const TD=21; // market days per month
 $('wCalc').addEventListener('click',()=>{const a1=Math.round(parse($('dcaVTI').value)),a2=Math.round(parse($('dcaVXUS').value)),L=Math.round(parse($('lump').value));
   if(!(a1||a2||L)){SC=null;scen=null;draw();return;}
-  SC={d1:a1,d2:a2,a1:a1*TD,a2:a2*TD,L}; $('wCalc').textContent='Calculating…'; setTimeout(()=>{const R=REC();scen=sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,false);$('wCalc').textContent='Calculate';draw();},20);});
+  SC={d1:a1,d2:a2,a1:a1*TD,a2:a2*TD,L}; $('wCalc').textContent='Calculating…'; setTimeout(()=>{const R=REC();scen=sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,true);$('wCalc').textContent='Calculate';draw();},20);});
 $('wClear').addEventListener('click',()=>{['dcaVTI','dcaVXUS','lump'].forEach(id=>$(id).value='');$('wClear').hidden=true;SC=null;scen=null;draw();});
 { let wt=null; ['dcaVTI','dcaVXUS','lump'].forEach(id=>$(id).addEventListener('input',()=>{ $('wClear').hidden=!['dcaVTI','dcaVXUS','lump'].some(k=>parse($(k).value)>0); clearTimeout(wt); wt=setTimeout(()=>$('wCalc').click(),450); })); }
 let tm; ['eq','us'].forEach(id=>$(id).addEventListener('input',function(){S[id]=+this.value;save();render(false);clearTimeout(tm);tm=setTimeout(()=>render(true),150);}));
@@ -1228,7 +1229,7 @@ function sim(a1,a2,L,full){
 }
 function project(){
   const R=REC(); proj=sim(R.a1,R.a2,0,true); base=proj;
-  scen=SC?sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,false):null;
+  scen=SC?sim(R.a1+SC.a1,R.a2+SC.a2,SC.L,true):null;
 }
 
 // ---------- render ----------
@@ -1313,10 +1314,12 @@ function draw(){
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
     if(!proj)return;
   const d=t=>realOn()?Math.pow(1+INFL,t/12):1, Mh=proj.M, Ma=Math.min(Mh,monthsTo(S.age));
-  const lo=proj.lo.map((v,t)=>v/d(t)), md=proj.md.map((v,t)=>v/d(t)), hi=proj.hi.map((v,t)=>v/d(t)), put=proj.put.map((v,t)=>v/d(t)), lq=proj.lq.map((v,t)=>v/d(t)), hq=proj.hq.map((v,t)=>v/d(t));
+  // With What If amounts entered, the whole model (chart, range, estimates) shows that plan; the current plan stays as a faint line.
+  const PJ=scen||proj, bmd=proj.md.map((v,t)=>v/d(t));
+  const lo=PJ.lo.map((v,t)=>v/d(t)), md=PJ.md.map((v,t)=>v/d(t)), hi=PJ.hi.map((v,t)=>v/d(t)), put=PJ.put.map((v,t)=>v/d(t)), lq=PJ.lq.map((v,t)=>v/d(t)), hq=PJ.hq.map((v,t)=>v/d(t));
   const yrs=Math.round(Ma/12), bday=new Date(S.dob+'T00:00:00'); 
   const mo=v=>usd(v*.04/12)+'/mo';
-  $('fHead').textContent='At Age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')');
+  $('fHead').textContent='At Age '+S.age+(isNaN(bday)?'':' ('+(bday.getFullYear()+S.age)+')')+(scen?' · With Extra':'');
   { const R=REC(), rh=S.rh||{}, perDay=R.daily, perMo=R.a1+R.a2;
     let n=rh.streak; if(n==null){ // older sync without a streak: work it out from recent buys
       const ds=[...new Set((rh.recent||[]).map(o=>o.date))].sort().reverse(); n=0;
@@ -1331,11 +1334,8 @@ function draw(){
   $('lgScen').hidden=!scen;
   { const el=$('wres');
     if(!scen){el.innerHTML='';}
-    else{const sm=scen.md[Ma]/d(Ma), gain=sm-md[Ma], pct=md[Ma]?gain/md[Ma]*100:0, mo=SC.a1+SC.a2, own=SC.L+mo*Ma, grow=Math.max(0,gain-own);
-      const parts=[]; if(SC.d1)parts.push(usd(SC.d1)+'/day to VTI'); if(SC.d2)parts.push(usd(SC.d2)+'/day to VXUS'); if(SC.L)parts.push(usd(SC.L)+' one time');
-      el.innerHTML='<div class="wimpact"><div><span class="k">More at Age '+S.age+'</span><span class="wbig">'+(gain<0?'−'+big(-gain):'+'+big(gain))+'</span></div><div><span class="k">Impact</span><span class="wbig">'+(pct<0?'−':'+')+Math.abs(pct).toFixed(0)+'%</span></div></div>'+
-        '<div><b>'+big(md[Ma])+'</b> → <b class="g">'+big(sm)+'</b> at age '+S.age+' (average market)</div>'+
-        '<div class="muted">Adding '+parts.join(' + ')+(mo?' (about '+usd(mo)+'/mo, every market day)':'')+'. You put in '+big(own)+'; growth adds '+big(grow)+'.</div>';}
+    else{const gain=md[Ma]-bmd[Ma], pct=bmd[Ma]?gain/bmd[Ma]*100:0, mo=SC.a1+SC.a2, own=SC.L+mo*Ma;
+      el.innerHTML='<div class="wsum"><span class="wbig">'+(gain<0?'−'+big(-gain):'+'+big(gain))+'</span><span>more at age '+S.age+' <b class="g">(+'+Math.max(0,pct).toFixed(0)+'%)</b> than your current plan of '+big(bmd[Ma])+'.<br><span class="muted">You\'d add '+big(own)+' of your own money; growth does the rest.</span></span></div>';}
   }
 
   const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(W<500?Math.max(220,W*.62):Math.min(380,Math.max(250,W*.5))), m={l:4,r:58,t:12,b:38}, iw=W-m.l-m.r, ih=H-m.t-m.b;
@@ -1359,7 +1359,7 @@ function draw(){
   g+='<path d="'+B(hq,lq)+'" fill="'+s1+'" opacity=".22"/>';
   g+='<path d="'+P(put)+'" fill="none" stroke="'+ink2+'" stroke-width="1.5" stroke-dasharray="4 4"/>';
   g+='<path d="'+P(lo)+'" fill="none" stroke="'+ink2+'" stroke-width="1.5"/>';
-  if(scen){const sm=scen.md.map((v,t)=>v/d(t));g+='<path d="'+P(sm)+'" fill="none" stroke="'+s1+'" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/>';g+='<circle cx="'+X(Ma)+'" cy="'+Y(sm[Ma])+'" r="4" fill="'+sf+'" stroke="'+s1+'" stroke-width="2"/>';}
+  if(scen){g+='<path d="'+P(bmd)+'" fill="none" stroke="'+ink+'" stroke-opacity=".55" stroke-width="1.6" stroke-dasharray="2 4" stroke-linecap="round"/>';g+='<circle cx="'+X(Ma)+'" cy="'+Y(bmd[Ma])+'" r="3.5" fill="'+sf+'" stroke="'+ink2+'" stroke-width="2"/>';}
   g+='<path d="'+P(md)+'" fill="none" stroke="'+s1+'" stroke-width="2.5" stroke-linejoin="round"/>';
   g+='<line x1="'+X(Ma)+'" x2="'+X(Ma)+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink+'" stroke-dasharray="2 3" opacity=".5"/>';
   g+='<circle cx="'+X(Ma)+'" cy="'+Y(md[Ma])+'" r="5.5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2"/>';
