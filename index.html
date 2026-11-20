@@ -1606,7 +1606,7 @@ function dcaRender(){
   const tot=R.list.reduce((a,x)=>a+(+x.perMonth||0),0), l30=R.list.reduce((a,x)=>a+(+x.last30||0),0);
   $('dcaBody').innerHTML='<div class="dcasum num"><div><span class="k">Per Month</span><span class="v g">'+usd(tot)+'</span></div><div><span class="k">Per Year</span><span class="v">'+big(tot*12)+'</span></div><div><span class="k">Last 30 Days</span><span class="v">'+usd(l30)+'</span></div></div>'+
     R.list.map(x=>'<div class="dcarow num"><i style="background:var('+(x.symbol==='VTI'?'--s1':'--s2')+')"></i><div class="dn"><b>'+x.symbol+'</b><span>'+(x.stopped?'no buy on the last market day':usd(x.amount)+' '+(fq[x.freq]||x.freq))+'</span></div><div class="dv"><b>'+(x.stopped?'Stopped':'≈ '+usd(x.perMonth)+'/mo')+'</b><span>last buy '+d(x.lastDate)+'</span></div></div>').join('')+
-    '<p class="muted small">Worked out from the buys your recurring investments placed in Robinhood, and included in all projections. A change you make in Robinhood shows here after the next market day's buy (or missing buy).</p>';
+    '<p class="muted small">Worked out from the buys your recurring investments placed in Robinhood, and included in all projections. A change you make in Robinhood shows here after the next market day\u2019s buy (or missing buy).</p>';
   $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
 }
 showTab(S.tab==='money'||S.tab==='dca'?'invest':['hold','mkt','ai','invest'].includes(S.tab)?S.tab:'home');
