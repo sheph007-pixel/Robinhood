@@ -1057,7 +1057,9 @@ function monthsTo(age){const b=new Date(S.dob+'T00:00:00'),n=new Date();if(isNaN
 function ageNow(){return 75-monthsTo(75)/12;}
 function ages(){return AGES.filter(a=>monthsTo(a)>0);}
 let base=null, noRec=null;
-function REC(){const r=(S.rh&&S.rh.recurring)||[], g=sym=>r.filter(x=>x.symbol===sym).reduce((a,x)=>a+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily').reduce((a,x)=>a+(+x.amount||0),0);
+// Projections use only what's in the account today (no assumed future buys); What If and Your Goal show the effect of adding money.
+function REC(){return {a1:0,a2:0,daily:0,list:[]};}
+function REC_SYNCED(){const r=(S.rh&&S.rh.recurring)||[], g=sym=>r.filter(x=>x.symbol===sym).reduce((a,x)=>a+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily').reduce((a,x)=>a+(+x.amount||0),0);
   return {a1:g('VTI'),a2:g('VXUS'),daily:dly,list:r};}
 // Final values at month m for a given daily buy (split by target US/Intl), small sample for speed.
 function goalVals(daily,m){
@@ -1380,7 +1382,7 @@ function aiContext(){
   lines.push('Account: Robinhood Core ••8555 only (equities and cash; margin ignored).'+(S.rh?' Last synced '+S.rh.syncedAt+'.':''));
   { const R=REC(); if(R.list.length)lines.push('Recurring investments (from Robinhood, included in projections): '+R.list.map(x=>x.symbol+' $'+x.amount+' '+x.freq+' (~$'+x.perMonth+'/mo, last '+x.lastDate+')').join('; '));
     if(S.rh&&S.rh.recent)lines.push('Recent recurring buys: '+S.rh.recent.slice(0,10).map(o=>o.date+' '+o.symbol+' $'+o.amount+(o.price?' @ $'+o.price:'')).join('; ')); }
-  lines.push('Projections include the recurring investments above.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
+  lines.push('Projections use only what is in the account today and assume no future deposits or buys.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
   lines.push('Goal: $'+f(S.goal)+' by age '+S.goalAge+(GOALPCT!=null?' ('+GOALPCT+'% chance per simulation)':''));
   if(proj){lines.push('Projection values below are in future (nominal) dollars. The app shows them '+(realOn()?'in today\'s dollars (divided by 1.025^years for 2.5% inflation)':'in future dollars')+'; the goal amount is '+(realOn()?'in today\'s dollars':'in future dollars')+'.');lines.push('Projection (Monte Carlo, 4,000 paths, stocks ~7%/yr avg, 16-17% volatility, yearly rebalance to target, includes deposits): age -> poor (10th pct) / average (median) / strong (90th pct)');
     AGES.forEach(a=>{const t=Math.min(proj.M,monthsTo(a));if(t>0)lines.push('  '+a+': $'+f(proj.lo[t])+' / $'+f(proj.md[t])+' / $'+f(proj.hi[t]));});}
