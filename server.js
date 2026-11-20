@@ -701,6 +701,13 @@ const money = v => '$' + Math.round(v).toLocaleString('en-US');
 // so the early bands are small.
 const BANDS = [[0, 1, 'Normal'], [10, 1.25, '10–15% below high'], [15, 1.5, '15–20% below high'], [20, 1.75, '20–30% below high'], [30, 2, '30%+ below high']];
 const BAND_HYST = 2;
+// Fear boost: when the VIX is 30+ (on until it falls below 25), a fund that's already 10%+ below its high moves up one band
+// (cap 2x). Since 1990, with the S&P 10-30% below its high, the next year's median return was 21-36% with VIX 30+ vs
+// -1% to 17% otherwise. Only ~10 panic periods back this, so it's a one-step nudge, not more.
+const VIX_ON = 30, VIX_OFF = 25;
+let vixCache = null;
+async function vixNow() { if (vixCache && Date.now() - vixCache.at < 5 * 60e3) return vixCache.v;
+  try { const q = await yahoo('%5EVIX'); vixCache = { v: q.price, at: Date.now() }; return q.price; } catch (e) { return vixCache ? vixCache.v : null; } }
 const FUNDS = ['VTI', 'VXUS'];
 const alertsFile = () => path.join(DATA_DIR, 'alerts.json');
 const flexFile = () => path.join(DATA_DIR, 'dca_flex.json');
@@ -732,13 +739,15 @@ async function checkAlerts() {
     flex.band[f] = bandFor(drops[f].dd, flex.band[f] || 0);
     if (now[f] > 0 && (!flex.base[f] || (flex.band[f] === 0 && !pending))) flex.base[f] = now[f]; // learn "normal": at first use, then whenever the fund isn't down
   }
-  const target = {}; FUNDS.forEach(f => { target[f] = Math.round((flex.base[f] || 0) * BANDS[flex.band[f]][1]); });
+  const vix = await vixNow(); if (vix != null) flex.panic = flex.panic ? vix >= VIX_OFF : vix >= VIX_ON;
+  flex.eff = {}; FUNDS.forEach(f => { const b = flex.band[f] || 0; flex.eff[f] = b > 0 && flex.panic ? Math.min(b + 1, BANDS.length - 1) : b; });
+  const target = {}; FUNDS.forEach(f => { target[f] = Math.round((flex.base[f] || 0) * BANDS[flex.eff[f]][1]); });
   const last = alerts.filter(a => a.type === 'dca').slice(-1)[0], lastTo = last ? last.to : { VTI: flex.base.VTI || 0, VXUS: flex.base.VXUS || 0 };
   if ((flex.base.VTI || flex.base.VXUS) && FUNDS.some(f => target[f] !== lastTo[f])) {
     if (pending) pending.status = 'replaced';
     const up = FUNDS.some(f => target[f] > (flex.base[f] || 0));
     alerts.push({ id: crypto.randomBytes(4).toString('hex'), type: 'dca', at, from: { ...now }, to: target, base: { ...flex.base },
-      bands: { ...flex.band }, dd: { VTI: +drops.VTI.dd.toFixed(1), VXUS: +drops.VXUS.dd.toFixed(1) }, status: 'pending' });
+      bands: { ...flex.eff }, vix: vix != null ? Math.round(vix * 10) / 10 : null, dd: { VTI: +drops.VTI.dd.toFixed(1), VXUS: +drops.VXUS.dd.toFixed(1) }, status: 'pending' });
     notes.push([up ? 'Buy Alert: raise your daily buys' : 'Daily buys back to normal', 'Set recurring buys to ' + money(target.VTI) + ' VTI + ' + money(target.VXUS) + ' VXUS a day (now ' + money(now.VTI + now.VXUS) + ').', 'dca']);
     changed = true;
   }
@@ -746,7 +755,7 @@ async function checkAlerts() {
     if (FUNDS.every(f => Math.abs(now[f] - a.to[f]) <= Math.max(2, a.to[f] * 0.02))) { a.status = 'done'; a.doneAt = at; changed = true;
       notes.push(['✓ Daily buys updated', 'Robinhood is buying ' + money(now.VTI) + ' VTI + ' + money(now.VXUS) + ' VXUS a day. Nice work.', 'done-' + a.id]); }
   }
-  writeFlex(flex); flexCache = { drops, flex, target, now };
+  writeFlex(flex); flexCache = { drops, flex, target, now, vix };
   if (changed) writeAlerts(alerts);
   for (const [t, b, tag] of notes) notify(t, b, '/?tab=alerts', tag).catch(() => {});
 }
