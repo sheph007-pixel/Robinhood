@@ -446,6 +446,7 @@ async function handleState(req, res) {
 
 
 const rh = require('./rh')(DATA_DIR);
+const lookthrough = require('./lookthrough')(rh, fs, path.join(DATA_DIR, 'lookthrough.json'));
 // ---------- Markets: AI daily brief (cached; at most a few generations per day) ----------
 const BRIEF_FILE = path.join(DATA_DIR, 'brief.json');
 const BRIEF_SYSTEM = `You write a short daily market brief inside a personal long-term investing app. The owner holds VTI (US total market) and VXUS (international) and buys both every market day; the app exists to keep them focused on the long run, not daily noise.
@@ -665,6 +666,10 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL, stt: !!sttKey(), tts: !!sttKey() });
   if (url.pathname === '/api/stt' && req.method === 'POST') return handleStt(req, res);
   if (url.pathname === '/api/tts' && (req.method === 'POST' || req.method === 'GET')) return handleTts(req, res, url);
+  if (url.pathname === '/api/lookthrough') {
+    try { return json(res, 200, await lookthrough()); }
+    catch (e) { console.error('lookthrough', e.message); return json(res, 502, { error: 'holdings data unavailable' }); }
+  }
   if (url.pathname === '/api/history') {
     const sym = String(url.searchParams.get('s') || '').toUpperCase();
     const rng = String(url.searchParams.get('r') || 'max');
