@@ -751,6 +751,13 @@ body.vm-on .tabs{visibility:hidden}
 #vmType{padding:0!important;margin:0!important;text-indent:0!important}
 @media (prefers-reduced-motion:reduce){.vmorb,.vmorb .cl{animation:none!important}}
 .gone{display:none!important}
+.mxr{padding:12px 0;border-top:1px solid var(--line)} .mxr:first-child{border-top:0;padding-top:4px}
+.mxt{display:flex;justify-content:space-between;align-items:baseline;font-size:17px;font-weight:600}
+.mxn{display:flex;align-items:center;gap:8px} .mxn i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.mxb{position:relative;height:8px;margin:8px 0 6px;border-radius:4px;background:var(--soft)}
+.mxb div{height:100%;border-radius:4px} .mxb i{position:absolute;top:-4px;width:2px;height:16px;margin-left:-1px;border-radius:1px;background:var(--ink)}
+.mxs{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--ink2)} .mxs .ok{color:var(--gt);font-weight:600} .mxs .off{color:#d08a00;font-weight:600}
+.goaled{margin:8px 0 4px}
 
 .gopts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .gopts>div{background:var(--soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -838,7 +845,8 @@ body.vm-on .tabs{visibility:hidden}
         
       </div>
     </div>
-    <button type="button" class="ontrack" id="onTrack" hidden></button>
+    <button type="button" class="ontrack" id="onTrack" aria-expanded="false" aria-controls="goalEd" hidden></button>
+    <div class="goalin goaled" id="goalEd" hidden><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt" placeholder="$3M"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">With Added Money</span><span class="ls">Added</span></span></div>
     <div class="range num">
@@ -852,15 +860,12 @@ body.vm-on .tabs{visibility:hidden}
   <div hidden><span id="mileT"></span><span id="mileR"></span><div id="mileB"></div><div id="saleHome"></div><div id="saleMoney"></div></div>
 
 
-  <!-- Goal -->
-  <section class="card goal">
-    <div class="head"><h2>Your Goal</h2></div>
-    <div class="goalin"><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt" placeholder="$3M"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div>
-    <div class="gchance num"><span class="big" id="gPct"></span><span id="gTxt"></span></div>
-    <div class="pbar"><div id="gBar"></div></div>
-    <div class="muted small num" id="gSub"></div>
-    <div class="gneed num" id="gNeed"></div>
+  <!-- Your Mix: what you hold vs. your targets (Invest tab) -->
+  <section class="card mix">
+    <div class="head"><h2>Your Mix</h2></div>
+    <div class="mixl num" id="mix"></div>
   </section>
+  <div hidden><span id="gPct"></span><span id="gTxt"></span><div id="gBar"></div><div id="gSub"></div><div id="gNeed"></div></div>
 
 
   </div>
@@ -927,7 +932,7 @@ body.vm-on .tabs{visibility:hidden}
     <div class="aimsg" id="brBody"><span class="typing">Loading today's brief…</span></div>
   </section>
   <section class="card">
-    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="max">All</button></div></div>
+    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="15y">15Y</button><button data-r="20y">20Y</button><button data-r="max">All</button></div></div>
     <div class="mk" id="mkVTI"></div>
     <div class="mk" id="mkVXUS"></div>
   </section>
@@ -1211,6 +1216,11 @@ function render(reproject){
   $('barTgt').setAttribute('aria-label','Target: VTI '+pc(w.vti)+', VXUS '+pc(w.vxus)+', cash '+pc(w.cash));
   const drift=Math.max(Math.abs(now.vti-w.vti),Math.abs(now.vxus-w.vxus),Math.abs(now.cash-w.cash));
   const ns=T?Math.round((now.vti+now.vxus)*100):0, nu=(h.vti+h.vxus)?Math.round(h.vti/(h.vti+h.vxus)*100):0;
+  $('mix').innerHTML=[['VTI','vti','--s1'],['VXUS','vxus','--s2'],['Cash','cash','--s3']].map(([n,k,c])=>{
+    const cur=T?h[k]/T:0, tv=w[k], gap=tv*T-h[k], on=Math.abs(cur-tv)<.02;
+    return '<div class="mxr"><div class="mxt"><span class="mxn"><i style="background:var('+c+')"></i>'+n+'</span><span class="mxv">'+usd(h[k])+'</span></div>'+
+      '<div class="mxb"><div style="width:'+Math.min(100,cur*100).toFixed(1)+'%;background:var('+c+')"></div><i style="left:'+(tv*100).toFixed(1)+'%" title="Target"></i></div>'+
+      '<div class="mxs"><span>'+pc(cur)+' now · target '+pc(tv)+'</span><span class="'+(on?'ok':'off')+'">'+(!T?'':on?'✓ On target':gap>0?usd(gap)+' under':usd(-gap)+' over')+'</span></div></div>';}).join('');
   $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On target':'')):'';
 
   // deposit plan
@@ -1389,7 +1399,7 @@ async function markets(){
 }
 function mchart(el,sym,h){
   const C=h.c.slice(), Tm=h.t.slice(); if(Q[sym]&&Q[sym].price){C.push(Q[sym].price);Tm.push(Date.now());}
-  const rg=S.mr||'max', win={'1y':200,'5y':40,'10y':40,'max':10}[rg], yrsBack={'1y':1,'5y':5,'10y':10}[rg];
+  const rg=S.mr||'max', win={'1y':200,'5y':40,'10y':40,'15y':40,'20y':40,'max':10}[rg], yrsBack={'1y':1,'5y':5,'10y':10,'15y':15,'20y':20}[rg];
   const MA=C.map((v,i)=>{if(i<win-1)return null;let s=0;for(let j=i-win+1;j<=i;j++)s+=C[j];return s/win;});
   // Corrections: each time price fell 10%+ from its running high. Computed on the full series so peaks before the window still count.
   const DDp=[], DD=[]; { let pk=C[0],pi=0,ep=null; for(let i=0;i<C.length;i++){ if(C[i]>=pk){ if(ep){ep.end=i;DD.push(ep);ep=null;} pk=C[i];pi=i; DDp.push(0); continue; }
@@ -1398,7 +1408,7 @@ function mchart(el,sym,h){
   const c=C.slice(s0), t=Tm.slice(s0), ma=MA.slice(s0), dd=DDp.slice(s0);
   const n=c.length, first=c[0], last=c[n-1], chg=(last/first-1)*100, since=new Date(t[0]);
   const names={VTI:'US Total Stock Market',VXUS:'Total International Stock'};
-  const lbl=(S.mr||'max')==='max'?'since '+since.getFullYear():'in '+({'1y':'1 year','5y':'5 years','10y':'10 years'})[S.mr];
+  const short=yrsBack&&since.getTime()>Date.now()-(yrsBack-.25)*365.25*864e5, lbl=(rg==='max'||short)?'since '+since.getFullYear():'in '+yrsBack+(yrsBack===1?' year':' years');
   el.innerHTML='<div class="mkh"><div><div class="mks">'+sym+' <span class="muted small">'+names[sym]+'</span></div><div class="mkp num">'+usd(last,true)+'</div>'+
     '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span><span><i class="sw sw-ma"></i>200-Day Average</span><span><i class="sw sw-dd"></i>10%+ Drop</span></div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
   const svg=el.querySelector('svg'), W=Math.max(300,el.clientWidth), H=Math.round(Math.min(260,Math.max(180,W*.32))), m={l:4,r:52,t:24,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
@@ -1785,7 +1795,7 @@ function dcaBuys(){
   const fd=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
   $('dbList').innerHTML=buys.slice(0,40).map(b=>'<div><span>'+fd(b.d)+'</span><span><b>'+b.s+'</b></span><span>'+usd(+b.a)+'</span><span class="muted">'+(b.p?'@ '+usd(b.p,true):'')+'</span></div>').join('');
 }
-$('onTrack').addEventListener('click',()=>document.querySelector('.goal').scrollIntoView({behavior:'smooth',block:'start'}));
+$('onTrack').addEventListener('click',function(){const ed=$('goalEd'), open=ed.hidden; ed.hidden=!open; this.setAttribute('aria-expanded',String(open)); if(open)$('gAmt').focus();});
 $('ftInfo').addEventListener('click',e=>{e.stopPropagation();const f=document.querySelector('.ft'),o=!f.classList.contains('open');f.classList.toggle('open',o);$('ftInfo').setAttribute('aria-expanded',o);});
 document.addEventListener('click',e=>{const f=document.querySelector('.ft');if(f&&f.classList.contains('open')&&!e.target.closest('.ftpop')){f.classList.remove('open');$('ftInfo').setAttribute('aria-expanded','false');}});
 new MutationObserver(()=>{$('syncRow').hidden=!$('sync').textContent;}).observe($('sync'),{childList:true,characterData:true,subtree:true});
