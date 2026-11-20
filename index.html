@@ -858,6 +858,9 @@ body.vm-on .tabs{visibility:hidden}
 .dcafund .g{color:var(--gt)} .dcafund .fr em{font-style:normal;font-weight:500;color:var(--ink2);font-size:12px;margin-left:4px}
 .dcafund .fn2 .sale,.dcafund .fn2 .up{display:inline-block;font-weight:700;color:#000;background:var(--g);border-radius:99px;padding:1px 8px;margin-right:4px;font-size:11px}
 .dcafund .dnote{grid-column:1/-1;margin:0;font-size:12px;color:var(--ink2)}
+.dsched{background:var(--soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.dsched .dsh2{font-size:13px;font-weight:700;color:var(--ink2)} .dsched .dsr{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;font-size:16px}
+.dsched .dsr b{margin-right:4px} .dsched .dsr.sub{font-size:13px;color:var(--ink2)} .dsched .ok{color:var(--gt);font-weight:700}
 .dcafund .d3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px} .dcafund .d3>div{display:flex;flex-direction:column;gap:1px;background:var(--surface);border-radius:8px;padding:6px 8px}
 .dcafund .d3 span{font-size:11px;color:var(--ink2)} .dcafund .d3 b{font-size:14px}
 .dcafund .dwin{font-size:12px;font-weight:600;color:var(--gt)} .dcafund .dwin::before{content:'★ '}
@@ -921,6 +924,7 @@ body.vm-on .tabs{visibility:hidden}
     <div class="goalin goaled" id="goalEd" hidden><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt" placeholder="$3M"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">Current Plan</span><span class="ls">Current</span></span></div>
+    <div class="muted small num" id="recNote"></div>
     <div class="wiq num"><span class="wiqk">What If You Add</span>
       <label><input type="text" inputmode="decimal" id="dcaVTI" aria-label="Extra per day to VTI"><span class="ld">/day VTI</span><span class="lm">VTI Per Day</span></label>
       <label><input type="text" inputmode="decimal" id="dcaVXUS" aria-label="Extra per day to VXUS"><span class="ld">/day VXUS</span><span class="lm">VXUS Per Day</span></label>
@@ -1075,6 +1079,7 @@ body.vm-on .tabs{visibility:hidden}
   <div id="tab-dca2" class="panel" hidden>
   <section class="card">
     <div class="head"><h2>Recurring Buys</h2><span class="rhbadge">From Robinhood · Core ••8555</span></div>
+    <div class="dsched num" id="dbSched"></div>
     <div class="dcafund num" id="dbFund"></div>
     <div class="dcasum num" id="dbSum"></div>
     <div class="dcalist num" id="dbList"></div>
@@ -1202,9 +1207,9 @@ function monthsTo(age){const b=new Date(S.dob+'T00:00:00'),n=new Date();if(isNaN
 function ageNow(){return 75-monthsTo(75)/12;}
 function ages(){return AGES.filter(a=>monthsTo(a)>0);}
 let base=null, noRec=null;
-// Projections use only what's in the account today (no assumed future buys); What If and Your Goal show the effect of adding money.
-function REC(){return {a1:0,a2:0,daily:0,list:[]};}
-function REC_SYNCED(){const r=(S.rh&&S.rh.recurring)||[], g=sym=>r.filter(x=>x.symbol===sym).reduce((a,x)=>a+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily').reduce((a,x)=>a+(+x.amount||0),0);
+// Projections include your recurring buys as Robinhood is running them now (read from recent orders; a schedule
+// with no buy on the latest market day counts as stopped). What If adds money on top of that.
+function REC(){const r=(S.rh&&S.rh.recurring)||[], g=sym=>r.filter(x=>x.symbol===sym).reduce((a,x)=>a+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily'&&!x.stopped).reduce((a,x)=>a+(+x.amount||0),0);
   return {a1:g('VTI'),a2:g('VXUS'),daily:dly,list:r};}
 // Final values at month m for a given daily buy (split by target US/Intl), small sample for speed.
 function goalVals(daily,m,L=0){
@@ -1366,6 +1371,8 @@ function draw(){
       $('skR').innerHTML='<b>'+(perDay?usd(perDay)+'/day':usd(perMo)+'/mo')+'</b><span>auto-invest</span>';
       $('habit').hidden=false;}
     else $('habit').hidden=true; }
+  { const R=REC(), d1=R.list.filter(x=>!x.stopped&&x.freq==='daily').reduce((t,x)=>t+(+x.amount),0), mo=R.a1+R.a2;
+    $('recNote').textContent=mo>0?'Includes your recurring buys: '+(d1?usd(d1)+' every market day (about '+usd(mo)+'/mo)':usd(mo)+'/mo')+'.':'Based on what you hold today. No active recurring buys found.'; }
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
@@ -1659,7 +1666,7 @@ function aiContext(){
   { const R=REC(); if(R.list.length)lines.push('Recurring investments (from Robinhood, included in projections): '+R.list.map(x=>x.symbol+' $'+x.amount+' '+x.freq+' (~$'+x.perMonth+'/mo, last '+x.lastDate+')').join('; '));
     if(S.rh&&S.rh.recent)lines.push('Recent recurring buys: '+S.rh.recent.slice(0,10).map(o=>o.date+' '+o.symbol+' $'+o.amount+(o.price?' @ $'+o.price:'')).join('; ')); }
   if(false)lines.push('Other accounts the user added by hand (outside Robinhood, treated as cash): '+S.accts.map(a=>a.name+' $'+f(+a.amt||0)).join('; ')+'. Total net worth: $'+f(nwTotal())+'. The goal counts these too.');
-  lines.push('Projections use only what is in the account today and assume no future deposits or buys.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
+  lines.push('Projections include the current recurring buys (about $'+Math.round(REC().a1+REC().a2)+'/mo) on top of what is in the account today.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
   lines.push('Goal: $'+f(S.goal)+' by age '+S.goalAge+(GOALPCT!=null?' ('+GOALPCT+'% chance per simulation)':''));
   if(proj){lines.push('Projection values below are in future (nominal) dollars. The app shows them '+(realOn()?'in today\'s dollars (divided by 1.025^years for 2.5% inflation)':'in future dollars')+'; the goal amount is '+(realOn()?'in today\'s dollars':'in future dollars')+'.');lines.push('Projection (Monte Carlo, 4,000 paths, stocks ~7%/yr avg, 16-17% volatility, yearly rebalance to target, includes deposits): age -> poor (10th pct) / average (median) / strong (90th pct)');
     AGES.forEach(a=>{const t=Math.min(proj.M,monthsTo(a));if(t>0)lines.push('  '+a+': $'+f(proj.lo[t])+' / $'+f(proj.md[t])+' / $'+f(proj.hi[t]));});}
@@ -1976,8 +1983,18 @@ async function dcaFunds(){
   $('dbFund').innerHTML=box('VTI',+S.shVTI||0,m1)+box('VXUS',+S.shVXUS||0,m2);
 }
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
+function dcaSched(){
+  const r=((S.rh||{}).recurring||[]).filter(x=>!x.stopped&&x.amount>0), el=$('dbSched');
+  if(!r.length){el.innerHTML='<div class="muted small">No active recurring buys found in Robinhood.</div>';return;}
+  const per=x=>x.freq==='daily'?'day':x.freq==='weekly'?'week':'month', tot=r.reduce((t,x)=>t+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily').reduce((t,x)=>t+(+x.amount),0);
+  const now=new Date(), et=now.toLocaleDateString('en-CA',{timeZone:'America/New_York'}), hm=+now.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:false,hour:'2-digit',minute:'2-digit'}).replace(':',''), wd=new Date(et+'T12:00:00Z').getUTCDay();
+  const boughtToday=((S.rh||{}).buys||[]).some(b=>b.d===et);
+  const today=boughtToday?'<span class="ok">✓ Today\'s Buys Are In</span>':(wd>0&&wd<6&&hm<1230?'<span>Today\'s buys go in around 11:20 AM ET</span>':'');
+  el.innerHTML='<div class="dsh2">Your Schedule</div><div class="dsr">'+r.map(x=>'<span><b>'+x.symbol+'</b> '+usd(+x.amount)+'/'+per(x)+'</span>').join('')+'</div>'+
+    '<div class="dsr sub"><span>'+(dly?usd(dly)+' every market day · ':'')+'about '+usd(tot)+'/mo</span>'+today+'</div>';
+}
 function dcaBuys(){
-  dcaFunds();
+  dcaFunds(); dcaSched();
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price}))).slice().sort((a,b)=>b.d.localeCompare(a.d));
   if(!buys.length){$('dbSum').innerHTML='';$('dbList').innerHTML='<p class="muted">No recurring buys synced yet. Tap Refresh to sync with Robinhood.</p>';return;}
   const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), m=today.slice(0,7), y=today.slice(0,4), d30=new Date(Date.now()-30*864e5).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
