@@ -261,18 +261,67 @@ async function history(sym, rng) {
 // chart range (daily, weekly or monthly points) shows the same drops with the same depth.
 // S&P 500 snapshot for the Markets tab: current level, 200-day average, 52-week high, and published
 // year-end strategist targets (no free feed exists for those, so they are kept here with their date).
-const SPX_TARGETS = { asOf: 'Nov 2026', year: 2027, banks: [['Goldman Sachs', 8700], ['Morgan Stanley', 8700], ['Wells Fargo', 8200]], avg: 8638, avgOf: 8 };
+// Year-end strategist targets. No free feed publishes these, so the server looks them up with Claude + web search
+// on a schedule that follows when banks publish: year-ahead outlooks mid-Nov to mid-Dec, revisions around Jun-Jul.
+// The last good result is kept on disk; a failed or thin lookup never replaces it.
+const SPX_SEED = { year: 2027, banks: [['Goldman Sachs', 8700], ['Morgan Stanley', 8700], ['Wells Fargo', 8200]], avg: 8638, avgOf: 8,
+  updatedAt: Date.parse('2026-11-20T21:00:00Z'), checkedAt: 0, source: 'manual' };
+const targetsFile = () => path.join(DATA_DIR, 'spx_targets.json');
+function targetsNow() { try { return JSON.parse(fs.readFileSync(targetsFile(), 'utf8')); } catch (e) { return SPX_SEED; } }
+function targetsDue(t) { const m = new Date().getUTCMonth(), busy = [10, 11, 0, 5, 6].includes(m); return Date.now() - (t.checkedAt || 0) >= (busy ? 7 : 30) * 864e5; }
+let targetsBusy = false;
+async function refreshTargets() {
+  const client = aiClient(); if (!client || targetsBusy) return; targetsBusy = true;
+  const cur = targetsNow();
+  try {
+    const now = new Date(), year = now.getUTCMonth() >= 9 ? now.getUTCFullYear() + 1 : now.getUTCFullYear(); // from October on, look for next year's targets
+    let spx = null; try { spx = (await spxSnapshot(true)).last; } catch (e) { /* sanity check below is skipped */ }
+    const prompt = `Today is ${now.toISOString().slice(0, 10)}. Search for the most recently published year-end ${year} S&P 500 price targets from major Wall Street strategists ` +
+      `(for example Goldman Sachs, Morgan Stanley, JPMorgan, Bank of America, Citi, Wells Fargo, UBS, Deutsche Bank, Barclays, Evercore ISI). ` +
+      `Pick the three most prominent banks that have published a year-end ${year} target, using each bank's latest figure if it was revised. ` +
+      `Also report the average (consensus) of strategist year-end ${year} targets and how many strategists it covers, if a survey reports one. ` +
+      `Use only numbers stated in your search results; never estimate one. If fewer than two banks have published a year-end ${year} target, say so with an empty list. ` +
+      `Reply with only this JSON and nothing else: {"year":${year},"banks":[{"name":"...","target":0000}],"avg":null,"avgOf":null}`;
+    const messages = [{ role: 'user', content: prompt }];
+    let resp;
+    for (let k = 0; k < 4; k++) { // web search can pause a long turn; continue it a few times
+      resp = await client.beta.messages.create({
+        model: 'claude-opus-5-5', max_tokens: 16000, output_config: { effort: 'medium' },
+        betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', // on a refusal, the API retries on another model in the same call
+        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }], messages });
+      if (resp.stop_reason !== 'pause_turn') break;
+      messages.push({ role: 'assistant', content: resp.content });
+    }
+    if (resp.stop_reason === 'refusal') throw new Error('declined');
+    const text = resp.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+    const m = text.match(/\{[\s\S]*\}\s*$/) || text.match(/\{[\s\S]*\}/); if (!m) throw new Error('no JSON in reply');
+    const j = JSON.parse(m[0]);
+    const ok = v => typeof v === 'number' && isFinite(v) && (!spx || (v > spx * 0.6 && v < spx * 1.8));
+    const banks = (Array.isArray(j.banks) ? j.banks : []).filter(b => b && typeof b.name === 'string' && ok(+b.target)).slice(0, 3).map(b => [b.name.trim().slice(0, 40), Math.round(+b.target)]);
+    const next = { year: +j.year === year ? year : cur.year, banks, avg: ok(+j.avg) ? Math.round(+j.avg) : null, avgOf: +j.avgOf > 1 ? Math.round(+j.avgOf) : null, source: 'web' };
+    if (next.year !== year || banks.length < 2) { // nothing usable yet (e.g. October, before the banks publish): keep what we have
+      writeTargets({ ...cur, checkedAt: Date.now() }); console.log('S&P targets: nothing new for', year); return;
+    }
+    const changed = JSON.stringify([next.year, next.banks, next.avg]) !== JSON.stringify([cur.year, cur.banks, cur.avg]);
+    writeTargets({ ...next, checkedAt: Date.now(), updatedAt: changed ? Date.now() : cur.updatedAt });
+    console.log('S&P targets', changed ? 'updated' : 'unchanged', JSON.stringify(next.banks));
+  } catch (e) { console.error('S&P targets lookup failed', e.message); writeTargets({ ...cur, checkedAt: Date.now() - 6 * 864e5 }); } // retry in about a day
+  finally { targetsBusy = false; }
+}
+function writeTargets(t) { try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(targetsFile() + '.tmp', JSON.stringify(t)); fs.renameSync(targetsFile() + '.tmp', targetsFile()); } catch (e) { /* ignore */ } }
+setTimeout(() => { if (targetsDue(targetsNow())) refreshTargets(); }, 90e3);
+setInterval(() => { if (targetsDue(targetsNow())) refreshTargets(); }, 60 * 60e3);
 let spxCache = null;
-async function spxSnapshot() {
-  if (spxCache && Date.now() - spxCache.at < 5 * 60e3) return spxCache.data;
+async function spxSnapshot(fresh) {
+  if (!fresh && spxCache && Date.now() - spxCache.at < 5 * 60e3) return { ...spxCache.data, targets: targetsNow() };
   const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=2y&interval=1d', { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!r.ok) throw new Error('yahoo ' + r.status);
   const j = (await r.json()).chart.result[0], c = j.indicators.quote[0].close.filter(v => v != null), m = j.meta;
   const last = m.regularMarketPrice || c[c.length - 1], prev = c.length > 1 ? c[c.length - 2] : null;
   const ma200 = c.slice(-200).reduce((a, b) => a + b, 0) / Math.min(200, c.length);
   const hi52 = m.fiftyTwoWeekHigh || Math.max(...c.slice(-252));
-  const data = { last, prev, ma200, hi52, at: Date.now(), targets: SPX_TARGETS };
-  spxCache = { at: Date.now(), data }; return data;
+  const data = { last, prev, ma200, hi52, at: Date.now() };
+  spxCache = { at: Date.now(), data }; return { ...data, targets: targetsNow() };
 }
 const ddCache = new Map();
 async function drawdowns(sym) {
