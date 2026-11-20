@@ -1090,6 +1090,7 @@ const VOL={us:.16,intl:.17}, RHO=.85, FEE={us:.0003,intl:.0005}, INFL=.025;
 
 const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',goal:3000000,goalAge:60,dcaVTI:null,dcaVXUS:null,lump:0,px:{},tab:'home',v:2};
 let S=Object.assign({},DEF);
+const MA200={}; // 200-day averages for the DCA tab (declared early: that tab can draw during startup)
 try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Object.assign(S,s);}catch(e){}
 if(S.v!==2){S.us=70;S.v=2;}
 S.outlook='mid';
@@ -1294,6 +1295,7 @@ function render(reproject){
 
   if(typeof nwRender==='function')nwRender();
   if(S.tab==='port'&&!$('tab-port').hidden)portfolio();
+  if(S.tab==='dca2'&&!$('tab-dca2').hidden)dcaBuys();
   if(reproject){proj=null;setTimeout(()=>{project();draw();},0);}
 }
 
@@ -1903,7 +1905,6 @@ $('nwAdd').addEventListener('submit',e=>{e.preventDefault();const name=$('nwName
 $('nwList').addEventListener('change',e=>{const i=e.target.closest('[data-amt]');if(!i)return;const a=(S.accts||[]).find(x=>x.id===i.dataset.amt);if(!a)return;const v=parseAmt(i.value);if(v>=0&&i.value.trim()!=='')a.amt=Math.round(v);save();render(true);nwRender();});
 $('nwList').addEventListener('click',e=>{const b=e.target.closest('[data-nwdel]');if(!b)return;if(!confirm('Remove this account?'))return;S.accts=(S.accts||[]).filter(x=>x.id!==b.dataset.nwdel);save();render(true);nwRender();});
 // DCA tab: your average cost vs today's price and the 200-day average (a simple, proven-discipline scoreboard)
-const MA200={};
 async function ma200(sym){ if(MA200[sym]&&Date.now()-MA200[sym].at<6*3600e3)return MA200[sym].v;
   try{const h=HC[sym+'1y']||await (await fetch('/api/history?s='+sym+'&r=1y')).json(); HC[sym+'1y']=h; const c=h.c||[]; if(c.length<200)return null;
     const v=c.slice(-200).reduce((a,b)=>a+b,0)/200; MA200[sym]={v,at:Date.now()}; return v;}catch(e){return null;} }
@@ -1911,7 +1912,7 @@ async function dcaFunds(){
   const box=(sym,cost,now,ma)=>{ const vs=cost&&now?(now/cost-1)*100:null, vm=ma&&now?(now/ma-1)*100:null;
     return '<div><b class="fn">'+sym+'</b>'+
       '<div class="fr"><span>Avg cost</span><span>'+(cost?usd(cost,true):'—')+'</span></div>'+
-      '<div class="fr"><span>Now</span><span>'+(now?usd(now,true):'—')+(vs!=null?' <em class="'+(vs>=0?'up':'dn')+'">'+(vs>=0?'+':'−')+Math.abs(vs).toFixed(0)+'%</em>':'')+'</span></div>'+
+      '<div class="fr"><span>Now</span><span>'+(now?usd(now,true):'—')+(vs>0?' <em class="up">+'+vs.toFixed(0)+'%</em>':'')+'</span></div>'+
       '<div class="fr"><span>200-day</span><span>'+(ma?usd(ma,true):'—')+'</span></div>'+
       (vm!=null?'<div class="fn2">'+(vm<0?'On sale: '+Math.abs(vm).toFixed(1)+'% below its 200-day average. Your daily buys get more shares.':'Above its 200-day average by '+vm.toFixed(1)+'%. Keep buying on schedule.')+'</div>':'')+'</div>'; };
   const ac=S.avgCost||{}, [m1,m2]=await Promise.all([ma200('VTI'),ma200('VXUS')]);
