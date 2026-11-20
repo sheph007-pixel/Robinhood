@@ -1602,10 +1602,10 @@ $('aiHistList').addEventListener('click',async e=>{const del=e.target.closest('[
 function dcaRender(){
   const R=REC(), rh=S.rh;
   if(!rh||!R.list.length){$('dcaBody').innerHTML='<p class="muted">No recurring investments synced yet. Tap Refresh below to sync with Robinhood.</p>';$('dcaRecent').innerHTML='';return;}
-  const fq={daily:'every market day',weekly:'every week',monthly:'every month'}, d=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const fq={daily:'every market day',weekly:'every week',monthly:'every month',stopped:'stopped (no buy on the last market day)'}, d=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const tot=R.list.reduce((a,x)=>a+(+x.perMonth||0),0), l30=R.list.reduce((a,x)=>a+(+x.last30||0),0);
   $('dcaBody').innerHTML='<div class="dcasum num"><div><span class="k">Per Month</span><span class="v g">'+usd(tot)+'</span></div><div><span class="k">Per Year</span><span class="v">'+big(tot*12)+'</span></div><div><span class="k">Last 30 Days</span><span class="v">'+usd(l30)+'</span></div></div>'+
-    R.list.map(x=>'<div class="dcarow num"><i style="background:var('+(x.symbol==='VTI'?'--s1':'--s2')+')"></i><div class="dn"><b>'+x.symbol+'</b><span>'+usd(x.amount)+' '+(fq[x.freq]||x.freq)+'</span></div><div class="dv"><b>≈ '+usd(x.perMonth)+'/mo</b><span>last buy '+d(x.lastDate)+'</span></div></div>').join('')+
+    R.list.map(x=>'<div class="dcarow num"><i style="background:var('+(x.symbol==='VTI'?'--s1':'--s2')+')"></i><div class="dn"><b>'+x.symbol+'</b><span>'+(x.stopped?'no buy on the last market day':usd(x.amount)+' '+(fq[x.freq]||x.freq))+'</span></div><div class="dv"><b>'+(x.stopped?'Stopped':'≈ '+usd(x.perMonth)+'/mo')+'</b><span>last buy '+d(x.lastDate)+'</span></div></div>').join('')+
     '<p class="muted small">Included in all projections. Change amounts in the Robinhood app; they sync here automatically.</p>';
   $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
 }
