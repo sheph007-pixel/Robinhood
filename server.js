@@ -377,8 +377,11 @@ function expectedBuyDay() {
   return '0000-00-00';
 }
 function summarizeRecurring(orders) {
-  const filled = orders.filter(o => o && o.side === 'buy' && (o.state === 'filled' || !o.state) && +o.amount > 0 && o.date)
-    .map(o => ({ symbol: String(o.symbol).toUpperCase(), amount: +o.amount, date: String(o.date).slice(0, 10), price: +o.price || null, shares: +o.shares || null }))
+  // Placed-but-not-yet-filled orders (Robinhood places them around 11 AM ET, fills come later) still count toward the
+  // schedule, so a midday sync never mistakes a pending buy for a stopped one.
+  const LIVE = new Set(['filled', 'partially_filled', 'queued', 'confirmed', 'unconfirmed', 'new']);
+  const filled = orders.filter(o => o && o.side === 'buy' && (!o.state || LIVE.has(o.state)) && +o.amount > 0 && o.date)
+    .map(o => ({ symbol: String(o.symbol).toUpperCase(), amount: +o.amount, date: String(o.date).slice(0, 10), price: o.state && o.state !== 'filled' ? null : (+o.price || null), shares: +o.shares || null }))
     .sort((a, b) => b.date.localeCompare(a.date));
   const recurring = [];
   for (const sym of [...new Set(filled.map(o => o.symbol))]) {
@@ -608,14 +611,17 @@ async function recordNetWorth() {
 }
 setTimeout(recordNetWorth, 15e3); setInterval(recordNetWorth, 30 * 60e3);
 async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
-// Daily sync after the close: weekdays 4:20 PM ET.
-let lastAutoSync = '';
+// Auto sync on weekdays: every 30 minutes from 11:30 AM to 5 PM ET, so the daily recurring buys (placed around
+// 11 AM, usually filled by early afternoon) show up within about half an hour of filling, and once more after the close.
+let lastAutoSyncAt = 0;
 setInterval(() => {
   if (!rh.connected()) return;
-  const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date());
-  const g = k => p.find(x => x.type === k).value, day = g('year') + g('month') + g('day'), min = (+g('hour') % 24) * 60 + (+g('minute'));
-  if (['Sat', 'Sun'].includes(g('weekday')) || min < 16 * 60 + 20 || lastAutoSync === day) return;
-  lastAutoSync = day; serverSync().catch(e => console.error('Robinhood auto sync failed', e.message));
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, weekday: 'short', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date());
+  const g = k => p.find(x => x.type === k).value, min = (+g('hour') % 24) * 60 + (+g('minute'));
+  if (['Sat', 'Sun'].includes(g('weekday')) || min < 11 * 60 + 30 || min > 17 * 60) return;
+  const synced = Date.parse((readState().rh || {}).syncedAt || 0) || 0;
+  if (Date.now() - Math.max(synced, lastAutoSyncAt) < 30 * 60e3) return;
+  lastAutoSyncAt = Date.now(); serverSync().catch(e => console.error('Robinhood auto sync failed', e.message));
 }, 60e3);
 // Version = 1.<number of the PR that was deployed>, from Railway's build metadata.
 const VERSION = (() => {
