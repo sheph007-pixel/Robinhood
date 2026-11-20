@@ -776,6 +776,16 @@ body.vm-on .tabs{visibility:hidden}
 .kbadges{display:flex;flex-wrap:wrap;gap:8px}
 .kb{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:6px 10px;border-radius:99px;background:var(--soft);color:var(--ink2);opacity:.45;filter:grayscale(1)}
 .kb.on{opacity:1;filter:none;color:var(--ink);box-shadow:inset 0 0 0 1px var(--g)} .kb i{font-style:normal}
+.kgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kt{background:var(--soft);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kt .k{font-size:12px;color:var(--ink2);font-weight:600} .kt b{font-size:20px;font-weight:800;color:var(--gt)} .kt .m{font-size:12px;color:var(--ink2)}
+.kbar.sm{height:5px;margin:2px 0}
+.kbump{font:inherit;text-align:left;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;width:100%;padding:12px 14px;border-radius:12px;border:1px dashed var(--g);background:none;color:var(--ink);font-size:14px;cursor:pointer}
+.kbump b{color:var(--gt)} .kbump span{margin-left:auto;color:var(--gt);font-weight:700}
+.confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:100}
+.ktoast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:101;background:var(--surface);border:1px solid var(--g);border-radius:14px;padding:12px 18px;display:flex;flex-direction:column;gap:2px;font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.4);transition:opacity .5s,transform .5s}
+.ktoast b{color:var(--gt);font-size:15px} .ktoast.out{opacity:0;transform:translateX(-50%) translateY(10px)}
+@media (max-width:560px){.kgrid{grid-template-columns:1fr} .kt b{font-size:18px}}
 @media (max-width:560px){.kst .kmsg{font-size:13px} .ksub{flex-direction:column}}
 .spxg{display:flex;flex-direction:column;gap:14px}
 .spx3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -1598,23 +1608,62 @@ async function spxCard(){
 }
 // Keep It Going: a streak, milestones and badges that only go up. Up days and down days are both wins.
 let KDD=null;
+let KSEQ=0, KCELEB=false;
 async function keepGoing(){
-  const rh=S.rh||{}, buys=rh.buys||[], el=$('keep'); if(!buys.length&&!rh.streak){el.hidden=true;return;} el.hidden=false;
+  const seq=++KSEQ, el=$('keep');
+  if(!KDD){ KDD={}; await Promise.all(['VTI','VXUS'].map(async k=>{ try{const x=HC[k+'1y']||await (await fetch('/api/history?s='+k+'&r=1y')).json(); HC[k+'1y']=x; KDD[k]=x.dd||[];}catch(e){KDD[k]=[];} })); }
+  if(seq!==KSEQ)return; // a newer draw is on its way; values are read below, after loading, so they're current
+  const rh=S.rh||{}, buys=rh.buys||[]; if(!buys.length&&!rh.streak){el.hidden=true;return;} el.hidden=false;
   const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4), mine=buys.filter(b=>b.d.startsWith(y));
-  const days=new Set(mine.map(b=>b.d)).size, inv=mine.reduce((t,b)=>t+(+b.a||0),0), streak=+rh.streak||0;
-  if(!KDD){ KDD={}; await Promise.all(['VTI','VXUS'].map(async k=>{ try{const h=HC[k+'1y']||await (await fetch('/api/history?s='+k+'&r=1y')).json(); HC[k+'1y']=h; KDD[k]=h.dd||[];}catch(e){KDD[k]=[];} })); }
+  const days=new Set(mine.map(b=>b.d)).size, inv=mine.reduce((t,b)=>t+(+b.a||0),0), streak=+rh.streak||0, h=holdings(), w=weights();
   // Bought the Dip: any buy of a fund while that fund was 10%+ below its high.
   const ts=d=>Date.parse(d+'T16:00:00Z'), dip=mine.some(b=>(KDD[b.s]||[]).some(e=>ts(b.d)>=e.hit&&(!e.end||ts(b.d)<=e.end)));
+  // Level: grows with total buy days and never resets (a missed day only breaks the streak).
+  const LV=[[0,'Starter'],[10,'Builder'],[25,'Steady'],[50,'Committed'],[100,'Disciplined'],[250,'Long-Hauler'],[500,'Compounder'],[1000,'Legend']];
+  let li=0; LV.forEach((l,i)=>{if(days>=l[0])li=i;}); const lnext=LV[li+1];
+  // Next portfolio milestone.
+  const PM=[1e5,2.5e5,5e5,7.5e5,1e6,1.25e6,1.5e6,2e6,2.5e6,3e6,4e6,5e6,7.5e6,1e7,1.5e7,2e7,3e7,5e7], T=h.total, pnext=PM.find(x=>x>T)||T*1.5, pprev=[0,...PM].filter(x=>x<=T).pop()||0;
+  // Future you: what one day of buys grows to by the chosen age at the average-market return.
+  const R=REC(), daily=R.list.filter(x=>!x.stopped&&x.freq==='daily').reduce((t,x)=>t+(+x.amount),0), o=OUT[S.outlook]||OUT.mid;
+  const g=(w.vti*(o.us-FEE.us)+w.vxus*(o.intl-FEE.intl))/((w.vti+w.vxus)||1), yrs=Math.max(0,monthsTo(S.age)/12), grow=v=>v*Math.pow(1+g,yrs);
+  const bump=50, bumpGain=(()=>{let fv=0;for(let m=0;m<Math.round(yrs*12);m++)fv=fv*Math.pow(1+g,1/12)+bump*TD;return fv;})();
   const MS=[10,25,50,100,250,500,1000], next=MS.find(m=>m>streak)||streak+100, prev=[0,...MS].filter(m=>m<=streak).pop()||0;
-  const B=[['🌱','Started',days>=1],['🔥','10-Day Streak',streak>=10],['💪','50 Buy Days',days>=50],['🏆','100 Buy Days',days>=100],['🛒','Bought the Dip',dip],['💵','$25K Invested',inv>=25000],['💎','$100K Invested',inv>=100000]];
+  const sh=Math.max(+S.shVTI||0,+S.shVXUS||0);
+  const B=[['🌱','Started',days>=1],['🔥','10-Day Streak',streak>=10],['💪','50 Buy Days',days>=50],['🏆','100 Buy Days',days>=100],['🛒','Bought the Dip',dip],
+    ['💵','$25K Invested',inv>=25000],['💎','$100K Invested',inv>=100000],['📅','1-Year Streak',streak>=250],['📈','1,000 Shares',sh>=1000],['👑','$1M Portfolio',T>=1e6]];
   const q=Q&&Q.VTI&&Q.VTI.changePct!=null?Q.VTI.changePct:null;
   $('kpToday').innerHTML=q==null?'':'<span class="kchip">'+(q>=0?'Up Day':'Down Day')+'</span>';
-  $('kpBody').innerHTML='<div class="kst"><span class="kf">🔥</span><div><b>'+streak+(rh.streakAll?'+':'')+'</b><span>market days in a row</span></div>'+
+  const bar=(v,cls)=>'<div class="kbar'+(cls||'')+'"><div style="width:'+Math.min(100,Math.max(3,v*100)).toFixed(1)+'%"></div></div>';
+  $('kpBody').innerHTML=
+    '<div class="kst"><span class="kf">🔥</span><div><b>'+streak+(rh.streakAll?'+':'')+'</b><span>market days in a row</span></div>'+
       '<div class="kmsg">'+(q==null?'Every buy counts.':q>=0?'Up day: your shares are worth more.':'Down day: today\'s buy gets more shares.')+'</div></div>'+
-    '<div class="kbar"><div style="width:'+Math.min(100,Math.max(3,(streak-prev)/(next-prev)*100)).toFixed(1)+'%"></div></div>'+
-    '<div class="ksub"><span>'+(next-streak)+' more to a '+next+'-day streak</span><span>This year: '+days+' buy days · '+usd(inv)+'</span></div>'+
+    bar((streak-prev)/(next-prev))+'<div class="ksub"><span>'+(next-streak)+' more to a '+next+'-day streak</span><span>This year: '+days+' buy days · '+usd(inv)+'</span></div>'+
+    '<div class="kgrid">'+
+      '<div class="kt"><span class="k">Level '+(li+1)+'</span><b>'+LV[li][1]+'</b>'+(lnext?bar((days-LV[li][0])/(lnext[0]-LV[li][0]),' sm')+'<span class="m">'+(lnext[0]-days)+' buy days to '+lnext[1]+'</span>':'<span class="m">Top level</span>')+'</div>'+
+      '<div class="kt"><span class="k">Next Milestone</span><b>'+big(pnext)+'</b>'+bar((T-pprev)/(pnext-pprev),' sm')+'<span class="m">'+Math.round(T/pnext*100)+'% there · '+big(pnext-T)+' to go</span></div>'+
+      (daily?'<div class="kt"><span class="k">Future You</span><b>'+big(grow(daily))+'</b><span class="m">What today\'s '+usd(daily)+' could grow to by age '+S.age+'</span></div>':'')+
+    '</div>'+
+    (yrs>0?'<button type="button" class="kbump" id="kBump">Add '+usd(bump)+'/day → about <b>+'+big(bumpGain)+'</b> by age '+S.age+'<span>See it on the chart ›</span></button>':'')+
     '<div class="kbadges">'+B.map(b=>'<span class="kb'+(b[2]?' on':'')+'" title="'+b[1]+(b[2]?' (earned)':' (locked)')+'"><i>'+b[0]+'</i>'+b[1]+'</span>').join('')+'</div>';
+  const kb=$('kBump'); if(kb)kb.onclick=()=>{ const u=S.us/100; $('dcaVTI').value=usd(Math.round(bump*u)); $('dcaVXUS').value=usd(bump-Math.round(bump*u)); $('wClear').hidden=false; $('wCalc').click(); $('wrap').scrollIntoView({behavior:'smooth',block:'center'}); };
+  // Celebrate anything newly earned since the last visit.
+  const earned=[...B.filter(b=>b[2]).map(b=>b[1]),'Level '+(li+1)+' '+LV[li][1],'Passed '+big(pprev)].filter(x=>!/Passed \$0/.test(x));
+  if(!synced||!(T>0))return; // wait for the synced account before deciding what's new
+  let seen=null; try{seen=JSON.parse(localStorage.getItem('keep-seen')||'null');}catch(e){}
+  const all=[...new Set([...(seen||[]),...earned])]; try{localStorage.setItem('keep-seen',JSON.stringify(all));}catch(e){}
+  if(seen&&!KCELEB){ const fresh=earned.filter(x=>!seen.includes(x)); if(fresh.length){KCELEB=true;celebrate(fresh);} }
 }
+function celebrate(items){
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){toast(items);return;}
+  const c=document.createElement('canvas'); c.className='confetti'; document.body.appendChild(c); const x=c.getContext('2d');
+  const W=c.width=innerWidth*devicePixelRatio, H=c.height=innerHeight*devicePixelRatio, col=['#00C805','#7bdc7e','#f5c04a','#3987e5','#ff8a4c','#ffffff'];
+  const P=Array.from({length:140},()=>({x:W/2+(Math.random()-.5)*W*.3,y:H*.35,vx:(Math.random()-.5)*14*devicePixelRatio,vy:(-Math.random()*16-6)*devicePixelRatio,r:(4+Math.random()*5)*devicePixelRatio,c:col[Math.floor(Math.random()*col.length)],a:Math.random()*6}));
+  let t=0; (function f(){ x.clearRect(0,0,W,H); P.forEach(p=>{p.vy+=.45*devicePixelRatio;p.x+=p.vx;p.y+=p.vy;p.a+=.2;x.save();x.translate(p.x,p.y);x.rotate(p.a);x.fillStyle=p.c;x.fillRect(-p.r,-p.r/2,p.r*2,p.r);x.restore();});
+    if(++t<150)requestAnimationFrame(f); else c.remove(); })();
+  toast(items);
+}
+function toast(items){ const d=document.createElement('div'); d.className='ktoast'; d.innerHTML='<b>🎉 Nice work!</b>'+items.slice(0,3).map(i=>'<span>'+i+'</span>').join(''); document.body.appendChild(d);
+  setTimeout(()=>d.classList.add('out'),4200); setTimeout(()=>d.remove(),4800); }
 async function markets(){ spxCard();
   const r=S.mr||'20y'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
   for(const sym of ['VTI','VXUS']){const el=$('mk'+sym), k=sym+r;
