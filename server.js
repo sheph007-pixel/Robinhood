@@ -504,18 +504,28 @@ async function handleStt(req, res) {
   } catch (e) { console.error('stt error', e.message); return json(res, 502, { error: 'stt failed' }); }
 }
 // Natural-sounding speech for voice mode (plays reliably on iPhone, unlike the browser's built-in voice).
-async function handleTts(req, res) {
+// Natural-sounding speech for voice mode, streamed so playback starts while audio is still being made.
+const TTS_INSTRUCTIONS = 'American male voice. A trusted financial advisor on a relaxed phone call with a longtime client: calm, warm, natural and easygoing, with normal conversational rhythm. Brisk pace, slightly faster than normal, no long pauses, never robotic or announcer-like.';
+let ttsVoiceBad = new Set();
+async function handleTts(req, res, url) {
   const key = sttKey(); if (!key) return json(res, 503, { error: 'no_tts_key' });
-  let b; try { b = JSON.parse(await readBody(req, 8 * 1024)); } catch (e) { return json(res, 400, { error: 'bad data' }); }
-  const input = String(b.text || '').slice(0, 800).trim(); if (!input) return json(res, 400, { error: 'empty' }); const tt = Date.now();
+  let text = url.searchParams.get('t');
+  if (req.method === 'POST') { try { text = JSON.parse(await readBody(req, 8 * 1024)).text; } catch (e) { return json(res, 400, { error: 'bad data' }); } }
+  const input = String(text || '').slice(0, 800).trim(); if (!input) return json(res, 400, { error: 'empty' }); const tt = Date.now();
+  const voices = [process.env.TTS_VOICE || 'cedar', 'ash'].filter((v, k, a) => a.indexOf(v) === k && !ttsVoiceBad.has(v));
   try {
-    const r = await fetch('https://api.openai.com/v1/audio/speech', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: process.env.TTS_MODEL || 'gpt-4o-mini-tts', voice: process.env.TTS_VOICE || 'ash', input, response_format: 'mp3',
-        instructions: 'American male voice. A trusted financial advisor on a relaxed phone call with a longtime client: warm, natural and easygoing, with normal conversational rhythm. Brisk pace, slightly faster than normal, no long pauses, never robotic or announcer-like.' }) });
-    if (!r.ok) { const j = await r.json().catch(() => ({})); console.error('tts error', r.status, j && j.error && j.error.message); return json(res, 502, { error: 'tts failed' }); }
-    const audio = Buffer.from(await r.arrayBuffer()); console.log('tts timing ' + (Date.now() - tt) + 'ms', input.length + ' chars');
-    res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': audio.length, 'Cache-Control': 'no-store' }); return res.end(audio);
-  } catch (e) { console.error('tts error', e.message); return json(res, 502, { error: 'tts failed' }); }
+    for (const voice of voices) {
+      const r = await fetch('https://api.openai.com/v1/audio/speech', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: process.env.TTS_MODEL || 'gpt-4o-mini-tts', voice, input, response_format: 'mp3', instructions: TTS_INSTRUCTIONS }) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); console.error('tts error', voice, r.status, j && j.error && j.error.message);
+        if (r.status === 400 && voice !== 'ash') { ttsVoiceBad.add(voice); continue; } return json(res, 502, { error: 'tts failed' }); }
+      res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' });
+      let first = true; const rd = r.body.getReader();
+      for (;;) { const { value, done } = await rd.read(); if (done) break; if (first) { first = false; console.log('tts timing first audio ' + (Date.now() - tt) + 'ms', voice, input.length + ' chars'); } res.write(Buffer.from(value)); }
+      return res.end();
+    }
+    return json(res, 502, { error: 'tts failed' });
+  } catch (e) { console.error('tts error', e.message); if (!res.headersSent) return json(res, 502, { error: 'tts failed' }); res.end(); }
 }
 async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
 // Daily sync after the close: weekdays 4:20 PM ET.
@@ -610,7 +620,7 @@ http.createServer(async (req, res) => {
   if (url.pathname.startsWith('/api/chats')) return handleChats(req, res, url);
   if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL, stt: !!sttKey(), tts: !!sttKey() });
   if (url.pathname === '/api/stt' && req.method === 'POST') return handleStt(req, res);
-  if (url.pathname === '/api/tts' && req.method === 'POST') return handleTts(req, res);
+  if (url.pathname === '/api/tts' && (req.method === 'POST' || req.method === 'GET')) return handleTts(req, res, url);
   if (url.pathname === '/api/history') {
     const sym = String(url.searchParams.get('s') || '').toUpperCase();
     const rng = String(url.searchParams.get('r') || 'max');

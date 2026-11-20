@@ -1518,7 +1518,8 @@ function bargeWatch(g){
   tick();
 }
 async function vmAsk(q){
-  const g=++VM.gen, v=pickVoice(), queue=[]; let used=0, busy=false, finished=false;
+  const g=++VM.gen, v=pickVoice(), queue=[]; let used=0, busy=false, finished=false, nItems=0;
+  const spItem=t=>{ nItems++; if(!TTS_OK)return {text:t,url:null}; if(nItems===1)return {text:t,url:Promise.resolve('/api/tts?t='+encodeURIComponent(t)),stream:true}; return {text:t,url:ttsUrl(t)}; };
   vmSet('thinking','');
   const pump=()=>{ if(!VM||VM.gen!==g||busy)return; const it=queue.shift();
     if(it==null){ if(finished)vmListen(); return; }
@@ -1526,12 +1527,12 @@ async function vmAsk(q){
     if(!it.url){ vmSet('speaking',it.text); sayBrowser(it.text,v,next); return; }
     it.url.then(u=>{ if(!VM||VM.gen!==g)return;
       if(!u){ vmSet('speaking',it.text); sayBrowser(it.text,v,next); return; }
-      vmSet('speaking',it.text); VA.onended=()=>{URL.revokeObjectURL(u);next();}; VA.onerror=()=>{URL.revokeObjectURL(u);sayBrowser(it.text,v,next);};
+      vmSet('speaking',it.text); VA.onended=()=>{if(!it.stream)URL.revokeObjectURL(u);next();}; VA.onerror=()=>{if(!it.stream)URL.revokeObjectURL(u);sayBrowser(it.text,v,next);};
       VA.src=u; VA.playbackRate=1.12; try{VA.preservesPitch=true;VA.webkitPreservesPitch=true;}catch(e){} const p=VA.play(); if(p)p.catch(()=>{VA.onended=VA.onerror=null;sayBrowser(it.text,v,next);}); }); };
   const take=(full,final)=>{ let rest=full.slice(used), m;
-    if(!used&&!queue.length&&!busy){const c=/^[^.!?]{25,}?[,;:—]\s+/.exec(rest); if(c){used+=c[0].length;rest=rest.slice(c[0].length);const t=plain(c[0]);if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});}}
-    while((m=/[.!?]["')\]]?\s+/.exec(rest))){const seg=rest.slice(0,m.index+m[0].length); used+=seg.length; rest=rest.slice(seg.length); const t=plain(seg); if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});}
-    if(final&&rest.trim()){used=full.length;const t=plain(rest);if(t)queue.push({text:t,url:TTS_OK?ttsUrl(t):null});} pump(); };
+    if(!used&&!queue.length&&!busy){const c=/^[^.!?]{25,}?[,;:—]\s+/.exec(rest); if(c){used+=c[0].length;rest=rest.slice(c[0].length);const t=plain(c[0]);if(t)queue.push(spItem(t));}}
+    while((m=/[.!?]["')\]]?\s+/.exec(rest))){const seg=rest.slice(0,m.index+m[0].length); used+=seg.length; rest=rest.slice(seg.length); const t=plain(seg); if(t)queue.push(spItem(t));}
+    if(final&&rest.trim()){used=full.length;const t=plain(rest);if(t)queue.push(spItem(t));} pump(); };
   const ans=await aiAsk(q,{voice:true,onChunk:(full,status)=>{ if(!VM||VM.gen!==g)return; if(!full&&status)vmSet('thinking',status); take(full,false); }});
   if(!VM||VM.gen!==g)return;
   finished=true;
