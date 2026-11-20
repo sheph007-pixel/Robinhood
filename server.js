@@ -365,7 +365,9 @@ function summarizeRecurring(orders) {
   // recent market day has passed its buy time with no order, treat that recurring buy as stopped.
   const exp = expectedBuyDay();
   for (const r of recurring) if (r.lastDate < exp) { r.stopped = true; r.freq = 'stopped'; r.perMonth = 0; }
-  return { recurring, recent: filled.slice(0, 20), days30, invested30, streak, streakAll };
+  const yr = String(new Date().getUTCFullYear());
+  const buys = filled.filter(o => o.date.startsWith(yr)).map(o => ({ d: o.date, s: o.symbol, a: Math.round(o.amount * 100) / 100, p: o.price ? Math.round(o.price * 100) / 100 : null }));
+  return { recurring, recent: filled.slice(0, 20), days30, invested30, streak, streakAll, buys };
 }
 function applySync(b) {
   const st = readState(), pos = Array.isArray(b.positions) ? b.positions : [];
@@ -375,7 +377,7 @@ function applySync(b) {
   st.avgCost = { VTI: ac('VTI'), VXUS: ac('VXUS') };
   if (b.cash != null && isFinite(+b.cash)) st.cash = Math.max(0, Math.round(+b.cash * 100) / 100);
   const r = summarizeRecurring(Array.isArray(b.orders) ? b.orders : []);
-  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30, streak: r.streak, streakAll: r.streakAll };
+  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30, streak: r.streak, streakAll: r.streakAll, buys: r.buys };
   st.rhSync = st.rh.syncedAt;
   writeState(st);
   return { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring };
