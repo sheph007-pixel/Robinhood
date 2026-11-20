@@ -269,7 +269,7 @@ const SPX_SEED = { year: 2027, banks: [['Goldman Sachs', 8700], ['Morgan Stanley
 const targetsFile = () => path.join(DATA_DIR, 'spx_targets.json');
 function targetsNow() { try { return JSON.parse(fs.readFileSync(targetsFile(), 'utf8')); } catch (e) { return SPX_SEED; } }
 function targetsDue(t) { const m = new Date().getUTCMonth(), busy = [10, 11, 0, 5, 6].includes(m);
-  if (t.source === 'web' && t.pick !== 'range' && Date.now() - (t.checkedAt || 0) > 3600e3) return true; // re-run once after switching to high / middle / low
+  if (t.source === 'web' && t.pick !== 'range2' && Date.now() - (t.checkedAt || 0) > 3600e3) return true; // re-run once after switching to high / middle / low
   if (t.source !== 'web') return Date.now() - (t.checkedAt || 0) >= 6 * 3600e3; // no successful lookup yet
   return Date.now() - (t.checkedAt || 0) >= (busy ? 7 : 30) * 864e5; }
 let targetsBusy = false;
@@ -281,7 +281,7 @@ async function refreshTargets() {
     let spx = null; try { spx = (await spxSnapshot(true)).last; } catch (e) { /* sanity check below is skipped */ }
     const prompt = `Today is ${now.toISOString().slice(0, 10)}. Search for the most recently published year-end ${year} S&P 500 price targets from major Wall Street strategists ` +
       `(for example Goldman Sachs, Morgan Stanley, JPMorgan, Bank of America, Citi, Wells Fargo, UBS, Deutsche Bank, Barclays, Evercore ISI). ` +
-      `Show the spread of views: pick the bank with the highest year-end ${year} target, the bank with the lowest, and one well-known bank in between (use each bank's latest figure if it was revised; if several tie, prefer the best-known). List them highest first. ` +
+      `List every major bank or research firm that has published a year-end ${year} S&P 500 target, up to 12, each with its latest figure if it was revised. ` +
       `Also report the average (consensus) of strategist year-end ${year} targets and how many strategists it covers, if a survey reports one. ` +
       `Use only numbers stated in your search results; never estimate one. If fewer than two banks have published a year-end ${year} target, say so with an empty list. ` +
       `Reply with only this JSON and nothing else: {"year":${year},"banks":[{"name":"...","target":0000}],"avg":null,"avgOf":null}`;
@@ -301,15 +301,20 @@ async function refreshTargets() {
     const j = JSON.parse(m[0]);
     const num = v => typeof v === 'number' ? v : +String(v ?? '').replace(/[^0-9.]/g, ''); // tolerate "8,700"
     const ok = v => typeof v === 'number' && isFinite(v) && v > 0 && (!spx || (v > spx * 0.6 && v < spx * 1.8));
-    const banks = (Array.isArray(j.banks) ? j.banks : []).filter(b => b && typeof b.name === 'string' && ok(num(b.target))).slice(0, 3).map(b => [b.name.trim().slice(0, 40), Math.round(num(b.target))]);
-    const next = { pick: 'range', year: num(j.year) === year ? year : cur.year, banks, avg: ok(num(j.avg)) ? Math.round(num(j.avg)) : null, avgOf: num(j.avgOf) > 1 ? Math.round(num(j.avgOf)) : null, source: 'web' };
+    const all = (Array.isArray(j.banks) ? j.banks : []).filter(b => b && typeof b.name === 'string' && ok(num(b.target))).map(b => [b.name.trim().slice(0, 40), Math.round(num(b.target))]).sort((p, q) => q[1] - p[1]);
+    // Show the spread of views: the highest, the lowest, and the one closest to the middle with a different number when possible.
+    let banks = all;
+    if (all.length > 3) { const hi = all[0], lo = all[all.length - 1], mid = (hi[1] + lo[1]) / 2, rest = all.slice(1, -1);
+      const pickM = rest.filter(b => b[1] !== hi[1] && b[1] !== lo[1]).sort((p, q) => Math.abs(p[1] - mid) - Math.abs(q[1] - mid))[0] || rest[Math.floor(rest.length / 2)];
+      banks = [hi, pickM, lo]; }
+    const next = { pick: 'range2', year: num(j.year) === year ? year : cur.year, banks, avg: ok(num(j.avg)) ? Math.round(num(j.avg)) : null, avgOf: num(j.avgOf) > 1 ? Math.round(num(j.avgOf)) : null, source: 'web' };
     if (next.year !== year || banks.length < 2) { // nothing usable yet (e.g. October, before the banks publish): keep what we have
-      writeTargets({ ...cur, pick: 'range', checkedAt: Date.now() }); console.log('S&P targets: nothing new for', year, '| reply:', text.replace(/\s+/g, ' ').slice(-400)); return;
+      writeTargets({ ...cur, pick: 'range2', checkedAt: Date.now() }); console.log('S&P targets: nothing new for', year, '| reply:', text.replace(/\s+/g, ' ').slice(-400)); return;
     }
     const changed = JSON.stringify([next.year, next.banks, next.avg]) !== JSON.stringify([cur.year, cur.banks, cur.avg]);
     writeTargets({ ...next, checkedAt: Date.now(), updatedAt: changed ? Date.now() : cur.updatedAt });
     console.log('S&P targets', changed ? 'updated' : 'unchanged', JSON.stringify(next.banks));
-  } catch (e) { console.error('S&P targets lookup failed', e.message); writeTargets({ ...cur, pick: 'range', checkedAt: Date.now() - 6 * 864e5 }); } // retry in about a day
+  } catch (e) { console.error('S&P targets lookup failed', e.message); writeTargets({ ...cur, pick: 'range2', checkedAt: Date.now() - 6 * 864e5 }); } // retry in about a day
   finally { targetsBusy = false; }
 }
 function writeTargets(t) { try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(targetsFile() + '.tmp', JSON.stringify(t)); fs.renameSync(targetsFile() + '.tmp', targetsFile()); } catch (e) { /* ignore */ } }
