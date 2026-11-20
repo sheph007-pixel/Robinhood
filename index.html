@@ -1511,7 +1511,8 @@ $('vmOrb').addEventListener('click',()=>{ if(!VM)return;
   else if(VM.st==='listening'&&VM.ctl)VM.ctl.finish();                                      // done talking
   else if(VM.st==='paused'){VM.muted=false;$('vmMute').setAttribute('aria-pressed','false');vmListen();}});
 $('vmMute').addEventListener('click',()=>{ if(!VM)return; VM.muted=!VM.muted; $('vmMute').setAttribute('aria-pressed',String(VM.muted));
-  if(VM.muted){ if(VM.ctl){VM.ctl.abort();VM.ctl=null;} if(VM.st==='listening')vmSet('paused','Tap the mic to talk'); } else if(VM.st==='paused')vmListen(); });
+  // Muting right after you speak sends what you said (it doesn't throw it away); the reply still plays.
+  if(VM.muted){ if(VM.ctl&&VM.st==='listening'){VM.ctl.finish();} } else if(VM.st==='paused')vmListen(); });
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){if(dict)dict.abort();if(VM)vmClose();}});
 $('aiForm').addEventListener('submit',e=>{e.preventDefault();aiAsk($('aiIn').value);});
 $('aiIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!('ontouchstart' in window)){e.preventDefault();aiAsk($('aiIn').value);}});
