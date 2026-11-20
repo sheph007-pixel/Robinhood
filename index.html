@@ -772,6 +772,9 @@ body.vm-on .tabs{visibility:hidden}
 .hbr .t{grid-column:1;height:6px;border-radius:3px;background:var(--soft);overflow:hidden} .hbr .t div{height:100%;border-radius:3px}
 .hbr .pc{grid-row:1/3;grid-column:2;text-align:right;font-weight:700}
 .pfnote{font-size:13px;color:var(--ink2);margin:0}
+.wml{display:flex;flex-direction:column;gap:14px}
+.wm{display:flex;gap:12px;align-items:flex-start} .wm>div{display:flex;flex-direction:column;gap:2px} .wm b{font-size:15px} .wm span{font-size:14px;color:var(--ink2);line-height:1.45} .wm span b{color:var(--ink);font-size:inherit}
+.wi{flex:none;width:26px;height:26px;border-radius:50%;background:var(--g);color:#000;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px}
 .score{display:flex;align-items:center;gap:18px}
 .score .ring{width:84px;height:84px;flex:none}
 .score .sl{font-size:15px} .score .sl b{font-size:18px}
@@ -1456,7 +1459,7 @@ async function portfolio(){
       '<span class="d">'+nm+(sh?' · '+(+sh).toLocaleString('en-US',{maximumFractionDigits:3})+' shares':'')+'</span>'+
       (g>0?'<span class="g up">+'+usd(g)+' (+'+(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+(key==='cash'?(100-S.eq)+'% of total':key==='vti'?S.us+'% of stocks':(100-S.us)+'% of stocks')+'</span>')+'</div>';}).join('');
   const fee=h.vti*FEE.us+h.vxus*FEE.intl;
-  const tiles=(co,ct,sc,scl)=>[['Companies',co,'you own a piece of'],['Countries',ct,'where they are based'],['Diversification',sc,scl],['Yearly Fund Cost',usd(fee),T?(fee/T*100).toFixed(3)+'% of total':'']]
+  const tiles=(co,ct,sc,scl)=>[['Companies',co,'you own a piece of'],['Countries',ct,'where they are based'],['Spread Score',sc,scl],['Yearly Cost',usd(fee),'to own it all']]
     .map(t=>'<div><span class="k">'+t[0]+'</span><span class="v">'+t[1]+'</span><span class="m">'+t[2]+'</span></div>').join('');
   $('pfStats').innerHTML=tiles('…','…','…','score out of 100');
   if(!LT||Date.now()-ltAt>6*3600e3){ try{const r=await fetch('/api/lookthrough');if(!r.ok)throw 0;LT=await r.json();ltAt=Date.now();}
@@ -1479,39 +1482,45 @@ async function portfolio(){
   let out='';
   // Diversification
   const ring=v=>{const r=34,C=2*Math.PI*r;return '<svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="'+r+'" fill="none" stroke="var(--soft)" stroke-width="9"/><circle cx="42" cy="42" r="'+r+'" fill="none" stroke="var(--g)" stroke-width="9" stroke-linecap="round" stroke-dasharray="'+(C*v/100).toFixed(1)+' '+C.toFixed(1)+'" transform="rotate(-90 42 42)"/><text x="42" y="48" text-anchor="middle" font-size="22" font-weight="700" fill="var(--ink)">'+v+'</text></svg>';};
-  out+='<section class="card"><div class="head"><h2>Diversification</h2></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">You own a piece of '+nCo.toLocaleString('en-US')+' companies in '+ctyL.length+' countries.</span></div></div><div class="hb">'+
-    bar('Breadth',nCo.toLocaleString('en-US')+' companies',sB/100,'--g',sB)+
-    bar('Global Mix',Math.round(b*100)+'% international (world ≈ 37%)',sG/100,'--g',sG)+
-    bar('Concentration','Top 10 are '+Math.round(t10*100)+'% of your stocks',sC/100,'--g',sC)+'</div></section>';
+  const dy=(A.dy!=null&&B.dy!=null)?a*A.dy+b*B.dy:null, divs=dy!=null?st*dy/100:null, intr=h.cash*S.apy/100;
+  // What matters when you buy a little every day: keep costs low, stay spread out, let payouts add up, keep buying.
+  const tip=(ic,t,d)=>'<div class="wm"><span class="wi">'+ic+'</span><div><b>'+t+'</b><span>'+d+'</span></div></div>';
+  out+='<section class="card"><div class="head"><h2>What Matters for You</h2></div><div class="wml">'+
+    tip('1','Keep buying, every day','Buying the same amount on a schedule means you get more shares when prices are low. Time in the market does the heavy lifting.')+
+    tip('2','Keep costs low','You pay about <b>'+usd(fee)+' a year</b> to own all '+nCo.toLocaleString('en-US')+' companies. That is very cheap, so more of your money keeps growing.')+
+    tip('3','Stay spread out','Your money is in '+nCo.toLocaleString('en-US')+' companies across '+ctyL.length+' countries. No single company can sink you.')+
+    (divs!=null?tip('4','Let the payouts add up','The companies pay you about <b>'+usd(divs)+' a year</b>'+(intr>0?', plus '+usd(intr)+' in cash interest':'')+'. Reinvested, that buys even more shares.'):'')+
+    '</div></section>';
+  // Spread score, in plain words
+  out+='<section class="card"><div class="head"><h2>How Spread Out You Are</h2></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">A score out of 100. Higher means your money doesn\'t depend on just a few companies or one country.</span></div></div><div class="hb">'+
+    bar('Number of companies',nCo.toLocaleString('en-US'),sB/100,'--g',sB)+
+    bar('Outside the US',Math.round(b*100)+'% of your stocks (the world is about 37%)',sG/100,'--g',sG)+
+    bar('Biggest 10 companies',Math.round(t10*100)+'% of your stocks',sC/100,'--g',sC)+'</div></section>';
   // Top 10
-  out+='<section class="card"><div class="head"><h2>Top 10 Companies You Own</h2><span class="muted small">'+Math.round(t10*100)+'% of your stocks</span></div><div class="top10 num">'+
+  out+='<section class="card"><div class="head"><h2>Your 10 Biggest Companies</h2><span class="muted small">'+Math.round(t10*100)+'% of your stocks</span></div><div class="top10 num">'+
     top.slice(0,10).map((e,i)=>'<div class="t10"><span class="r">'+(i+1)+'</span><span class="nm">'+({META:'Meta Platforms'}[e.ticker]||e.name.replace(/,? (Inc|Corp|Co|Ltd|Corporation|Holding|Holdings|plc|SA|AG|NV|SE)\.?( NV| AG| Co\.?| Ltd\.?)*$/,'').replace(/\s*&$/,''))+(/^[A-Z.]{1,5}$/.test(e.ticker||'')?'<small>'+e.ticker+'</small>':'')+'</span><span>'+usd(e.w*st)+'</span><span class="pc">'+pc1(e.w)+'</span></div>').join('')+'</div></section>';
   // Countries
   const cTop=ctyL.slice(0,10), cRest=ctyL.slice(10).reduce((s,e)=>s+e[1],0), cMax=cTop[0][1];
-  out+='<section class="card"><div class="head"><h2>Where the Companies Are</h2><span class="muted small">by country, % of your stocks</span></div><div class="hb num">'+
+  out+='<section class="card"><div class="head"><h2>Where the Companies Are</h2><span class="muted small">% of your stocks</span></div><div class="hb num">'+
     cTop.map(([c,v])=>bar(CNAME(c),usd(v*st),v/cMax,c==='US'?'--s1':'--s2',pc1(v))).join('')+
     (cRest?bar('Other '+(ctyL.length-10)+' countries',usd(cRest*st),cRest/cMax,'--s2',pc1(cRest)):'')+'</div></section>';
-  // Sectors (US)
+  // What the companies do (US), with plain names for Robinhood's sector labels
+  const PLAIN={'Electronic Technology':'Computers, phones & chips','Technology Services':'Software & internet','Finance':'Banks, insurance & payments','Health Technology':'Medicines & medical devices',
+    'Health Services':'Hospitals & health plans','Retail Trade':'Stores & online shopping','Consumer Non-Durables':'Food, drinks & household goods','Consumer Durables':'Cars, homes & appliances',
+    'Consumer Services':'Restaurants, travel & entertainment','Energy Minerals':'Oil & gas','Utilities':'Electricity & water','Producer Manufacturing':'Factories & machinery',
+    'Industrial Services':'Construction & engineering','Process Industries':'Chemicals & materials','Non-Energy Minerals':'Mining & metals','Transportation':'Airlines, rail & shipping',
+    'Communications':'Phone & cable','Commercial Services':'Business services','Distribution Services':'Wholesale & delivery','Miscellaneous':'Other'};
   if(A.sectors&&a){const L=Object.entries(A.sectors).sort((p,q)=>q[1]-p[1]), mx=L[0][1];
-    out+='<section class="card"><div class="head"><h2>Industries</h2><span class="muted small">US companies, from Robinhood</span></div><div class="hb num">'+
-      L.slice(0,11).map(([n,v])=>bar(n,'',v/mx,'--s1',pc1(v))).join('')+'</div>'+
-      '<p class="pfnote">Based on the '+Math.round(A.sectorCoverage*100)+'% of VTI in its largest companies.'+(A.industries?' Biggest industries: '+A.industries.slice(0,4).map(x=>x[0]+' '+pc1(x[1])).join(', ')+'.':'')+'</p></section>';}
+    out+='<section class="card"><div class="head"><h2>What the Companies Do</h2><span class="muted small">US companies</span></div><div class="hb num">'+
+      L.slice(0,10).map(([n,v])=>bar(PLAIN[n]||n,'',v/mx,'--s1',pc1(v))).join('')+'</div></section>';}
   // Size
   const sz={}; [[A,a],[B,b]].forEach(([f,x])=>{if(!x||!f.size)return;Object.entries(f.size).forEach(([k,v])=>{sz[k]=(sz[k]||0)+v*x;});});
   const szT=Object.values(sz).reduce((p,q)=>p+q,0);
-  if(szT>.5){const SZ=[['Mega','over $200B','#00C805'],['Large','$10B–$200B','#7bdc7e'],['Mid','$2B–$10B','#f5c04a'],['Small','under $2B','#ff8a4c']];
-    out+='<section class="card"><div class="head"><h2>Company Size</h2><span class="muted small">by market value</span></div><div class="sizebar">'+
-      SZ.filter(z=>sz[z[0]]).map(z=>{const v=sz[z[0]]/szT;return '<div style="flex:'+v+';background:'+z[2]+'">'+(v>=.07?Math.round(v*100)+'%':'')+'</div>';}).join('')+'</div><div class="sizelg">'+
-      SZ.filter(z=>sz[z[0]]).map(z=>'<span><i style="background:'+z[2]+'"></i><b style="color:var(--ink)">'+z[0]+'</b> '+z[1]+' · '+pc1(sz[z[0]]/szT)+'</span>').join('')+'</div></section>';}
-  // Valuation & income
-  const pe=(A.pe&&B.pe)?1/(a/A.pe+b/B.pe):null, pb=(A.pb&&B.pb)?1/(a/A.pb+b/B.pb):null, dy=(A.dy!=null&&B.dy!=null)?a*A.dy+b*B.dy:null;
-  const inc=(dy!=null?st*dy/100:0)+h.cash*S.apy/100;
-  if(pe||dy!=null) out+='<section class="card"><div class="head"><h2>Valuation &amp; Income</h2></div><div class="vals num">'+
-    '<div><span class="k">P/E Ratio</span><span class="v">'+(pe?pe.toFixed(1):'—')+'</span><span class="m">US '+(A.pe||0).toFixed(1)+' · Intl '+(B.pe||0).toFixed(1)+'</span></div>'+
-    '<div><span class="k">Price / Book</span><span class="v">'+(pb?pb.toFixed(1):'—')+'</span><span class="m">US '+(A.pb||0).toFixed(1)+' · Intl '+(B.pb||0).toFixed(1)+'</span></div>'+
-    '<div><span class="k">Dividend Yield</span><span class="v">'+(dy!=null?dy.toFixed(2)+'%':'—')+'</span><span class="m">US '+(A.dy||0).toFixed(2)+'% · Intl '+(B.dy||0).toFixed(2)+'%</span></div>'+
-    '<div><span class="k">Yearly Income</span><span class="v">'+usd(inc)+'</span><span class="m">dividends + cash interest</span></div></div></section>';
-  out+='<p class="pfnote" style="text-align:center;margin-top:12px">Fund holdings from Vanguard as of '+new Date(A.asOf+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'. Industry, size and valuation from Robinhood.</p>';
+  if(szT>.5){const SZ=[['Mega','Giant','worth over $200B','#00C805'],['Large','Large','$10B–$200B','#7bdc7e'],['Mid','Medium','$2B–$10B','#f5c04a'],['Small','Small','under $2B','#ff8a4c']];
+    out+='<section class="card"><div class="head"><h2>How Big the Companies Are</h2></div><div class="sizebar">'+
+      SZ.filter(z=>sz[z[0]]).map(z=>{const v=sz[z[0]]/szT;return '<div style="flex:'+v+';background:'+z[3]+'">'+(v>=.07?Math.round(v*100)+'%':'')+'</div>';}).join('')+'</div><div class="sizelg">'+
+      SZ.filter(z=>sz[z[0]]).map(z=>'<span><i style="background:'+z[3]+'"></i><b style="color:var(--ink)">'+z[1]+'</b> '+z[2]+' · '+pc1(sz[z[0]]/szT)+'</span>').join('')+'</div></section>';}
+  out+='<p class="pfnote" style="text-align:center;margin-top:12px">What\'s inside your funds comes from Vanguard (as of '+new Date(A.asOf+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+') and Robinhood.</p>';
   $('pfLook').innerHTML=out;
 }
 async function markets(){
