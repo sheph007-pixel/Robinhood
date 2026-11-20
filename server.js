@@ -268,7 +268,9 @@ const SPX_SEED = { year: 2027, banks: [['Goldman Sachs', 8700], ['Morgan Stanley
   updatedAt: Date.parse('2026-11-20T21:00:00Z'), checkedAt: 0, source: 'manual' };
 const targetsFile = () => path.join(DATA_DIR, 'spx_targets.json');
 function targetsNow() { try { return JSON.parse(fs.readFileSync(targetsFile(), 'utf8')); } catch (e) { return SPX_SEED; } }
-function targetsDue(t) { const m = new Date().getUTCMonth(), busy = [10, 11, 0, 5, 6].includes(m); return Date.now() - (t.checkedAt || 0) >= (busy ? 7 : 30) * 864e5; }
+function targetsDue(t) { const m = new Date().getUTCMonth(), busy = [10, 11, 0, 5, 6].includes(m);
+  if (t.source !== 'web') return Date.now() - (t.checkedAt || 0) >= 6 * 3600e3; // no successful lookup yet
+  return Date.now() - (t.checkedAt || 0) >= (busy ? 7 : 30) * 864e5; }
 let targetsBusy = false;
 async function refreshTargets() {
   const client = aiClient(); if (!client || targetsBusy) return; targetsBusy = true;
@@ -296,11 +298,12 @@ async function refreshTargets() {
     const text = resp.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
     const m = text.match(/\{[\s\S]*\}\s*$/) || text.match(/\{[\s\S]*\}/); if (!m) throw new Error('no JSON in reply');
     const j = JSON.parse(m[0]);
-    const ok = v => typeof v === 'number' && isFinite(v) && (!spx || (v > spx * 0.6 && v < spx * 1.8));
-    const banks = (Array.isArray(j.banks) ? j.banks : []).filter(b => b && typeof b.name === 'string' && ok(+b.target)).slice(0, 3).map(b => [b.name.trim().slice(0, 40), Math.round(+b.target)]);
-    const next = { year: +j.year === year ? year : cur.year, banks, avg: ok(+j.avg) ? Math.round(+j.avg) : null, avgOf: +j.avgOf > 1 ? Math.round(+j.avgOf) : null, source: 'web' };
+    const num = v => typeof v === 'number' ? v : +String(v ?? '').replace(/[^0-9.]/g, ''); // tolerate "8,700"
+    const ok = v => typeof v === 'number' && isFinite(v) && v > 0 && (!spx || (v > spx * 0.6 && v < spx * 1.8));
+    const banks = (Array.isArray(j.banks) ? j.banks : []).filter(b => b && typeof b.name === 'string' && ok(num(b.target))).slice(0, 3).map(b => [b.name.trim().slice(0, 40), Math.round(num(b.target))]);
+    const next = { year: num(j.year) === year ? year : cur.year, banks, avg: ok(num(j.avg)) ? Math.round(num(j.avg)) : null, avgOf: num(j.avgOf) > 1 ? Math.round(num(j.avgOf)) : null, source: 'web' };
     if (next.year !== year || banks.length < 2) { // nothing usable yet (e.g. October, before the banks publish): keep what we have
-      writeTargets({ ...cur, checkedAt: Date.now() }); console.log('S&P targets: nothing new for', year); return;
+      writeTargets({ ...cur, checkedAt: Date.now() }); console.log('S&P targets: nothing new for', year, '| reply:', text.replace(/\s+/g, ' ').slice(-400)); return;
     }
     const changed = JSON.stringify([next.year, next.banks, next.avg]) !== JSON.stringify([cur.year, cur.banks, cur.avg]);
     writeTargets({ ...next, checkedAt: Date.now(), updatedAt: changed ? Date.now() : cur.updatedAt });
@@ -309,7 +312,7 @@ async function refreshTargets() {
   finally { targetsBusy = false; }
 }
 function writeTargets(t) { try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(targetsFile() + '.tmp', JSON.stringify(t)); fs.renameSync(targetsFile() + '.tmp', targetsFile()); } catch (e) { /* ignore */ } }
-setTimeout(() => { if (targetsDue(targetsNow())) refreshTargets(); }, 90e3);
+setTimeout(() => { const t = targetsNow(); if (t.source !== 'web' || targetsDue(t)) refreshTargets(); }, 90e3);
 setInterval(() => { if (targetsDue(targetsNow())) refreshTargets(); }, 60 * 60e3);
 let spxCache = null;
 async function spxSnapshot(fresh) {
