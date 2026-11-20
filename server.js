@@ -611,7 +611,7 @@ const VERSION = (() => {
 const RH_LOCAL_REDIRECT = 'http://localhost:8765/callback';
 const baseUrl = req => (req.headers['x-forwarded-proto'] || 'https') + '://' + req.headers.host;
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/api/version') return json(res, 200, VERSION);
   if (url.pathname === '/api/login' && req.method === 'POST') return handleLogin(req, res);
@@ -709,4 +709,14 @@ http.createServer(async (req, res) => {
   }
   if (url.pathname === '/health') { res.writeHead(200); res.end('ok'); return; }
   res.writeHead(404); res.end('Not found');
-}).listen(PORT, () => console.log(`Listening on ${PORT}`));
+});
+server.listen(PORT, () => console.log(`Listening on ${PORT}`));
+
+// Railway sends SIGTERM to the old container on every redeploy. Exit cleanly (code 0)
+// so it isn't reported as a crash.
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.on(sig, () => {
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref();
+  });
+}
