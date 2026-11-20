@@ -1914,23 +1914,16 @@ async function ma200(sym){ if(MA200[sym]&&Date.now()-MA200[sym].at<6*3600e3)retu
   try{const h=HC[sym+'1y']||await (await fetch('/api/history?s='+sym+'&r=1y')).json(); HC[sym+'1y']=h; const c=h.c||[]; if(c.length<200)return null;
     const v=c.slice(-200).reduce((a,b)=>a+b,0)/200; MA200[sym]={v,at:Date.now()}; return v;}catch(e){return null;} }
 async function dcaFunds(){
-  // DCA scoreboard: shares owned only go up, and the DCA bonus: buying the same dollars every day automatically
-  // buys more shares when prices are low, so you end up with more shares than paying the average price each time.
+  // DCA scoreboard, kept simple: shares owned (only goes up), next milestone, shares added this year.
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price})));
   const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4);
   const nf=(v,d)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-  const box=(k,sh)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0&&+b.a>0);
-    const spent=mine.reduce((t,b)=>t+(+b.a),0), added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0);
-    const avgMkt=mine.length?mine.reduce((t,b)=>t+(+b.p),0)/mine.length:0, paid=added?spent/added:0, bonus=avgMkt?added-spent/avgMkt:0;
+  const box=(k,sh)=>{ const added=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0).reduce((t,b)=>t+(+b.a)/(+b.p),0);
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
     return '<div><div class="dh"><b class="fn">'+k+'</b><span class="dsh">'+nf(sh,0)+' <small>shares</small></span></div>'+
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
-      '<div class="fr"><span>Next: '+goal.toLocaleString('en-US')+' shares</span><span>'+nf(Math.max(1,goal-sh),0)+' to go</span></div>'+
-      (added>0?'<div class="fr"><span>Added this year</span><span class="g">+'+nf(added,1)+'</span></div>':'')+
-      (bonus>0.05?'<div class="fr"><span>Extra from buying daily</span><span class="g">+'+nf(bonus,1)+' shares'+(price(k)?' ≈ '+usd(bonus*price(k)):'')+'</span></div>'+
-        '<div class="fn2">You paid '+usd(paid,true)+' a share on average this year. The average price was '+usd(avgMkt,true)+'.</div>':'')+'</div>'; };
-  $('dbFund').innerHTML=box('VTI',+S.shVTI||0)+box('VXUS',+S.shVXUS||0)+
-    '<p class="dnote">Every buy adds shares, so this only goes up. Buying the same amount every day gets you more shares when prices dip, so steady daily buying ends up with more shares than paying the average price. It works in up and down markets.</p>';
+      '<div class="fr"><span>'+nf(Math.max(1,goal-sh),0)+' to go to '+goal.toLocaleString('en-US')+'</span>'+(added>0?'<span class="g">+'+nf(added,0)+' this year</span>':'')+'</div></div>'; };
+  $('dbFund').innerHTML=box('VTI',+S.shVTI||0)+box('VXUS',+S.shVXUS||0);
 }
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
 function dcaBuys(){
