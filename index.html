@@ -1598,12 +1598,12 @@ async function spxCard(){
   const day=x.prev?x.last/x.prev-1:null, vsMa=x.last/x.ma200-1, offHi=1-x.last/x.hi52, T=x.targets;
   const cell=(k,v,sub)=>'<div class="sc"><span class="k">'+k+'</span><span class="v">'+v+'</span><span class="s">'+sub+'</span></div>';
   const fc=T.banks.map(([b,t])=>'<div class="fr"><span>'+b+'</span><span><b>'+n(t)+'</b> <em>'+pc(t/x.last-1)+'</em></span></div>').join('')+
-    '<div class="fr avg"><span>Average of '+T.avgOf+' Strategists</span><span><b>'+n(T.avg)+'</b> <em>'+pc(T.avg/x.last-1)+'</em></span></div>';
+    (T.avg?'<div class="fr avg"><span>Average of '+(T.avgOf?T.avgOf+' ':'')+'Strategists</span><span><b>'+n(T.avg)+'</b> <em>'+pc(T.avg/x.last-1)+'</em></span></div>':'');
   $('spx').innerHTML='<div class="spx3">'+
     cell('Now',n(x.last),day!=null&&day>=0?'<span class="g">'+pc(day)+' today</span>':'Live price')+
     cell('200-Day Average',n(x.ma200),vsMa>=0?'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% above':'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% below')+
     cell('52-Week High',n(x.hi52),offHi<.01?'At its high':(offHi*100).toFixed(1)+'% below the high')+'</div>'+
-    '<div class="spxf"><div class="spxh">Wall Street Forecast · End of '+T.year+'</div>'+fc+'<p class="pfnote">Published targets as of '+T.asOf+'. Forecasts are opinions, not promises.</p></div>';
+    '<div class="spxf"><div class="spxh">Wall Street Forecast · End of '+T.year+'</div>'+fc+'<p class="pfnote">Updated '+new Date(T.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'. Checked automatically, weekly when banks publish (Nov–Jan, Jun–Jul). Forecasts are opinions, not promises.</p></div>';
   $('spxAt').textContent=new Date(x.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
 // Keep It Going: a streak, milestones and badges that only go up. Up days and down days are both wins.
