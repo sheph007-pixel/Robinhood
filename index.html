@@ -715,6 +715,40 @@ body.vm-on .tabs{visibility:hidden}
 .memh{margin-top:18px}
 .aimem{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border-radius:10px;background:var(--soft);margin:6px 0;font-size:14px;line-height:1.4}
 .aimem span{flex:1}
+
+/* voice mode, chat-app style: soft cloudy orb in our green, minimal controls along the bottom */
+.vm{justify-content:center!important;gap:0!important;background:#000!important}
+.vm .vmstat{display:none}
+.vm .vmcap{position:absolute;left:24px;right:24px;bottom:calc(120px + env(safe-area-inset-bottom));min-height:0;font-size:15px;color:#aaa;display:none}
+.vm[data-s="paused"] .vmcap{display:block}
+.vmorb{position:relative!important;width:230px!important;height:230px!important;margin:0!important;border-radius:50%;overflow:hidden;
+  background:linear-gradient(180deg,#0b8f16 0%,#1fbf31 22%,#7ee38a 42%,#e6fbe8 55%,#bff2c6 72%,#8fe39b 100%);
+  box-shadow:0 0 60px rgba(0,200,5,.18);transform:scale(calc(1 + var(--lvl,0)*.12));transition:transform .09s linear}
+.vmorb .cl{position:absolute;border-radius:50%;filter:blur(14px);opacity:.85}
+.vmorb .c1{width:150%;height:45%;left:-25%;top:30%;background:radial-gradient(closest-side,rgba(255,255,255,.95),rgba(255,255,255,0));animation:drift1 9s ease-in-out infinite alternate}
+.vmorb .c2{width:90%;height:40%;left:-15%;top:22%;background:radial-gradient(closest-side,rgba(240,255,242,.9),rgba(240,255,242,0));animation:drift2 11s ease-in-out infinite alternate}
+.vmorb .c3{width:80%;height:38%;left:30%;top:40%;background:radial-gradient(closest-side,rgba(255,255,255,.8),rgba(255,255,255,0));animation:drift3 7s ease-in-out infinite alternate}
+.vmorb .sheen{display:none}
+@keyframes drift1{0%{transform:translate(-8%,0) scale(1)}100%{transform:translate(10%,6%) scale(1.15)}}
+@keyframes drift2{0%{transform:translate(6%,4%) rotate(0)}100%{transform:translate(-10%,-4%) rotate(25deg)}}
+@keyframes drift3{0%{transform:translate(0,0) scale(1.1)}100%{transform:translate(-12%,-8%) scale(.9)}}
+.vm[data-s="thinking"] .vmorb{animation:orbthink 1.6s ease-in-out infinite}
+.vm[data-s="thinking"] .vmorb .cl{animation-duration:3s,3s}
+.vm[data-s="speaking"] .vmorb{animation:orbtalk .5s ease-in-out infinite alternate}
+.vm[data-s="speaking"] .vmorb .cl{animation-duration:4s}
+.vm[data-s="paused"] .vmorb{filter:grayscale(.85) brightness(.55)}
+@keyframes orbthink{0%,100%{transform:scale(.94)}50%{transform:scale(1)}}
+@keyframes orbtalk{0%{transform:scale(.97)}100%{transform:scale(1.06)}}
+.vmbar{position:absolute;left:16px;right:16px;bottom:calc(22px + env(safe-area-inset-bottom));margin:0!important;display:flex;align-items:center;gap:10px}
+.vmtype{flex:1;min-width:0;height:56px;border-radius:28px;background:#1c1c1e;display:flex;align-items:center;padding:0 18px}
+.vmtype input{flex:1;min-width:0;background:none!important;border:0!important;box-shadow:none!important;color:#fff;font:inherit;font-size:17px;outline:none;padding:0!important;height:auto!important}
+.vmtype input::placeholder{color:#8e8e93}
+#vmMute{width:56px!important;height:56px;border-radius:50%!important;background:#1c1c1e!important;color:#fff!important;flex:none}
+#vmMute[aria-pressed="true"]{background:#fff!important;color:#000!important}
+.vmclose{width:56px;height:56px;flex:none;border-radius:50%;border:0;background:#fff;color:#000;display:grid;place-items:center;cursor:pointer}
+.vmclose svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
+#vmType{padding:0!important;margin:0!important;text-indent:0!important}
+@media (prefers-reduced-motion:reduce){.vmorb,.vmorb .cl{animation:none!important}}
 </style>
 </head>
 <body>
@@ -905,11 +939,15 @@ body.vm-on .tabs{visibility:hidden}
   </div>
 
   <div id="vm" class="vm" hidden data-s="listening" role="dialog" aria-label="Voice mode">
-    <button type="button" class="vmx" id="vmX" aria-label="End voice mode"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <button type="button" class="vmorb" id="vmOrb" aria-label="Tap to interrupt or finish speaking"><i></i><i></i><i></i></button>
+    <button type="button" class="vmorb" id="vmOrb" aria-label="Tap to interrupt or finish speaking"><span class="cl c1"></span><span class="cl c2"></span><span class="cl c3"></span><span class="sheen"></span></button>
     <p class="vmstat" id="vmStat">Listening</p>
     <p class="vmcap" id="vmCap"></p>
-    <div class="vmbar"><button type="button" id="vmMute" aria-label="Mute microphone" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path class="sl" d="M4 4l16 16"/></svg></button><button type="button" id="vmEnd" class="vmend">End</button></div>
+    <div class="vmbar">
+      <form class="vmtype" id="vmTypeF" autocomplete="off"><input id="vmType" type="text" placeholder="Ask your advisor" aria-label="Type a message" enterkeyhint="send"></form>
+      <button type="button" id="vmMute" aria-label="Mute microphone" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path class="sl" d="M4 4l16 16"/></svg></button>
+      <button type="button" id="vmEnd" class="vmclose" aria-label="End voice mode"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <button type="button" id="vmX" hidden></button>
+    </div>
   </div>
 
   <div class="ft">
@@ -1541,6 +1579,8 @@ async function vmAsk(q){
 }
 $('aiVm').addEventListener('click',vmOpen);
 $('vmX').addEventListener('click',vmClose); $('vmEnd').addEventListener('click',vmClose);
+$('vmTypeF').addEventListener('submit',e=>{e.preventDefault(); const t=$('vmType').value.trim(); if(!t||!VM)return; $('vmType').value=''; $('vmType').blur();
+  VM.gen++; stopSpeech(); if(VM.ctl){VM.ctl.abort();VM.ctl=null;} vmAsk(t);});
 $('vmOrb').addEventListener('click',()=>{ if(!VM)return;
   if(VM.st==='speaking'||VM.st==='thinking'){VM.gen++; stopSpeech(); vmListen();}   // interrupt
   else if(VM.st==='listening'&&VM.ctl)VM.ctl.finish();                                      // done talking
