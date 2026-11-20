@@ -835,6 +835,13 @@ body.vm-on .tabs{visibility:hidden}
 .dcafund .fr{display:flex;justify-content:space-between;gap:6px;font-size:13px} .dcafund .fr span:first-child{color:var(--ink2);white-space:nowrap} .dcafund .fr span:last-child{font-weight:700;white-space:nowrap}
 .dcafund em{font-style:normal;font-weight:700} .dcafund em.up{color:var(--gt)} .dcafund em.dn{color:var(--ink2)}
 .dcafund .fn2{font-size:12px;color:var(--ink2);line-height:1.35;margin-top:2px}
+.dcafund .dh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.dcafund .dsh{font-size:20px;font-weight:800} .dcafund .dsh small{font-size:12px;font-weight:600;color:var(--ink2)}
+.dcafund .dp{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:2px 0 2px} .dcafund .dp div{height:100%;background:var(--g);border-radius:3px}
+.dcafund .g{color:var(--gt)} .dcafund .fr em{font-style:normal;font-weight:500;color:var(--ink2);font-size:12px;margin-left:4px}
+.dcafund .fn2 .sale,.dcafund .fn2 .up{display:inline-block;font-weight:700;color:#000;background:var(--g);border-radius:99px;padding:1px 8px;margin-right:4px;font-size:11px}
+.dcafund .dnote{grid-column:1/-1;margin:0;font-size:12px;color:var(--ink2)}
+@media (max-width:560px){.dcafund{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -1909,14 +1916,27 @@ async function ma200(sym){ if(MA200[sym]&&Date.now()-MA200[sym].at<6*3600e3)retu
   try{const h=HC[sym+'1y']||await (await fetch('/api/history?s='+sym+'&r=1y')).json(); HC[sym+'1y']=h; const c=h.c||[]; if(c.length<200)return null;
     const v=c.slice(-200).reduce((a,b)=>a+b,0)/200; MA200[sym]={v,at:Date.now()}; return v;}catch(e){return null;} }
 async function dcaFunds(){
-  const box=(sym,cost,now,ma)=>{ const vs=cost&&now?(now/cost-1)*100:null, vm=ma&&now?(now/ma-1)*100:null;
-    return '<div><b class="fn">'+sym+'</b>'+
-      '<div class="fr"><span>Avg cost</span><span>'+(cost?usd(cost,true):'—')+'</span></div>'+
-      '<div class="fr"><span>Now</span><span>'+(now?usd(now,true):'—')+(vs>0?' <em class="up">+'+vs.toFixed(0)+'%</em>':'')+'</span></div>'+
-      '<div class="fr"><span>200-day</span><span>'+(ma?usd(ma,true):'—')+'</span></div>'+
-      (vm!=null?'<div class="fn2">'+(vm<0?'On sale: '+Math.abs(vm).toFixed(1)+'% below its 200-day average. Your daily buys get more shares.':'Above its 200-day average by '+vm.toFixed(1)+'%. Keep buying on schedule.')+'</div>':'')+'</div>'; };
-  const ac=S.avgCost||{}, [m1,m2]=await Promise.all([ma200('VTI'),ma200('VXUS')]);
-  $('dbFund').innerHTML=box('VTI',ac.VTI,price('VTI'),m1)+box('VXUS',ac.VXUS,price('VXUS'),m2);
+  // DCA scoreboard: what only goes up (shares owned), and why down markets help (sale bonus shares).
+  const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price})));
+  const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4);
+  const hist={}; await Promise.all(['VTI','VXUS'].map(async k=>{ try{ hist[k]=HC[k+'1y']||await (await fetch('/api/history?s='+k+'&r=1y')).json(); HC[k+'1y']=hist[k]; }catch(e){} }));
+  const maAt=(k,day)=>{ const h=hist[k]; if(!h||!h.t||!h.c)return null; const ts=Date.parse(day+'T21:00:00Z'); let i=-1;
+    for(let j=h.t.length-1;j>=0;j--)if(h.t[j]<=ts){i=j;break;} if(i<199)return null; let s=0; for(let j=i-199;j<=i;j++)s+=h.c[j]; return s/200; };
+  const [m1,m2]=await Promise.all([ma200('VTI'),ma200('VXUS')]);
+  const nf=(v,d)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const box=(k,sh,ma)=>{ const now=price(k), mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0);
+    const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0);
+    let bonus=0, saleDays=0; mine.forEach(b=>{const m=maAt(k,b.d); if(m&&+b.p<m){bonus+=(+b.a)/(+b.p)-(+b.a)/m; saleDays++;}});
+    const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
+    const today=ma&&now?(now<ma?'<span class="sale">On sale today</span> Your buy gets '+((ma/now-1)*100).toFixed(1)+'% more shares than at the 200-day average.':'<span class="up">Prices are up</span> Your shares are worth more. Keep buying.'):'';
+    return '<div><div class="dh"><b class="fn">'+k+'</b><span class="dsh">'+nf(sh,1)+' <small>shares</small></span></div>'+
+      '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
+      '<div class="fr"><span>Next: '+goal.toLocaleString('en-US')+' shares</span><span>'+nf(goal-sh,1)+' to go</span></div>'+
+      (added>0?'<div class="fr"><span>Added this year</span><span class="g">+'+nf(added,1)+'</span></div>':'')+
+      (bonus>0?'<div class="fr"><span>Sale bonus <em>'+saleDays+' sale day'+(saleDays===1?'':'s')+'</em></span><span class="g">+'+nf(bonus,1)+'</span></div>':'')+
+      (today?'<div class="fn2">'+today+'</div>':'')+'</div>'; };
+  $('dbFund').innerHTML=box('VTI',+S.shVTI||0,m1)+box('VXUS',+S.shVXUS||0,m2)+
+    '<p class="dnote">Every buy adds shares, so this only goes up. When prices drop, the same dollars buy more shares: that\'s the sale bonus.</p>';
 }
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
 function dcaBuys(){
