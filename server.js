@@ -686,51 +686,63 @@ async function notify(title, body, url, tag) {
   return sent;
 }
 const money = v => '$' + Math.round(v).toLocaleString('en-US');
-// ---------- Buy Alerts: raise the daily buys while the S&P 500 is down ----------
-// Lump sums need cash most people don't have sitting around, so drops raise the recurring daily buys instead, until the
-// S&P is back within 5% of its high. Backtest (S&P daily closes since 1950, ~2%/yr dividends): a dollar invested 20-30%
-// below the high grew a median 44% over 3 years vs 36% on an average day, and 30%+ below averaged +99% over 5 years vs
-// +69%; 10-20% below was about the same as any day, so the first step is small. The app reads the daily amounts from
-// your recurring orders, so an alert checks itself off once Robinhood is buying the new amounts.
-const BOOST_STEPS = [[10, 0.25], [20, 0.5], [30, 1.0]];
-const RESTORE_WITHIN = 5;
+// ---------- Buy Alerts: daily buys that flex with each fund's drop ----------
+// Each fund (VTI, VXUS) has its own band, based on how far it is below its own high (highest close in 2 years):
+// under 10% = normal, 10-15% = 1.25x, 15-20% = 1.5x, 20-30% = 1.75x, 30%+ = 2x the normal daily buy. "Normal" is learned
+// from your recurring buys while a fund is in the normal band. A fund moves up a band as soon as it crosses the line and
+// down only after recovering 2 points past it, so a market hovering at a line doesn't flip-flop. Whenever the recommended
+// amounts change you get one alert; it checks itself off once Robinhood's recurring buys match.
+// Why: since 1950, a dollar invested 20-30% below the S&P's high grew a median 44% over 3 years vs 36% on an average day,
+// and 30%+ below averaged +99% over 5 years vs +69% (tools/dip_forward_returns.py); 10-20% below was about average,
+// so the early bands are small.
+const BANDS = [[0, 1, 'Normal'], [10, 1.25, '10–15% below high'], [15, 1.5, '15–20% below high'], [20, 1.75, '20–30% below high'], [30, 2, '30%+ below high']];
+const BAND_HYST = 2;
+const FUNDS = ['VTI', 'VXUS'];
 const alertsFile = () => path.join(DATA_DIR, 'alerts.json');
+const flexFile = () => path.join(DATA_DIR, 'dca_flex.json');
 function readAlerts() { try { return JSON.parse(fs.readFileSync(alertsFile(), 'utf8')); } catch (e) { return []; } }
 function writeAlerts(a) { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(alertsFile() + '.tmp', JSON.stringify(a)); fs.renameSync(alertsFile() + '.tmp', alertsFile()); }
+function readFlex() { try { return JSON.parse(fs.readFileSync(flexFile(), 'utf8')); } catch (e) { return { base: {}, band: { VTI: 0, VXUS: 0 } }; } }
+function writeFlex(f) { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(flexFile() + '.tmp', JSON.stringify(f)); fs.renameSync(flexFile() + '.tmp', flexFile()); }
 function dailyNow(st) {
   const r = ((st.rh || {}).recurring || []).filter(x => !x.stopped && x.freq === 'daily');
   const g = sym => Math.round(r.filter(x => x.symbol === sym).reduce((t, x) => t + (+x.amount || 0), 0));
-  return { vti: g('VTI'), vxus: g('VXUS') };
+  return { VTI: g('VTI'), VXUS: g('VXUS') };
 }
+async function fundDrops() { // each fund's % below its highest close in the last 2 years, using the live price
+  const q = await quotes().catch(() => ({})), out = {};
+  for (const f of FUNDS) { const h = await history(f, '1y'), c = h.c || [], last = (q[f] && q[f].price) || c[c.length - 1]; const hi = Math.max(...c, last);
+    out[f] = { last, high: hi, dd: (1 - last / hi) * 100 }; }
+  return out;
+}
+// Highest band whose line the drop has reached; lines at or below the current band count 2 points lower, so a fund steps up
+// as soon as it crosses a line but only steps down once it has recovered 2 points past it.
+const bandFor = (dd, prev) => { let b = 0; BANDS.forEach((x, i) => { if (dd >= x[0] - (i <= prev ? BAND_HYST : 0)) b = i; }); return b; };
+let flexCache = null;
 async function checkAlerts() {
-  const x = await spxSnapshot(); if (!x || !x.peak || !x.last) return;
-  const dd = (1 - x.last / x.peak) * 100, peak = Math.round(x.peak), st = readState(), alerts = readAlerts(), now = dailyNow(st);
-  const id = () => crypto.randomBytes(4).toString('hex'), at = new Date().toISOString(), notes = []; let changed = false;
-  for (const a of alerts) if (!a.type && a.status === 'pending') { a.status = 'replaced'; changed = true; } // retire the old lump-sum alerts
-  // 1. A new step in this drop: raise the daily buys (relative to the normal amounts from before the drop).
-  const ep = alerts.filter(a => a.type === 'boost' && a.peak === peak), step = BOOST_STEPS.slice().reverse().find(s2 => dd >= s2[0]);
-  const base = ep.length ? { vti: ep[0].baseVTI, vxus: ep[0].baseVXUS } : now;
-  if (step && base.vti + base.vxus > 0 && !ep.some(a => a.level === step[0]) && !alerts.some(a => a.type === 'restore' && a.peak === peak)) {
-    ep.filter(a => a.status === 'pending').forEach(a => { a.status = 'replaced'; });
-    const tv = Math.round(base.vti * (1 + step[1])), tx = Math.round(base.vxus * (1 + step[1]));
-    alerts.push({ id: id(), type: 'boost', level: step[0], boost: step[1], peak, spx: Math.round(x.last), at, baseVTI: base.vti, baseVXUS: base.vxus, tgtVTI: tv, tgtVXUS: tx, status: 'pending' });
-    notes.push(['S&P 500 down ' + step[0] + '%: raise your daily buys', 'Set your recurring buys to ' + money(tv) + ' VTI + ' + money(tx) + ' VXUS a day (was ' + money(base.vti + base.vxus) + ').', 'alert-' + step[0]]);
+  const drops = await fundDrops(); const st = readState(), now = dailyNow(st), flex = readFlex(), alerts = readAlerts(), at = new Date().toISOString(), notes = [];
+  let changed = false;
+  for (const a of alerts) if (a.status === 'pending' && a.type !== 'dca') { a.status = 'replaced'; changed = true; } // retire earlier alert styles
+  const pending = alerts.find(a => a.status === 'pending' && a.type === 'dca');
+  for (const f of FUNDS) {
+    flex.band[f] = bandFor(drops[f].dd, flex.band[f] || 0);
+    if (now[f] > 0 && (!flex.base[f] || (flex.band[f] === 0 && !pending))) flex.base[f] = now[f]; // learn "normal": at first use, then whenever the fund isn't down
+  }
+  const target = {}; FUNDS.forEach(f => { target[f] = Math.round((flex.base[f] || 0) * BANDS[flex.band[f]][1]); });
+  const last = alerts.filter(a => a.type === 'dca').slice(-1)[0], lastTo = last ? last.to : { VTI: flex.base.VTI || 0, VXUS: flex.base.VXUS || 0 };
+  if ((flex.base.VTI || flex.base.VXUS) && FUNDS.some(f => target[f] !== lastTo[f])) {
+    if (pending) pending.status = 'replaced';
+    const up = FUNDS.some(f => target[f] > (flex.base[f] || 0));
+    alerts.push({ id: crypto.randomBytes(4).toString('hex'), type: 'dca', at, from: { ...now }, to: target, base: { ...flex.base },
+      bands: { ...flex.band }, dd: { VTI: +drops.VTI.dd.toFixed(1), VXUS: +drops.VXUS.dd.toFixed(1) }, status: 'pending' });
+    notes.push([up ? 'Buy Alert: raise your daily buys' : 'Daily buys back to normal', 'Set recurring buys to ' + money(target.VTI) + ' VTI + ' + money(target.VXUS) + ' VXUS a day (now ' + money(now.VTI + now.VXUS) + ').', 'dca']);
     changed = true;
   }
-  // 2. Back within 5% of the high: return to the normal daily amounts (only if a raise was actually made).
-  if (dd < RESTORE_WITHIN) for (const p of [...new Set(alerts.filter(a => a.type === 'boost').map(a => a.peak))]) {
-    if (alerts.some(a => a.type === 'restore' && a.peak === p)) continue;
-    const eps = alerts.filter(a => a.type === 'boost' && a.peak === p); eps.filter(a => a.status === 'pending').forEach(a => { a.status = 'replaced'; changed = true; });
-    if (!eps.some(a => a.status === 'done')) continue;
-    alerts.push({ id: id(), type: 'restore', peak: p, spx: Math.round(x.last), at, baseVTI: eps[0].baseVTI, baseVXUS: eps[0].baseVXUS, status: 'pending' });
-    notes.push(['S&P 500 is back near its high', 'Set your daily buys back to ' + money(eps[0].baseVTI) + ' VTI + ' + money(eps[0].baseVXUS) + ' VXUS.', 'restore-' + p]); changed = true;
+  for (const a of alerts.filter(a => a.status === 'pending' && a.type === 'dca')) {
+    if (FUNDS.every(f => Math.abs(now[f] - a.to[f]) <= Math.max(2, a.to[f] * 0.02))) { a.status = 'done'; a.doneAt = at; changed = true;
+      notes.push(['✓ Daily buys updated', 'Robinhood is buying ' + money(now.VTI) + ' VTI + ' + money(now.VXUS) + ' VXUS a day. Nice work.', 'done-' + a.id]); }
   }
-  // 3. Check off alerts once Robinhood's recurring buys match.
-  for (const a of alerts.filter(a => a.status === 'pending' && a.type)) {
-    const hit = a.type === 'boost' ? now.vti >= a.tgtVTI * 0.98 && now.vxus >= a.tgtVXUS * 0.98 : now.vti <= a.baseVTI * 1.02 && now.vxus <= a.baseVXUS * 1.02 && now.vti + now.vxus > 0;
-    if (hit) { a.status = 'done'; a.doneAt = at; a.seen = now; changed = true;
-      notes.push([a.type === 'boost' ? '✓ Daily buys raised' : '✓ Daily buys back to normal', 'Robinhood is buying ' + money(now.vti + now.vxus) + ' a day now. Nice work.', 'done-' + a.id]); }
-  }
+  writeFlex(flex); flexCache = { drops, flex, target, now };
   if (changed) writeAlerts(alerts);
   for (const [t, b, tag] of notes) notify(t, b, '/?tab=alerts', tag).catch(() => {});
 }
@@ -845,7 +857,8 @@ http.createServer(async (req, res) => {
   }
   if (url.pathname === '/api/alerts' && req.method === 'GET') {
     let x = null; try { x = await spxSnapshot(); } catch (e) { /* show alerts without the S&P line */ }
-    return json(res, 200, { alerts: readAlerts(), steps: BOOST_STEPS, restoreWithin: RESTORE_WITHIN, daily: dailyNow(readState()), spx: x ? { last: x.last, peak: x.peak } : null });
+    if (!flexCache) { try { await checkAlerts(); } catch (e) { /* show what we have */ } }
+    return json(res, 200, { alerts: readAlerts(), bands: BANDS, hyst: BAND_HYST, daily: dailyNow(readState()), flex: flexCache, spx: x ? { last: x.last, peak: x.peak } : null });
   }
   { const m = url.pathname.match(/^\/api\/alerts\/([0-9a-f]{8})\/(skip|done|reopen)$/);
     if (m && req.method === 'POST') { const all = readAlerts(), a = all.find(z => z.id === m[1]); if (!a) return json(res, 404, { error: 'not found' });
