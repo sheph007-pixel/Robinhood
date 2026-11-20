@@ -766,6 +766,14 @@ body.vm-on .tabs{visibility:hidden}
 #vmType{padding:0!important;margin:0!important;text-indent:0!important}
 @media (prefers-reduced-motion:reduce){.vmorb,.vmorb .cl{animation:none!important}}
 .gone{display:none!important}
+.spxg{display:flex;flex-direction:column;gap:14px}
+.spx3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.spx3 .sc{background:var(--soft);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.spx3 .k{font-size:12px;color:var(--ink2);font-weight:600} .spx3 .v{font-size:22px;font-weight:700;letter-spacing:-.01em} .spx3 .s{font-size:12px;color:var(--ink2)} .spx3 .g{color:var(--gt);font-weight:600}
+.spxf{display:flex;flex-direction:column;gap:6px} .spxh{font-size:14px;font-weight:700;margin-bottom:2px}
+.spxf .fr{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:6px 0;border-top:1px solid var(--line)} .spxf .fr em{font-style:normal;color:var(--gt);font-weight:600;font-size:13px;margin-left:6px}
+.spxf .fr.avg span:first-child{color:var(--ink2)}
+@media (max-width:560px){.spx3{grid-template-columns:1fr 1fr 1fr;gap:6px} .spx3 .sc{padding:10px} .spx3 .v{font-size:17px} .spx3 .k,.spx3 .s{font-size:11px}}
 .pfstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .pfstats>div{background:var(--soft);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .pfstats .k{font-size:12px;color:var(--ink2);font-weight:600}
@@ -1008,6 +1016,10 @@ body.vm-on .tabs{visibility:hidden}
   </div>
 
   <div id="tab-mkt" class="panel">
+  <section class="card spx">
+    <div class="head"><h2>S&amp;P 500</h2><span class="muted small" id="spxAt"></span></div>
+    <div class="spxg num" id="spx"><div class="muted small">Loading…</div></div>
+  </section>
   <section class="card brief gone">
     <div class="head"><h2>Today's Market</h2><span class="muted small" id="brAt"></span></div>
     <div class="aimsg" id="brBody"><span class="typing">Loading today's brief…</span></div>
@@ -1545,7 +1557,22 @@ async function portfolio(){
   out+='<p class="pfnote" style="text-align:center;margin-top:12px">What\'s inside your funds comes from Vanguard (as of '+new Date(A.asOf+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+') and Robinhood.</p>';
   $('pfLook').innerHTML=out;
 }
-async function markets(){
+let SPX=null, spxAt=0;
+async function spxCard(){
+  if(!SPX||Date.now()-spxAt>5*60e3){ try{const r=await fetch('/api/spx');if(!r.ok)throw 0;SPX=await r.json();spxAt=Date.now();}catch(e){ if(!SPX){$('spx').innerHTML='<div class="muted small">S&amp;P 500 data is unavailable right now.</div>';return;} } }
+  const x=SPX, n=v=>Math.round(v).toLocaleString('en-US'), pc=v=>(v>=0?'+':'−')+Math.abs(v*100).toFixed(1)+'%';
+  const day=x.prev?x.last/x.prev-1:null, vsMa=x.last/x.ma200-1, offHi=1-x.last/x.hi52, T=x.targets;
+  const cell=(k,v,sub)=>'<div class="sc"><span class="k">'+k+'</span><span class="v">'+v+'</span><span class="s">'+sub+'</span></div>';
+  const fc=T.banks.map(([b,t])=>'<div class="fr"><span>'+b+'</span><span><b>'+n(t)+'</b> <em>'+pc(t/x.last-1)+'</em></span></div>').join('')+
+    '<div class="fr avg"><span>Average of '+T.avgOf+' Strategists</span><span><b>'+n(T.avg)+'</b> <em>'+pc(T.avg/x.last-1)+'</em></span></div>';
+  $('spx').innerHTML='<div class="spx3">'+
+    cell('Now',n(x.last),day!=null&&day>=0?'<span class="g">'+pc(day)+' today</span>':'Live price')+
+    cell('200-Day Average',n(x.ma200),vsMa>=0?'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% above':'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% below')+
+    cell('52-Week High',n(x.hi52),offHi<.01?'At its high':(offHi*100).toFixed(1)+'% below the high')+'</div>'+
+    '<div class="spxf"><div class="spxh">Wall Street Forecast · End of '+T.year+'</div>'+fc+'<p class="pfnote">Published targets as of '+T.asOf+'. Forecasts are opinions, not promises.</p></div>';
+  $('spxAt').textContent=new Date(x.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+async function markets(){ spxCard();
   const r=S.mr||'20y'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
   for(const sym of ['VTI','VXUS']){const el=$('mk'+sym), k=sym+r;
     if(!HC[k]){el.innerHTML='<div class="muted small">Loading '+sym+'…</div>';try{const x=await fetch('/api/history?s='+sym+'&r='+r);if(!x.ok)throw 0;HC[k]=await x.json();}catch(e){el.innerHTML='<div class="muted small">'+sym+' history unavailable</div>';continue;}}

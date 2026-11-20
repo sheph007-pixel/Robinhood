@@ -259,6 +259,21 @@ async function history(sym, rng) {
 }
 // 10%+ drops from the running high, found once on DAILY closes over the fund's whole history, so every
 // chart range (daily, weekly or monthly points) shows the same drops with the same depth.
+// S&P 500 snapshot for the Markets tab: current level, 200-day average, 52-week high, and published
+// year-end strategist targets (no free feed exists for those, so they are kept here with their date).
+const SPX_TARGETS = { asOf: 'Nov 2026', year: 2027, banks: [['Goldman Sachs', 8700], ['Morgan Stanley', 8700], ['Wells Fargo', 8200]], avg: 8638, avgOf: 8 };
+let spxCache = null;
+async function spxSnapshot() {
+  if (spxCache && Date.now() - spxCache.at < 5 * 60e3) return spxCache.data;
+  const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=2y&interval=1d', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const j = (await r.json()).chart.result[0], c = j.indicators.quote[0].close.filter(v => v != null), m = j.meta;
+  const last = m.regularMarketPrice || c[c.length - 1], prev = c.length > 1 ? c[c.length - 2] : null;
+  const ma200 = c.slice(-200).reduce((a, b) => a + b, 0) / Math.min(200, c.length);
+  const hi52 = m.fiftyTwoWeekHigh || Math.max(...c.slice(-252));
+  const data = { last, prev, ma200, hi52, at: Date.now(), targets: SPX_TARGETS };
+  spxCache = { at: Date.now(), data }; return data;
+}
 const ddCache = new Map();
 async function drawdowns(sym) {
   const hit = ddCache.get(sym); if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.data;
@@ -687,6 +702,10 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/chat/status') return json(res, 200, { ready: !!aiKey(), model: AI_MODEL, stt: !!sttKey(), tts: !!sttKey() });
   if (url.pathname === '/api/stt' && req.method === 'POST') return handleStt(req, res);
   if (url.pathname === '/api/tts' && (req.method === 'POST' || req.method === 'GET')) return handleTts(req, res, url);
+  if (url.pathname === '/api/spx') {
+    try { return json(res, 200, await spxSnapshot()); }
+    catch (e) { return json(res, 502, { error: 'S&P 500 data unavailable' }); }
+  }
   if (url.pathname === '/api/lookthrough') {
     try { return json(res, 200, await lookthrough()); }
     catch (e) { console.error('lookthrough', e.message); return json(res, 502, { error: 'holdings data unavailable' }); }
