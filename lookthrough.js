@@ -6,16 +6,24 @@ const FUNDS = ['VTI', 'VXUS'];
 const SECTOR_N = 200;          // largest US companies sent to Robinhood for sector/size (~80% of VTI)
 const DAY = 864e5;
 
+// Vanguard occasionally answers a page with an error or an empty body; retry a couple of times, then skip that page
+// (a missing page only drops some of the smallest holdings, so the breakdown stays usable).
 async function vgPage(sym, start) {
-  const r = await fetch(VG(sym) + (start > 1 ? `?start=${start}&count=500` : ''), { headers: { 'User-Agent': 'Mozilla/5.0' } });
-  if (!r.ok) throw new Error('vanguard ' + r.status);
-  return r.json();
+  for (let k = 0; k < 3; k++) {
+    try {
+      const r = await fetch(VG(sym) + (start > 1 ? `?start=${start}&count=500` : ''), { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (r.ok) { const j = await r.json(); if (j && j.fund && Array.isArray(j.fund.entity)) return j; }
+    } catch (e) { /* retry */ }
+    await new Promise(res => setTimeout(res, 800 * (k + 1)));
+  }
+  if (start === 1) throw new Error('vanguard holdings unavailable for ' + sym);
+  return { fund: { entity: [] } };
 }
 async function vgHoldings(sym) {
   const first = await vgPage(sym, 1), size = +first.size || 0, rows = [...first.fund.entity];
   const starts = []; for (let s = 501; s <= size; s += 500) starts.push(s);
-  for (let i = 0; i < starts.length; i += 5) {
-    const pages = await Promise.all(starts.slice(i, i + 5).map(s => vgPage(sym, s)));
+  for (let i = 0; i < starts.length; i += 3) {
+    const pages = await Promise.all(starts.slice(i, i + 3).map(s => vgPage(sym, s)));
     pages.forEach(p => rows.push(...p.fund.entity));
   }
   return { asOf: String(first.asOfDate || '').slice(0, 10), size, rows };
@@ -36,15 +44,18 @@ async function rhFundamentals(rh, syms) {
   return out;
 }
 
-async function build(rh) {
+async function build(rh, prev) {
   const connected = rh && rh.connected();
-  const raw = {}; for (const s of FUNDS) raw[s] = await vgHoldings(s);
+  // If one fund's Vanguard feed is down, keep that fund's last good breakdown and refresh the other.
+  const raw = {}, keep = {};
+  for (const s of FUNDS) { try { raw[s] = await vgHoldings(s); } catch (e) { if (prev && prev.funds && prev.funds[s]) keep[s] = prev.funds[s]; else throw e; } }
   // Robinhood: fund-level valuation plus sector/industry/market cap for the biggest US companies.
-  const vti = raw.VTI.rows.slice().sort((a, b) => b.marketValue - a.marketValue);
+  const vti = (raw.VTI ? raw.VTI.rows : []).slice().sort((a, b) => b.marketValue - a.marketValue);
   const syms = [...new Set(vti.slice(0, SECTOR_N).map(h => rhSym(h.ticker)).filter(Boolean))];
   const F = connected ? await rhFundamentals(rh, ['VTI', 'VXUS', 'ASML', ...syms]) : {};
   const funds = {};
   for (const s of FUNDS) {
+    if (keep[s]) { funds[s] = keep[s]; continue; }
     const rows = raw[s].rows.filter(h => h.marketValue > 0), tot = rows.reduce((a, h) => a + h.marketValue, 0);
     const byCo = new Map(), countries = {}, sectors = {}, industries = {}, size = {};
     let hh = 0, secCov = 0;
@@ -81,7 +92,7 @@ module.exports = function makeLookthrough(rh, fs, file) {
   try { mem = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { /* none yet */ }
   return async function get() {
     if (mem && Date.now() - mem.at < DAY && (mem.robinhood || !rh.connected())) return mem;
-    if (!inflight) inflight = build(rh).then(d => { mem = d; try { fs.writeFileSync(file, JSON.stringify(d)); } catch (e) { /* ignore */ } return d; }).finally(() => { inflight = null; });
+    if (!inflight) inflight = build(rh, mem).then(d => { mem = d; try { fs.writeFileSync(file, JSON.stringify(d)); } catch (e) { /* ignore */ } return d; }).finally(() => { inflight = null; });
     try { return await inflight; } catch (e) { if (mem) return mem; throw e; }
   };
 };
