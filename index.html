@@ -794,6 +794,12 @@ body.vm-on .tabs{visibility:hidden}
 .dvr.hd{border-top:0;font-size:12px;color:var(--ink2);font-weight:600;padding-top:0} .dvr span:nth-child(3){color:var(--ink2)} .dvr span:last-child{text-align:right;font-weight:700} .dvr .g{color:var(--gt)} .dvr .o{color:#d08a00}
 .dvc{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;background:var(--soft);border-radius:10px;padding:10px 12px} .dvc span:first-child{font-weight:700}
 @media (max-width:560px){.dvr{grid-template-columns:1.2fr 1.3fr .45fr;font-size:13px} .dvr span:nth-child(3){display:none}}
+.goalcd{display:flex;flex-direction:column;gap:8px;background:var(--soft);border-radius:14px;padding:12px 14px;margin-top:10px}
+.gch{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .gt{font-weight:800;font-size:16px;color:#f5c04a} .gp{font-weight:700;color:var(--ink2)}
+.gbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden} .gbar div{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--g),#f5c04a)}
+.gcd{display:grid;grid-template-columns:repeat(3,1fr);gap:10px} .gcd>div{display:flex;flex-direction:column;gap:1px;min-width:0} .gcd .k{font-size:12px;color:var(--ink2);font-weight:600}
+.gcd b{font-size:20px;font-weight:800} .gcd b.cd{color:#f5c04a;font-variant-numeric:tabular-nums} .gcd .m{font-size:12px;color:var(--ink2)}
+@media (max-width:560px){.gcd b{font-size:17px} .gcd b.rg{font-size:15px}}
 .bok{font-size:14px;color:var(--gt);font-weight:600}
 .bh{display:grid;grid-template-columns:auto 1fr auto;gap:10px;font-size:13px;padding:7px 0;border-top:1px solid var(--line)} .bh .g{color:var(--gt);font-weight:700}
 .alwhy{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink2);line-height:1.45} .alwhy b{color:var(--ink)}
@@ -987,6 +993,7 @@ body.vm-on .tabs{visibility:hidden}
         
       </div>
     </div>
+    <div class="goalcd num" id="goalCd" hidden></div>
     <div hidden><button type="button" class="ontrack" id="onTrack" aria-expanded="false" aria-controls="goalEd" hidden></button>
     <div class="goalin goaled" id="goalEd" hidden><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt" placeholder="$3M"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
@@ -1231,7 +1238,7 @@ try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Obje
 if(S.v!==2){S.us=70;S.v=2;}
 S.outlook='mid';
 const realOn=()=>false; // projections in normal (future) dollars
-function migrate(){if(!(S.goal>=1000))S.goal=3000000; if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
+function migrate(){if(!(S.goal>=1000))S.goal=3000000; if(!S.goal5m){S.goal=5000000;S.goal5m=1;} if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
 migrate();
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
 let synced=false, pushT;
@@ -1473,6 +1480,14 @@ function draw(){
     else $('habit').hidden=true; }
   { const R=REC(), d1=R.list.filter(x=>!x.stopped&&x.freq==='daily').reduce((t,x)=>t+(+x.amount),0), mo=R.a1+R.a2;
     $('recNote').textContent=mo>0?'Includes your recurring buys: '+(d1?usd(d1)+' every market day (about '+usd(mo)+'/mo)':usd(mo)+'/mo')+'.':'Based on what you hold today. No active recurring buys found.'; }
+  { const GL=S.goal||5e6, el=$('goalCd'), have=holdings().total, at=a=>{const i=a.findIndex(v=>v>=GL); if(i<0)return null; const p=i?Math.min(1,Math.max(0,(GL-a[i-1])/((a[i]-a[i-1])||1))):0; return i-1+p;};
+    const mDate=t=>{const d0=new Date(); d0.setTime(d0.getTime()+t*30.4375*864e5); return d0;}, fm=t=>mDate(t).toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    const tm=at(md), tH=at(hi), tL=at(lo), pct=Math.min(100,have/GL*100);
+    el.hidden=false;
+    if(have>=GL) el.innerHTML='<div class="gch"><span class="gt">🎉 '+big(GL)+' Goal Reached</span></div><div class="gbar"><div style="width:100%"></div></div>';
+    else el.innerHTML='<div class="gch"><span class="gt">🎯 '+big(GL)+' Goal</span><span class="gp">'+pct.toFixed(0)+'% there</span></div><div class="gbar"><div style="width:'+Math.max(2,pct).toFixed(1)+'%"></div></div>'+
+      (tm!=null?'<div class="gcd"><div><span class="k">Expected</span><b>'+fm(tm)+'</b><span class="m">age '+Math.floor(ageNow()+tm/12)+(scen?' · with extra':'')+'</span></div><div><span class="k">Countdown</span><b class="cd">'+Math.max(1,Math.round(tm*30.4375)).toLocaleString('en-US')+'</b><span class="m">days to go</span></div><div><span class="k">Range</span><b class="rg">'+(tH!=null?mDate(tH).getFullYear():'—')+'–'+(tL!=null?mDate(tL).getFullYear():'after 75')+'</b><span class="m">strong to poor market</span></div></div>'
+        :'<div class="muted small">Not reached by age 75 on the average path. Raising your daily buys moves this up.</div>'); }
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
@@ -1504,6 +1519,8 @@ function draw(){
   g+='<path d="'+P(put)+'" fill="none" stroke="'+ink2+'" stroke-width="1.5" stroke-dasharray="4 4"/>';
   g+='<path d="'+P(lo)+'" fill="none" stroke="'+ink2+'" stroke-width="1.5"/>';
   if(scen){g+='<path d="'+P(bmd)+'" fill="none" stroke="'+ink+'" stroke-opacity=".55" stroke-width="1.6" stroke-dasharray="2 4" stroke-linecap="round"/>';g+='<circle cx="'+X(Ma)+'" cy="'+Y(bmd[Ma])+'" r="3.5" fill="'+sf+'" stroke="'+ink2+'" stroke-width="2"/>';}
+  { const GL=S.goal||5e6; if(GL<=ymax){ g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(GL)+'" y2="'+Y(GL)+'" stroke="#f5c04a" stroke-width="1.5" stroke-dasharray="6 5" opacity=".9"/><text x="'+(m.l+6)+'" y="'+(Y(GL)-6)+'" font-size="11" font-weight="700" fill="#f5c04a">'+big(GL)+' goal</text>';
+      const gi=md.findIndex(v=>v>=GL); if(gi>0){ const gd=new Date(); gd.setMonth(gd.getMonth()+gi); g+='<circle cx="'+X(gi)+'" cy="'+Y(GL)+'" r="6" fill="#f5c04a" stroke="'+sf+'" stroke-width="2"/><text x="'+Math.min(X(gi)+10,m.l+iw-70)+'" y="'+(Y(GL)-8)+'" font-size="11" font-weight="700" fill="#f5c04a">🎯 '+gd.toLocaleDateString('en-US',{month:'short',year:'numeric'})+'</text>'; } } }
   g+='<path d="'+P(md)+'" fill="none" stroke="'+s1+'" stroke-width="2.5" stroke-linejoin="round"/>';
   g+='<line x1="'+X(Ma)+'" x2="'+X(Ma)+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink+'" stroke-dasharray="2 3" opacity=".5"/>';
   g+='<circle cx="'+X(Ma)+'" cy="'+Y(md[Ma])+'" r="5.5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2"/>';
@@ -1784,7 +1801,7 @@ async function keepGoing(){
   const MS=[10,25,50,100,250,500,1000], next=MS.find(m=>m>streak)||streak+100, prev=[0,...MS].filter(m=>m<=streak).pop()||0;
   const sh=Math.max(+S.shVTI||0,+S.shVXUS||0);
   const B=[['🌱','Started',days>=1],['🔥','10-Day Streak',streak>=10],['💪','50 Buy Days',days>=50],['🏆','100 Buy Days',days>=100],['🛒','Bought the Dip',dip],
-    ['💵','$25K Invested',inv>=25000],['💎','$100K Invested',inv>=100000],['📅','1-Year Streak',streak>=250],['📈','1,000 Shares',sh>=1000],['👑','$1M Portfolio',T>=1e6]];
+    ['💵','$25K Invested',inv>=25000],['💎','$100K Invested',inv>=100000],['📅','1-Year Streak',streak>=250],['📈','1,000 Shares',sh>=1000],['👑','$1M Portfolio',T>=1e6],['🎯',big(S.goal||5e6)+' Goal',T>=(S.goal||5e6)]];
   const q=Q&&Q.VTI&&Q.VTI.changePct!=null?Q.VTI.changePct:null;
   $('kpToday').innerHTML=q==null?'':'<span class="kchip">'+(q>=0?'Up Day':'Down Day')+'</span>';
   const bar=(v,cls)=>'<div class="kbar'+(cls||'')+'"><div style="width:'+Math.min(100,Math.max(3,v*100)).toFixed(1)+'%"></div></div>';
@@ -1794,7 +1811,7 @@ async function keepGoing(){
     bar((streak-prev)/(next-prev))+'<div class="ksub"><span>'+(next-streak)+' more to a '+next+'-day streak</span><span>This year: '+days+' buy days · '+usd(inv)+'</span></div>'+
     '<div class="kgrid">'+
       '<div class="kt"><span class="k">Level '+(li+1)+'</span><b>'+LV[li][1]+'</b>'+(lnext?bar((days-LV[li][0])/(lnext[0]-LV[li][0]),' sm')+'<span class="m">'+(lnext[0]-days)+' buy days to '+lnext[1]+'</span>':'<span class="m">Top level</span>')+'</div>'+
-      '<div class="kt"><span class="k">Next Milestone</span><b>'+big(pnext)+'</b>'+bar((T-pprev)/(pnext-pprev),' sm')+'<span class="m">'+Math.round(T/pnext*100)+'% there · '+big(pnext-T)+' to go</span></div>'+
+      (T<(S.goal||5e6)?'<div class="kt"><span class="k">Road to '+big(S.goal||5e6)+'</span><b>'+Math.floor(T/(S.goal||5e6)*100)+'%</b>'+bar(T/(S.goal||5e6),' sm')+'<span class="m">'+big((S.goal||5e6)-T)+' to go</span></div>':      '<div class="kt"><span class="k">Next Milestone</span><b>'+big(pnext)+'</b>'+bar((T-pprev)/(pnext-pprev),' sm')+'<span class="m">'+Math.round(T/pnext*100)+'% there · '+big(pnext-T)+' to go</span></div>')+
       (daily?'<div class="kt"><span class="k">Future You</span><b>'+big(grow(daily))+'</b><span class="m">What today\'s '+usd(daily)+' could grow to by age '+S.age+'</span></div>':'')+
     '</div>'+
 
