@@ -1927,10 +1927,10 @@ async function dcaFunds(){
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
       '<div class="fr"><span>Next: '+goal.toLocaleString('en-US')+' shares</span><span>'+nf(Math.max(1,goal-sh),0)+' to go</span></div>'+
       (added>0?'<div class="fr"><span>Added this year</span><span class="g">+'+nf(added,1)+'</span></div>':'')+
-      (bonus>0.05?'<div class="fr"><span>DCA bonus</span><span class="g">+'+nf(bonus,1)+'</span></div>'+
+      (bonus>0.05?'<div class="fr"><span>Extra from buying daily</span><span class="g">+'+nf(bonus,1)+' shares'+(price(k)?' ≈ '+usd(bonus*price(k)):'')+'</span></div>'+
         '<div class="fn2">You paid '+usd(paid,true)+' a share on average this year. The average price was '+usd(avgMkt,true)+'.</div>':'')+'</div>'; };
   $('dbFund').innerHTML=box('VTI',+S.shVTI||0)+box('VXUS',+S.shVXUS||0)+
-    '<p class="dnote">Every buy adds shares, so this only goes up. Buying the same amount every day gets you more shares when prices dip, which is your DCA bonus. It works in up and down markets.</p>';
+    '<p class="dnote">Every buy adds shares, so this only goes up. Buying the same amount every day gets you more shares when prices dip, so steady daily buying ends up with more shares than paying the average price. It works in up and down markets.</p>';
 }
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
 function dcaBuys(){
