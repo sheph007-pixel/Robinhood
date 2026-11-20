@@ -771,6 +771,7 @@ body.vm-on .tabs{visibility:hidden}
 .nwrow .na{font-weight:700;font-size:16px;text-align:right}
 .nwrow input.na{width:130px;background:var(--soft)!important;border:1px solid transparent!important;border-radius:10px;padding:6px 10px!important;color:var(--ink)}
 .nwadd{display:flex;gap:8px;margin-top:10px} .nwadd input{flex:1;min-width:0} .nwadd #nwAmt{max-width:130px} .nwadd .btn{width:auto;padding:10px 16px}
+.tabs button[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -801,7 +802,7 @@ body.vm-on .tabs{visibility:hidden}
   <nav class="tabs" role="tablist">
     <span class="brand">Hood Investing</span>
     <button role="tab" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
-    <button role="tab" data-tab="hold"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Net Worth</span></button>
+    <button role="tab" data-tab="hold" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Net Worth</span></button>
     <button role="tab" data-tab="mkt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Markets</span></button>
     <button role="tab" data-tab="invest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v9M7.5 12h9"/></svg><span>Invest</span></button>
     <button role="tab" data-tab="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg><span>Ask AI</span></button>
@@ -1105,7 +1106,7 @@ function goalVals(daily,m,L=0){
   return out.sort();
 }
 const GN={};
-function outsideTotal(){return (S.accts||[]).reduce((t,a)=>t+(+a.amt||0),0);}
+function outsideTotal(){return 0;} // Net Worth tab removed: goal and projections use the Robinhood account only
 function outsideAt(m){return outsideTotal()*Math.pow(1+S.apy/100,m/12);} // other accounts grow like cash
 function goalNeedFor(m){return S.goal-outsideAt(m);}
 const GL={};
@@ -1431,7 +1432,7 @@ function aiContext(){
   lines.push('Account: Robinhood Core ••8555 only (equities and cash; margin ignored).'+(S.rh?' Last synced '+S.rh.syncedAt+'.':''));
   { const R=REC(); if(R.list.length)lines.push('Recurring investments (from Robinhood, included in projections): '+R.list.map(x=>x.symbol+' $'+x.amount+' '+x.freq+' (~$'+x.perMonth+'/mo, last '+x.lastDate+')').join('; '));
     if(S.rh&&S.rh.recent)lines.push('Recent recurring buys: '+S.rh.recent.slice(0,10).map(o=>o.date+' '+o.symbol+' $'+o.amount+(o.price?' @ $'+o.price:'')).join('; ')); }
-  if((S.accts||[]).length)lines.push('Other accounts the user added by hand (outside Robinhood, treated as cash): '+S.accts.map(a=>a.name+' $'+f(+a.amt||0)).join('; ')+'. Total net worth: $'+f(nwTotal())+'. The goal counts these too.');
+  if(false)lines.push('Other accounts the user added by hand (outside Robinhood, treated as cash): '+S.accts.map(a=>a.name+' $'+f(+a.amt||0)).join('; ')+'. Total net worth: $'+f(nwTotal())+'. The goal counts these too.');
   lines.push('Projections use only what is in the account today and assume no future deposits or buys.'+(SC?' User is modeling a what-if: daily buys $'+SC.d1+' VTI and $'+SC.d2+' VXUS every market day (~$'+(SC.a1+SC.a2)+'/mo), plus $'+SC.L+' one-time.':''));
   lines.push('Goal: $'+f(S.goal)+' by age '+S.goalAge+(GOALPCT!=null?' ('+GOALPCT+'% chance per simulation)':''));
   if(proj){lines.push('Projection values below are in future (nominal) dollars. The app shows them '+(realOn()?'in today\'s dollars (divided by 1.025^years for 2.5% inflation)':'in future dollars')+'; the goal amount is '+(realOn()?'in today\'s dollars':'in future dollars')+'.');lines.push('Projection (Monte Carlo, 4,000 paths, stocks ~7%/yr avg, 16-17% volatility, yearly rebalance to target, includes deposits): age -> poor (10th pct) / average (median) / strong (90th pct)');
@@ -1662,7 +1663,7 @@ function dcaRender(){
     '<p class="muted small">Worked out from the buys your recurring investments placed in Robinhood, and included in all projections. A change you make in Robinhood shows here after the next market day\u2019s buy (or missing buy).</p>';
   $('dcaRecent').innerHTML='<div class="dcalist num">'+(rh.recent||[]).slice(0,14).map(o=>'<div><span>'+d(o.date)+'</span><span><b>'+o.symbol+'</b></span><span>'+usd(o.amount)+'</span><span class="muted">'+(o.price?'@ '+usd(o.price,true):'')+'</span></div>').join('')+'</div>';
 }
-showTab(S.tab==='money'||S.tab==='dca'?'invest':['hold','mkt','ai','invest'].includes(S.tab)?S.tab:'home');
+showTab(S.tab==='money'||S.tab==='dca'?'invest':['mkt','ai','invest'].includes(S.tab)?S.tab:'home');
 render(false); draw(); loadQuotes();
 // Prices refresh after the open (9:30 ET) and the close (4:00 ET), or by hand.
 let lastQ=Date.now();
