@@ -611,16 +611,13 @@ async function recordNetWorth() {
 }
 setTimeout(recordNetWorth, 15e3); setInterval(recordNetWorth, 30 * 60e3);
 async function serverSync() { const out = applySync(await rh.syncPayload()); console.log('Robinhood sync ok', out.shVTI, out.shVXUS); return out; }
-// One automatic sync a day, weekdays at 4:20 PM ET after the close (that day's recurring buys have filled by then).
-// Any other time, the Refresh button syncs on demand.
-let lastAutoSync = '';
+// Automatic sync every hour (a few small Robinhood data requests; no AI involved). Page loads and Refresh sync too.
+let lastAutoSyncAt = 0;
 setInterval(() => {
   if (!rh.connected()) return;
-  const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date());
-  const g = k => p.find(x => x.type === k).value, day = g('year') + g('month') + g('day'), min = (+g('hour') % 24) * 60 + (+g('minute'));
-  if (['Sat', 'Sun'].includes(g('weekday')) || min < 16 * 60 + 20 || lastAutoSync === day) return;
-  if (((readState().rh || {}).syncedAt || '') >= new Date(Date.now() - (min - (16 * 60 + 20)) * 60e3).toISOString()) { lastAutoSync = day; return; } // already synced since 4:20 today
-  lastAutoSync = day; serverSync().catch(e => console.error('Robinhood auto sync failed', e.message));
+  const synced = Date.parse((readState().rh || {}).syncedAt || 0) || 0;
+  if (Date.now() - Math.max(synced, lastAutoSyncAt) < 60 * 60e3) return;
+  lastAutoSyncAt = Date.now(); serverSync().catch(e => console.error('Robinhood auto sync failed', e.message));
 }, 60e3);
 // Version = 1.<number of the PR that was deployed>, from Railway's build metadata.
 const VERSION = (() => {
@@ -671,6 +668,8 @@ http.createServer(async (req, res) => {
   if (url.pathname === '/api/rh/status') return json(res, 200, { connected: rh.connected(), connectedAt: rh.connectedAt(), syncedAt: (readState().rh || {}).syncedAt || null });
   if (url.pathname === '/api/rh/sync' && req.method === 'POST') {
     if (!rh.connected()) return json(res, 409, { error: 'not connected' });
+    // Several refreshes in a row reuse a sync from the last 2 minutes instead of asking Robinhood again.
+    const st0 = readState(); if (Date.now() - (Date.parse((st0.rh || {}).syncedAt || 0) || 0) < 2 * 60e3) return json(res, 200, { ok: true, cached: true });
     try { return json(res, 200, await serverSync()); } catch (e) { return json(res, 502, { error: e.message }); }
   }
   if (url.pathname === '/api/rh/disconnect' && req.method === 'POST') { rh.disconnect(); return json(res, 200, { ok: true }); }
