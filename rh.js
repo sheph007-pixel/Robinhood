@@ -135,7 +135,7 @@ module.exports = function makeRh(DATA_DIR) {
   }
 
   // Pull the Core account and return the payload shape that /api/rh-sync expects.
-  async function syncPayload() {
+  async function syncPayload(opts) {
     const [pos, port] = await Promise.all([call('get_equity_positions', {}), call('get_portfolio', {})]);
     const d35 = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10), jan1 = new Date().getUTCFullYear() + '-01-01';
     const since = jan1 < d35 ? jan1 : d35; // whole year so the DCA tab can show year-to-date totals
@@ -149,7 +149,20 @@ module.exports = function makeRh(DATA_DIR) {
     }
     const positions = (((pos && pos.data) || {}).positions || []).map(p => ({ symbol: p.symbol, quantity: p.quantity, average_buy_price: p.average_buy_price }));
     const cash = +((port && port.data) || {}).cash || 0;
-    return { account: CORE_ACCOUNT, positions, cash, orders };
+    // Buys you place yourself (not the recurring ones), so Buy Alerts can be checked off. Only fetched while an alert is pending.
+    const manual = [];
+    if (opts && opts.manualSince) {
+      let cur2;
+      for (let i = 0; i < 10; i++) {
+        const r = await call('get_equity_orders', Object.assign({ created_at_gte: opts.manualSince, state: 'filled' }, cur2 ? { cursor: cur2 } : {}));
+        const d = (r && r.data) || {};
+        (d.orders || []).filter(o => o.side === 'buy' && o.placed_agent !== 'recurring' && ['VTI', 'VXUS'].includes(o.symbol)).forEach(o => manual.push({
+          id: o.id, symbol: o.symbol, at: o.created_at,
+          amount: Math.round((+o.cumulative_quantity || 0) * (+o.average_price || 0) * 100) / 100 || +(o.dollar_based_amount && o.dollar_based_amount.amount) || 0 }));
+        cur2 = d.next; if (!cur2) break;
+      }
+    }
+    return { account: CORE_ACCOUNT, positions, cash, orders, manual };
   }
 
   return {
