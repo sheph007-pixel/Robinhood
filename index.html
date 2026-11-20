@@ -791,6 +791,7 @@ body.vm-on .tabs{visibility:hidden}
 .mxb{position:relative;height:8px;margin:8px 0 6px;border-radius:4px;background:var(--soft)}
 .mxb div{height:100%;border-radius:4px} .mxb i{position:absolute;top:-4px;width:2px;height:16px;margin-left:-1px;border-radius:1px;background:var(--ink)}
 .mxs{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--ink2)} .mxs .ok{color:var(--gt);font-weight:600} .mxs .off{color:#d08a00;font-weight:600}
+.mx2{display:flex;gap:2px;background:none} .mx2 div{border-radius:4px} .mxs .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
 .goaled{margin:8px 0 4px}
 
 .gopts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -1261,11 +1262,15 @@ function render(reproject){
   $('barTgt').setAttribute('aria-label','Target: VTI '+pc(w.vti)+', VXUS '+pc(w.vxus)+', cash '+pc(w.cash));
   const drift=Math.max(Math.abs(now.vti-w.vti),Math.abs(now.vxus-w.vxus),Math.abs(now.cash-w.cash));
   const ns=T?Math.round((now.vti+now.vxus)*100):0, nu=(h.vti+h.vxus)?Math.round(h.vti/(h.vti+h.vxus)*100):0;
-  $('mix').innerHTML=[['VTI','vti','--s1'],['VXUS','vxus','--s2'],['Cash','cash','--s3']].map(([n,k,c])=>{
-    const cur=T?h[k]/T:0, tv=w[k], gap=tv*T-h[k], on=Math.abs(cur-tv)<.02;
-    return '<div class="mxr"><div class="mxt"><span class="mxn"><i style="background:var('+c+')"></i>'+n+'</span><span class="mxv">'+usd(h[k])+'</span></div>'+
-      '<div class="mxb"><div style="width:'+Math.min(100,cur*100).toFixed(1)+'%;background:var('+c+')"></div><i style="left:'+(tv*100).toFixed(1)+'%" title="Target"></i></div>'+
-      '<div class="mxs"><span>'+pc(cur)+' now · target '+pc(tv)+'</span><span class="'+(on?'ok':'off')+'">'+(!T?'':on?'✓ On target':gap>0?usd(gap)+' under':usd(-gap)+' over')+'</span></div></div>';}).join('');
+  // Two separate checks, each against its own target from the Invest tab:
+  // US vs International within your stocks, and Stocks vs Cash across everything.
+  { const st=h.vti+h.vxus;
+    const split=(title,an,av,ac,bn,bv,bc,tgt)=>{const tot=av+bv, ap=tot?av/tot:0, t=tgt/100, on=Math.abs(ap-t)<.02, mv=t*tot-av;
+      return '<div class="mxr"><div class="mxt"><span class="mxn">'+title+'</span><span class="mxv">'+(tot?Math.round(ap*100)+' / '+Math.round((1-ap)*100):'—')+'</span></div>'+
+        '<div class="mxb mx2"><div style="width:'+(ap*100).toFixed(1)+'%;background:var('+ac+')"></div><div style="width:'+((1-ap)*100).toFixed(1)+'%;background:var('+bc+')"></div><i style="left:'+tgt+'%" title="Target"></i></div>'+
+        '<div class="mxs"><span><i class="dot" style="background:var('+ac+')"></i>'+an+' '+usd(av)+'</span><span><i class="dot" style="background:var('+bc+')"></i>'+bn+' '+usd(bv)+'</span></div>'+
+        '<div class="mxs"><span>Target '+tgt+' / '+(100-tgt)+'</span><span class="'+(on?'ok':'off')+'">'+(!tot?'':on?'✓ On target':'Move '+usd(Math.abs(mv))+' to '+(mv>0?an:bn))+'</span></div></div>';};
+    $('mix').innerHTML=split('US / International','VTI',h.vti,'--s1','VXUS',h.vxus,'--s2',S.us)+split('Stocks / Cash','Stocks',st,'--g','Cash',h.cash,'--s3',S.eq); }
   $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On target':'')):'';
 
   // deposit plan
@@ -1449,7 +1454,7 @@ async function portfolio(){
   $('pfList').innerHTML=rows.map(([k,nm,key,c,sh])=>{const v=h[key], cost=sh&&ac[k]?ac[k]*sh:0, g=cost?v-cost:null;
     return '<div class="pfr"><span class="n"><i style="background:var('+c+')"></i>'+k+'</span><span class="v">'+usd(v)+'</span><span class="p">'+(T?pc1(v/T):'0%')+'</span>'+
       '<span class="d">'+nm+(sh?' · '+(+sh).toLocaleString('en-US',{maximumFractionDigits:3})+' shares':'')+'</span>'+
-      (g!=null?'<span class="g '+(g>=0?'up':'dn')+'">'+(g>=0?'+':'−')+usd(Math.abs(g))+' ('+(g>=0?'+':'−')+Math.abs(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+pc1(w[key])+'</span>')+'</div>';}).join('');
+      (g!=null?'<span class="g '+(g>=0?'up':'dn')+'">'+(g>=0?'+':'−')+usd(Math.abs(g))+' ('+(g>=0?'+':'−')+Math.abs(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+(key==='cash'?(100-S.eq)+'% of total':key==='vti'?S.us+'% of stocks':(100-S.us)+'% of stocks')+'</span>')+'</div>';}).join('');
   const fee=h.vti*FEE.us+h.vxus*FEE.intl;
   const tiles=(co,ct,sc,scl)=>[['Companies',co,'you own a piece of'],['Countries',ct,'where they are based'],['Diversification',sc,scl],['Yearly Fund Cost',usd(fee),T?(fee/T*100).toFixed(3)+'% of total':'']]
     .map(t=>'<div><span class="k">'+t[0]+'</span><span class="v">'+t[1]+'</span><span class="m">'+t[2]+'</span></div>').join('');
