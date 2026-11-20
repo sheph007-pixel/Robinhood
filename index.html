@@ -1481,7 +1481,7 @@ function vmListen(){
   if(VM.muted||!micAvail()){vmSet('paused',micAvail()?'Tap the mic to talk':null);return;}
   vmSet('listening','');
   VM.tx=false;
-  VM.ctl=listenAny(t=>{if(!VM)return; if(t==='…'){VM.tx=true;vmSet('thinking','');} else $('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening'&&!VM.tx)return; VM.tx=false; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},1000,
+  VM.ctl=listenAny(t=>{if(!VM)return; if(t==='…'){VM.tx=true;vmSet('thinking','');} else $('vmCap').textContent=t;},txt=>{if(!VM)return;VM.ctl=null; if(VM.st!=='listening'&&!VM.tx)return; VM.tx=false; if(txt)vmAsk(txt); else setTimeout(vmListen,150);},750,
     err=>{if(!VM)return;VM.ctl=null;VM.muted=true;$('vmMute').setAttribute('aria-pressed','true');vmSet('paused',micHelp(err));});
 }
 async function vmAsk(q){
