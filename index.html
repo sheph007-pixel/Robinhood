@@ -947,6 +947,50 @@ body.vm-on .tabs{visibility:hidden}
 .dcafund .d3 span{font-size:11px;color:var(--ink2)} .dcafund .d3 b{font-size:14px}
 .dcafund .dwin{font-size:12px;font-weight:600;color:var(--gt)} .dcafund .dwin::before{content:'★ '}
 @media (max-width:560px){.dcafund{grid-template-columns:1fr}}
+
+/* ===== Robinhood look (visual only) ===== */
+:root{--page:#ffffff;--card:transparent;--cardline:transparent;--soft:#f5f5f5;--line:#e8e8e8;--rlink:#ff5000;--navbg:rgba(245,245,245,.92);--navsel:#e2e2e2;--pillbd:#d6d6d6}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#000;--bg:#000;--surface:#000;--card:transparent;--cardline:transparent;--soft:#111;--line:#232323;--ink2:#9b9b9b;--rlink:#ff5000;--navbg:rgba(28,28,30,.94);--navsel:#000;--pillbd:#3a3a3c}}
+:root[data-theme="dark"]{--page:#000;--bg:#000;--surface:#000;--card:transparent;--cardline:transparent;--soft:#111;--line:#232323;--ink2:#9b9b9b;--rlink:#ff5000;--navbg:rgba(28,28,30,.94);--navsel:#000;--pillbd:#3a3a3c}
+html,body{background:var(--page)}
+main{padding-left:20px;padding-right:20px}
+.panel{gap:0}
+.card,.future{background:transparent!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;padding:26px 0!important;box-shadow:none!important}
+.panel > .card:last-child,.panel > .future:last-child{border-bottom:0!important}
+h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
+.head h2{font-size:26px}
+@media (max-width:640px){main{padding-left:18px;padding-right:18px} h2,.head h2{font-size:24px}}
+.duo .side{background:transparent!important;border-radius:0!important;padding:0!important}
+.duo .dv{font-weight:500!important;letter-spacing:-.02em}
+.hero .total{font-weight:500}
+/* green % box like Robinhood */
+.fup:empty{display:none!important}
+.fup{display:inline-block;width:max-content;max-width:100%;align-self:flex-start;background:var(--g);color:#000!important;border-radius:8px;padding:3px 10px;font-weight:600;margin-top:4px}
+/* forecast % as green boxes */
+.spxf .fr em{display:inline-block;min-width:76px;text-align:center;font-style:normal;font-weight:600;background:var(--g);color:#000;border-radius:8px;padding:4px 10px;margin-left:8px}
+/* links in Robinhood orange */
+.rlink,.recent summary,details summary{color:var(--rlink)}
+/* pills: outlined, selected = solid white */
+.seg{background:transparent!important;border:0!important;padding:0!important;gap:8px!important}
+.seg button{border:1px solid var(--pillbd)!important;color:var(--ink)!important;padding:8px 18px!important;font-weight:500!important}
+.seg button[aria-pressed="true"]{background:var(--ink)!important;color:var(--page)!important;border-color:var(--ink)!important}
+.btn{border-radius:99px;font-weight:600}
+/* desktop top nav: pill selection */
+@media (min-width:641px){
+  .tabs{background:var(--page)!important;border-bottom:0!important;padding:10px 0 6px}
+  .tabs button{border:0!important;border-radius:99px;padding:9px 18px!important;opacity:1!important;color:var(--ink2)!important;font-weight:500}
+  .tabs button[aria-selected="true"]{background:var(--soft);color:var(--ink)!important}
+  .tabs button:hover{color:var(--ink)!important}
+}
+/* mobile: floating pill nav */
+@media (max-width:640px){
+  .tabs{left:12px!important;right:12px!important;bottom:max(12px,env(safe-area-inset-bottom))!important;border:1px solid var(--pillbd)!important;border-radius:36px!important;background:var(--navbg)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding:6px!important;box-shadow:0 8px 24px rgba(0,0,0,.35)!important;margin:0!important}
+  .tabs::after{display:none!important}
+  .tabs button{border-radius:30px!important;padding:7px 0!important;color:var(--ink2)!important}
+  .tabs button[aria-selected="true"]{background:var(--navsel)!important;color:var(--ink)!important}
+  .tabs .nbadge{box-shadow:0 0 0 2px var(--navbg)!important}
+  main{padding-bottom:120px!important}
+}
 </style>
 </head>
 <body>
