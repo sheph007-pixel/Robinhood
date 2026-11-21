@@ -1494,7 +1494,8 @@ function draw(){
       $('habit').hidden=false;}
     else $('habit').hidden=true; }
   { const R=REC(), d1=R.list.filter(x=>!x.stopped&&x.freq==='daily').reduce((t,x)=>t+(+x.amount),0), mo=R.a1+R.a2;
-    $('recNote').textContent=mo>0?'Includes your recurring buys: '+(d1?usd(d1)+' every market day (about '+usd(mo)+'/mo)':usd(mo)+'/mo')+'.':'Based on what you hold today. No active recurring buys found.'; }
+    const rl=R.list.filter(x=>!x.stopped&&x.freq==='daily'), parts=rl.map(x=>usd(+x.amount)+' '+x.symbol).join(' + '), lastD=rl.map(x=>x.lastDate).filter(Boolean).sort().pop();
+    $('recNote').textContent=mo>0?'Includes your recurring buys: '+(d1?parts+' = '+usd(d1)+' every market day (about '+usd(mo)+'/mo)':usd(mo)+'/mo')+(lastD?', as of the latest buy on '+new Date(lastD+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'')+'.':'Based on what you hold today. No active recurring buys found.'; }
   { const GL=S.goal||5e6, el=$('goalCd'), have=holdings().total, at=a=>{const i=a.findIndex(v=>v>=GL); if(i<0)return null; const p=i?Math.min(1,Math.max(0,(GL-a[i-1])/((a[i]-a[i-1])||1))):0; return i-1+p;};
     const mDate=t=>{const d0=new Date(); d0.setTime(d0.getTime()+t*30.4375*864e5); return d0;}, fm=t=>mDate(t).toLocaleDateString('en-US',{month:'short',year:'numeric'});
     const tm=at(md), tH=at(hi), tL=at(lo), pct=Math.min(100,have/GL*100);
