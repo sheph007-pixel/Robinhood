@@ -1285,7 +1285,7 @@ const OUT={ low:{us:.05,intl:.055,label:'Cautious: US 5%, international 5.5% a y
             hist:{us:.10,intl:.08,label:'Historical: US 10%, international 8% a year'} };
 const VOL={us:.16,intl:.17}, RHO=.85, FEE={us:.0003,intl:.0005}, INFL=.025;
 
-const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:80,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',goal:3000000,goalAge:60,dcaVTI:null,dcaVXUS:null,lump:0,px:{},tab:'home',v:2};
+const DEF={shVTI:0,shVXUS:0,cash:0,apy:3.6,eq:100,us:70,monthly:0,outlook:'mid',real:false,age:65,dob:'1981-09-18',goal:3000000,goalAge:60,dcaVTI:null,dcaVXUS:null,lump:0,px:{},tab:'home',v:2};
 let S=Object.assign({},DEF);
 const PLAIN_SECTOR={'Electronic Technology':'Computers, Phones & Chips','Technology Services':'Software & Internet','Finance':'Banks, Insurance & Payments','Health Technology':'Medicines & Medical Devices',
   'Health Services':'Hospitals & Health Plans','Retail Trade':'Stores & Online Shopping','Consumer Non-Durables':'Food, Drinks & Household Goods','Consumer Durables':'Cars, Homes & Appliances',
@@ -1298,7 +1298,7 @@ try{const s=JSON.parse(localStorage.getItem('portfolio-v1')||'null');if(s)S=Obje
 if(S.v!==2){S.us=70;S.v=2;}
 S.outlook='mid';
 const realOn=()=>false; // projections in normal (future) dollars
-function migrate(){if(!(S.goal>=1000))S.goal=3000000; if(!S.goal5m){S.goal=5000000;S.goal5m=1;} if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
+function migrate(){if(!(S.goal>=1000))S.goal=3000000; if(!S.goal5m){S.goal=5000000;S.goal5m=1;} if(!S.eq100){S.eq=100;S.eq100=1;} if(S.dcaVTI==null){S.dcaVTI=Math.round((S.monthly||0)*S.us/100);S.dcaVXUS=Math.round((S.monthly||0)-S.dcaVTI);}}
 migrate();
 let PINV=''; try{PINV=localStorage.getItem('portfolio-pin')||'';}catch(e){}
 let synced=false, pushT;
@@ -1486,7 +1486,7 @@ function render(reproject){
         '<div class="mxb mx2"><div style="width:'+(ap*100).toFixed(1)+'%;background:var('+ac+')"></div><div style="width:'+((1-ap)*100).toFixed(1)+'%;background:var('+bc+')"></div><i style="left:'+tgt+'%" title="Target"></i></div>'+
         '<div class="mxs"><span><i class="dot" style="background:var('+ac+')"></i>'+an+' '+usd(av)+'</span><span><i class="dot" style="background:var('+bc+')"></i>'+bn+' '+usd(bv)+'</span></div>'+
         '<div class="mxs"><span>Target '+tgt+'% / '+(100-tgt)+'%</span><span class="'+(on?'ok':'off')+'">'+(!tot?'':on?'✓ On Target':'Move '+usd(Math.abs(mv))+' to '+(mv>0?an:bn))+'</span></div></div>';};
-    $('mix').innerHTML=split('US / International','VTI',h.vti,'--s1','VXUS',h.vxus,'--s2',S.us)+split('Stocks / Cash','Stocks',st,'--g','Cash',h.cash,'--s3',S.eq); }
+    $('mix').innerHTML=split('US / International','VTI',h.vti,'--s1','VXUS',h.vxus,'--s2',S.us)+(S.eq<100?split('Stocks / Cash','Stocks',st,'--g','Cash',h.cash,'--s3',S.eq):''); }
   $('drift').innerHTML=T?('Now <b>'+ns+' / '+(100-ns)+'</b> stocks/cash · <b>'+nu+' / '+(100-nu)+'</b> VTI/VXUS'+(drift<.02?' · On Target':'')):'';
 
   // deposit plan
@@ -1719,7 +1719,7 @@ async function portfolio(){
   out+='<section class="card"><div class="head"><h2>Diversification Score</h2><span class="muted small">Stocks</span></div><div class="score">'+ring(score)+'<div class="sl"><b>'+lbl+'</b><br><span class="muted small">How well your stocks are spread across companies, countries and sectors, graded against common advisor guidelines.</span></div></div>'+
     '<div class="dvt num"><div class="dvr hd"><span>Check</span><span>You</span><span>Guideline</span><span>Score</span></div>'+
     CK.map(c=>'<div class="dvr"><span>'+c[0]+'</span><span>'+c[1]+'</span><span>'+c[2]+'</span><span class="'+(c[3]>=75?'g':c[3]>=50?'':'o')+'">'+c[3]+'</span></div>').join('')+'</div>'+
-    '<div class="dvc"><span>Cash</span><span>'+Math.round(cashP*100)+'% of your portfolio · target '+Math.round(cashT*100)+'%</span></div>'+
+    '<div class="dvc"><span>Cash</span><span>'+Math.round(cashP*100)+'% of your portfolio · '+(cashT>0?'target '+Math.round(cashT*100)+'%':'target 100% stocks')+'</span></div>'+
     '<p class="pfnote">Cash isn\'t part of the score. It\'s about how much you hold outside stocks, not how spread out the stocks are.</p></section>';
   // Top 10
   out+='<section class="card"><div class="head"><h2>Your 10 Biggest Companies</h2><span class="muted small">'+Math.round(t10*100)+'% of your stocks</span></div><div class="top10 num">'+
