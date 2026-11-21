@@ -809,6 +809,8 @@ body.vm-on .tabs{visibility:hidden}
 .opsc{display:grid;grid-template-columns:repeat(3,1fr);gap:8px} .opsc>div{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:1px} .opsc b{font-size:18px;font-weight:800;color:var(--gt)} .opsc span{font-size:12px;color:var(--ink2)}
 .hiw{margin:4px 0 0;padding-left:18px;font-size:13px;color:var(--ink2);line-height:1.5;display:flex;flex-direction:column;gap:4px}
 .ftpush{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-top:6px} .ftpush:empty{display:none} .ftbtn.mut{color:var(--ink2)}
+.fup{color:var(--gt);font-weight:700;font-size:15px;margin-top:2px;letter-spacing:-.01em}
+.fup{white-space:nowrap} @media (max-width:560px){.fup{font-size:12.5px}}
 .bok{font-size:14px;color:var(--gt);font-weight:600}
 .bh{display:grid;grid-template-columns:auto 1fr auto;gap:10px;font-size:13px;padding:7px 0;border-top:1px solid var(--line)} .bh .g{color:var(--gt);font-weight:700}
 .alwhy{display:flex;flex-direction:column;gap:2px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--ink2);line-height:1.45} .alwhy b{color:var(--ink)}
@@ -999,6 +1001,7 @@ body.vm-on .tabs{visibility:hidden}
       <div class="side">
         <span class="k" id="fHead">At age 65</span>
         <span class="dv g" id="fMd">…</span>
+        <span class="fup num" id="fUp"></span>
         
       </div>
     </div>
@@ -1500,7 +1503,7 @@ function draw(){
     else el.innerHTML='<div class="gch"><span class="gt">🎯 '+big(GL)+' Goal</span><span class="gp">'+pct.toFixed(0)+'% there</span></div><div class="gbar"><div style="width:'+Math.max(2,pct).toFixed(1)+'%"></div></div>'+
       (tm!=null?'<div class="gcd"><div><span class="k">Expected</span><b>'+fm(tm)+'</b><span class="m">age '+Math.floor(ageNow()+tm/12)+(scen?' · with extra':'')+'</span></div><div><span class="k">Countdown</span><b class="cd">'+Math.max(1,Math.round(tm*30.4375)).toLocaleString('en-US')+'</b><span class="m">days to go</span></div><div><span class="k">Range</span><b class="rg">'+(tH!=null?mDate(tH).getFullYear():'—')+'–'+(tL!=null?mDate(tL).getFullYear():'after 75')+'</b><span class="m">strong to poor market</span></div></div>'
         :'<div class="muted small">Not reached by age 75 on the average path. Raising your daily buys moves this up.</div>'); }
-  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); $('fHi').textContent=big(hi[Ma]);
+  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+big(gain)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]);
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
   { const el=$('wres');
