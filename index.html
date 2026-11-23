@@ -361,6 +361,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 .mkw svg{display:block;width:100%;height:auto}
 .mtip{position:absolute;top:0;display:none;pointer-events:none;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap}
 #mRange button{padding:6px 10px}
+@media (max-width:640px){#mRange{flex-wrap:nowrap;gap:0;width:100%;justify-content:space-between} #mRange button{padding:6px 8px;font-size:14px}}
 @media (max-width:640px){.tabs button{font-size:11px}}
 .ailog{display:flex;flex-direction:column;gap:12px}
 .ailog:empty{display:none}
@@ -1031,6 +1032,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
   /* Markets: VTI and VXUS charts side by side */
   .card:has(> #mkVTI){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:40px}
   .card:has(> #mkVTI) > .head{grid-column:1/-1}
+  .card:has(> #mkVTI) > .mk{border-bottom:0}
 }
 </style>
 </head>
@@ -1256,7 +1258,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
     <div class="aimsg" id="brBody"><span class="typing">Loading today's brief…</span></div>
   </section>
   <section class="card">
-    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="15y">15Y</button><button data-r="20y">20Y</button><button data-r="max">All</button></div></div>
+    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1w">1W</button><button data-r="1m">1M</button><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="15y">15Y</button><button data-r="20y">20Y</button><button data-r="max">All</button></div></div>
     <div class="mk" id="mkVTI"></div>
     <div class="mk" id="mkVXUS"></div>
   </section>
@@ -1961,7 +1963,7 @@ async function markets(){ spxCard();
 }
 function mchart(el,sym,h){
   const C=h.c.slice(), Tm=h.t.slice(); if(Q[sym]&&Q[sym].price){C.push(Q[sym].price);Tm.push(Date.now());}
-  const rg=S.mr||'20y', win={'1y':200,'5y':40,'10y':40,'15y':40,'20y':40,'max':10}[rg], yrsBack={'1y':1,'5y':5,'10y':10,'15y':15,'20y':20}[rg];
+  const rg=S.mr||'20y', win={'1y':200,'5y':40,'10y':40,'15y':40,'20y':40,'max':10}[rg]||1e9, yrsBack={'1y':1,'5y':5,'10y':10,'15y':15,'20y':20}[rg], intra=rg==='1w'||rg==='1m';
   const MA=C.map((v,i)=>{if(i<win-1)return null;let s=0;for(let j=i-win+1;j<=i;j++)s+=C[j];return s/win;});
   // Corrections: each time price fell 10%+ from its running high. Computed on the full series so peaks before the window still count.
   const DDp=[], DD=[]; { let pk=C[0],pi=0,ep=null; for(let i=0;i<C.length;i++){ if(C[i]>=pk){ if(ep){ep.end=i;DD.push(ep);ep=null;} pk=C[i];pi=i; DDp.push(0); continue; }
@@ -1970,18 +1972,18 @@ function mchart(el,sym,h){
   const c=C.slice(s0), t=Tm.slice(s0), ma=MA.slice(s0), dd=DDp.slice(s0);
   const n=c.length, first=c[0], last=c[n-1], chg=(last/first-1)*100, since=new Date(t[0]);
   const names={VTI:'US Total Stock Market',VXUS:'Total International Stock'};
-  const short=yrsBack&&since.getTime()>Date.now()-(yrsBack-.25)*365.25*864e5, lbl=(rg==='max'||short)?'since '+since.getFullYear():'in '+yrsBack+(yrsBack===1?' year':' years');
+  const short=yrsBack&&since.getTime()>Date.now()-(yrsBack-.25)*365.25*864e5, lbl=rg==='1w'?'past week':rg==='1m'?'past month':(rg==='max'||short)?'since '+since.getFullYear():'in '+yrsBack+(yrsBack===1?' year':' years');
   el.innerHTML='<div class="mkh"><div><div class="mks">'+sym+' <span class="muted small">'+names[sym]+'</span></div><div class="mkp num">'+usd(last,true)+'</div>'+
-    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span><span><i class="sw sw-ma"></i>200-Day Average</span><span><i class="sw sw-dd"></i>10%+ Drop</span></div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
-  const svg=el.querySelector('svg'), W=Math.max(300,el.clientWidth), H=Math.round(Math.min(260,Math.max(180,W*.32))), m={l:4,r:52,t:24,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span>'+(intra?'':'<span><i class="sw sw-ma"></i>200-Day Average</span>')+''+(intra?'':'<span><i class="sw sw-dd"></i>10%+ Drop</span>')+'</div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
+  const svg=el.querySelector('svg'), W=Math.max(300,el.clientWidth), H=Math.round(matchMedia('(min-width:1024px)').matches?Math.min(340,Math.max(260,W*.5)):Math.min(260,Math.max(180,W*.32))), m={l:4,r:52,t:24,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const mv=ma.filter(v=>v!=null); let lo=Math.min(...c,...mv), hi=Math.max(...c,...mv); const pad=(hi-lo)*.06; lo=Math.max(0,lo-pad); hi+=pad;
   const X=i=>m.l+i/(n-1)*iw, Y=v=>m.t+(1-(v-lo)/(hi-lo))*ih, g1=css('--g'), ink2=css('--ink2'), line=css('--line'), sf=css('--surface');
   let g=''; const st=[1,2,5,10,20,25,50,100].find(x=>(hi-lo)/x<=4)||200;
   for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">$'+v+'</text>';
   const yrs=(t[n-1]-t[0])/3.156e10, every=yrs>12?5:yrs>6?2:yrs>2?1:0;
   if(every){let last=-1;t.forEach((ts,i)=>{const y=new Date(ts).getFullYear();if(y!==last&&y%every===0&&i>0&&X(i)>m.l+16&&X(i)<W-m.r-20){last=y;g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">'+y+'</text>';}else if(y!==last&&y%every!==0)last=-1;});}
-  else{[0,Math.floor(n/2),n-1].forEach((i,k)=>{g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="'+(k===0?'start':k===2?'end':'middle')+'" font-size="11" fill="'+ink2+'">'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',year:'2-digit'})+'</text>';});}
-  { const dn=css('--down'); let lx=-1e9;
+  else{[0,Math.floor(n/2),n-1].forEach((i,k)=>{g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="'+(k===0?'start':k===2?'end':'middle')+'" font-size="11" fill="'+ink2+'">'+new Date(t[i]).toLocaleDateString('en-US',intra?{month:'short',day:'numeric'}:{month:'short',year:'2-digit'})+'</text>';});}
+  if(!intra){ const dn=css('--down'); let lx=-1e9;
     // Prefer the server's drops (found on daily prices, identical in every range); map their dates onto this chart's points.
     const at=ts=>{let lo=0,hi=n-1;while(lo<hi){const mid=(lo+hi)>>1;if(t[mid]<ts)lo=mid+1;else hi=mid;}return lo;};
     const EV=(h.dd&&h.dd.length)?h.dd.filter(e=>e.trough>=t[0]&&e.peak<=t[n-1]+864e5).map(e=>({pk:e.peak<t[0]?s0-1:at(e.peak)+s0,hit:e.hit<t[0]?s0-1:at(e.hit)+s0,tr:at(e.trough)+s0,depth:e.depth})):DD;
@@ -1999,7 +2001,7 @@ function mchart(el,sym,h){
   const wrap=el.querySelector('.mkw'), tip=el.querySelector('.mtip'), xh=svg.querySelector('.xh'), xd=svg.querySelector('.xd');
   wrap.onpointermove=wrap.onpointerdown=ev=>{const rc=svg.getBoundingClientRect(), i=Math.max(0,Math.min(n-1,Math.round((ev.clientX-rc.left-m.l)/iw*(n-1))));
     xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.setAttribute('visibility','visible');xd.setAttribute('cx',X(i));xd.setAttribute('cy',Y(c[i]));xd.setAttribute('visibility','visible');
-    tip.innerHTML='<b>'+usd(c[i],true)+'</b>'+(ma[i]!=null?'<br><span class="muted">200-day avg '+usd(ma[i],true)+'</span>':'')+(dd[i]<=-.01?'<br><span style="color:'+(dd[i]<=-.1?'var(--down)':'var(--ink2)')+'">'+(dd[i]*100).toFixed(1)+'% from high</span>':'')+'<br>'+new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'});tip.style.display='block';
+    tip.innerHTML='<b>'+usd(c[i],true)+'</b>'+(ma[i]!=null?'<br><span class="muted">200-day avg '+usd(ma[i],true)+'</span>':'')+(dd[i]<=-.01?'<br><span style="color:'+(dd[i]<=-.1?'var(--down)':'var(--ink2)')+'">'+(dd[i]*100).toFixed(1)+'% from high</span>':'')+'<br>'+(intra?new Date(t[i]).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'}));tip.style.display='block';
     const tw=tip.offsetWidth;let x=X(i)+10;if(x+tw>W)x=X(i)-tw-10;tip.style.left=Math.max(0,x)+'px';};
   wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
   wrap.onpointerleave=()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
