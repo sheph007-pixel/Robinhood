@@ -604,7 +604,7 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 
 /* footer: one line, details on hover (desktop) or tap (phone) */
 .ft{position:relative;display:flex;justify-content:center;padding:18px 0 10px}
-.ftbar{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
+.ftbar{display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:13px;color:var(--ink2)}
 .ftinfo{display:inline-flex;align-items:center;gap:6px;font:inherit;color:inherit;background:none;border:0;padding:6px 8px;border-radius:999px;cursor:pointer}
 .ftinfo:hover,.ftinfo[aria-expanded="true"]{background:var(--surface)}
 .ftinfo svg{opacity:.7}
@@ -812,7 +812,7 @@ body.vm-on .tabs{visibility:hidden}
 .why{font-size:13px;color:var(--ink2);line-height:1.45} .why b{color:var(--ink)}
 .opsc{display:grid;grid-template-columns:repeat(3,1fr);gap:8px} .opsc>div{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:1px} .opsc b{font-size:18px;font-weight:800;color:var(--gt)} .opsc span{font-size:12px;color:var(--ink2)}
 .hiw{margin:4px 0 0;padding-left:18px;font-size:13px;color:var(--ink2);line-height:1.5;display:flex;flex-direction:column;gap:4px}
-.ftpush{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-top:6px} .ftpush:empty{display:none} .ftbtn.mut{color:var(--ink2)}
+.ftpush{display:inline-flex;align-items:baseline;gap:10px;flex-wrap:wrap} .ftpush .ftbtn{font-size:inherit;padding:0} .ftbtn.mut{color:var(--ink2)}
 .fup{color:var(--gt);font-weight:700;font-size:15px;margin-top:2px;letter-spacing:-.01em}
 .fup{white-space:nowrap} @media (max-width:560px){.fup{font-size:12.5px}}
 .bok{font-size:14px;color:var(--gt);font-weight:600}
@@ -1315,11 +1315,11 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
       <button type="button" class="ftinfo" id="ftInfo" aria-expanded="false" aria-controls="ftPop"><span class="dot" id="dot"></span><span id="ftT">Loading…</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       <button type="button" class="ftbtn" id="refresh">Refresh</button>
     </div>
-    <div class="ftpush" id="pushBox"></div>
     <div class="ftpop" id="ftPop" role="status">
       <div><span class="k">Prices</span><span id="qstat">Loading prices…</span></div>
       <div><span class="k">Robinhood</span><span id="rhs">Not synced yet</span><a id="rhConnect" class="rlink" href="#" hidden>Connect</a></div>
       <div id="syncRow" hidden><span class="k">Status</span><span id="sync"></span></div>
+      <div id="pushRow" hidden><span class="k">Alerts</span><span class="ftpush" id="pushBox"></span></div>
       <div><span class="k">Version</span><span id="ver">–</span></div>
     </div>
   </div>
@@ -1859,16 +1859,17 @@ const b64u=k=>{const p='='.repeat((4-k.length%4)%4), r=atob((k+p).replace(/-/g,'
 async function pushUI(){
   const el=$('pushBox'), ios=/iPhone|iPad|iPod/.test(navigator.userAgent), standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
   if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
-    el.innerHTML=ios&&!standalone?'<span>🔔 Alerts on iPhone: Share → Add to Home Screen, then open it from there.</span>':''; return; }
-  let reg; try{ reg=await navigator.serviceWorker.register('/sw.js'); await navigator.serviceWorker.ready; }catch(e){ el.innerHTML=''; return; }
+    el.innerHTML=ios&&!standalone?'<span>Add to Home Screen to get them</span>':''; $('pushRow').hidden=!el.innerHTML; return; }
+  let reg; try{ reg=await navigator.serviceWorker.register('/sw.js'); await navigator.serviceWorker.ready; }catch(e){ el.innerHTML=''; $('pushRow').hidden=true; return; }
+  $('pushRow').hidden=false;
   const sub=await reg.pushManager.getSubscription(), perm=Notification.permission;
-  if(perm==='denied'){ el.innerHTML='<span>🔔 Notifications blocked in settings</span>'; return; }
+  if(perm==='denied'){ el.innerHTML='<span>Blocked in phone settings</span>'; return; }
   if(sub&&perm==='granted'){
-    el.innerHTML='<span>🔔 Buy Alert notifications on</span><button type="button" class="ftbtn" id="pTest">Test</button><button type="button" class="ftbtn mut" id="pOff">Turn Off</button>';
+    el.innerHTML='<span>On</span><button type="button" class="ftbtn" id="pTest">Test</button><button type="button" class="ftbtn mut" id="pOff">Turn Off</button>';
     $('pTest').onclick=async function(){this.textContent='Sent';try{await fetch('/api/push/test',{method:'POST'});}catch(e){}};
     $('pOff').onclick=async()=>{ try{await fetch('/api/push/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:sub.endpoint})}); await sub.unsubscribe();}catch(e){} pushUI(); };
     return; }
-  el.innerHTML='<span>🔔 Get Buy Alerts on this device</span><button type="button" class="ftbtn" id="pOn">Turn On</button>';
+  el.innerHTML='<span>Off</span><button type="button" class="ftbtn" id="pOn">Turn On</button>';
   $('pOn').onclick=async function(){ this.disabled=true;
     try{ if(await Notification.requestPermission()!=='granted'){pushUI();return;}
       const k=await (await fetch('/api/push/key')).json(), s2=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(k.key)});
