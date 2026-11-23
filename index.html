@@ -1646,7 +1646,7 @@ function draw(){
       (tm!=null?'<div class="gcd"><div><span class="k">Expected</span><b>'+fm(tm)+'</b><span class="m">age '+Math.floor(ageNow()+tm/12)+(scen?' · with extra':'')+'</span></div><div><span class="k">Countdown</span><b class="cd">'+Math.max(1,Math.round(tm*30.4375)).toLocaleString('en-US')+'</b><span class="m">days to go</span></div><div><span class="k">Range</span><b class="rg">'+(tH!=null?mDate(tH).getFullYear():'—')+'–'+(tL!=null?mDate(tL).getFullYear():'after 75')+'</b><span class="m">strong to poor market</span></div></div>'
         :'<div class="muted small">Not reached by age 75 on the average path. Raising your daily buys moves this up.</div>')+'</div>';
     const tg=el.querySelector('.gtog'); if(tg)tg.onclick=()=>{GOPEN=!GOPEN; try{localStorage.setItem('goal-open',GOPEN?'1':'');}catch(e){} const d=el.querySelector('.gdet'); d.hidden=!GOPEN; tg.setAttribute('aria-expanded',String(GOPEN)); tg.querySelector('.gchev').textContent=GOPEN?'⌃':'›';}; }
-  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=usd(Math.round(md[Ma]/1e3)*1e3); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+usd(Math.round(gain/1e3)*1e3)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]); fitDv();
+  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=usd(md[Ma]); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+usd(gain)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]); fitDv();
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
   { const el=$('wres');
