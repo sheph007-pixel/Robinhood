@@ -135,6 +135,7 @@ module.exports = function makeRh(DATA_DIR) {
   }
 
   // Pull the Core account and return the payload shape that /api/rh-sync expects.
+  let yearCache = null;
   async function syncPayload(opts) {
     const [pos, port] = await Promise.all([call('get_equity_positions', {}), call('get_portfolio', {})]);
     const d35 = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10), jan1 = new Date().getUTCFullYear() + '-01-01';
@@ -162,7 +163,20 @@ module.exports = function makeRh(DATA_DIR) {
         cur2 = d.next; if (!cur2) break;
       }
     }
-    return { account: CORE_ACCOUNT, positions, cash, orders, manual };
+    // Every filled VTI/VXUS order in the last 12 months (any source), so the app can work out what you held a year ago.
+    // Refreshed at most every 12 hours; it pages through ~500 orders a year.
+    if (!yearCache || Date.now() - yearCache.at > 12 * 3600e3) {
+      const since365 = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), year = []; let cur3;
+      for (let i = 0; i < 100; i++) {
+        const r = await call('get_equity_orders', Object.assign({ created_at_gte: since365, state: 'filled' }, cur3 ? { cursor: cur3 } : {}));
+        const d = (r && r.data) || {};
+        (d.orders || []).filter(o => ['VTI', 'VXUS'].includes(o.symbol)).forEach(o => year.push({ date: String(o.created_at).slice(0, 10), symbol: o.symbol, side: o.side,
+          shares: +o.cumulative_quantity || 0, amount: Math.round((+o.cumulative_quantity || 0) * (+o.average_price || 0) * 100) / 100 }));
+        cur3 = d.next; if (!cur3) break;
+      }
+      yearCache = { at: Date.now(), since: since365, orders: year };
+    }
+    return { account: CORE_ACCOUNT, positions, cash, orders, manual, year: yearCache };
   }
 
   return {

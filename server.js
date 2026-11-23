@@ -480,7 +480,12 @@ function applySync(b) {
   st.avgCost = { VTI: ac('VTI'), VXUS: ac('VXUS') };
   if (b.cash != null && isFinite(+b.cash)) st.cash = Math.max(0, Math.round(+b.cash * 100) / 100);
   const r = summarizeRecurring(Array.isArray(b.orders) ? b.orders : []);
-  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30, streak: r.streak, streakAll: r.streakAll, buys: r.buys };
+  // Past 12 months: shares and dollars bought and sold per fund, so the app can rebuild what you held a year ago.
+  let y1 = (st.rh && st.rh.y1) || null;
+  if (b.year && Array.isArray(b.year.orders)) { y1 = { since: String(b.year.since || '').slice(0, 10) };
+    for (const sym of ['VTI', 'VXUS']) { const m = b.year.orders.filter(o => o.symbol === sym), sum = (side, k) => m.filter(o => o.side === side).reduce((t, o) => t + (+o[k] || 0), 0);
+      y1[sym] = { bs: sum('buy', 'shares'), ba: Math.round(sum('buy', 'amount')), ss: sum('sell', 'shares'), sa: Math.round(sum('sell', 'amount')) }; } }
+  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30, streak: r.streak, streakAll: r.streakAll, buys: r.buys, y1 };
   st.rhSync = st.rh.syncedAt;
   writeState(st);
   return { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring };
