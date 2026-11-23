@@ -242,12 +242,12 @@ async function handleChat(req, res) {
 }
 // Each view fetches extra history so a 200-day moving average is complete from the first visible point.
 // A number means 'that many years back' via period1: Yahoo quietly turns range=max into monthly points even when weekly/daily is asked for.
-const HIST_RANGES = { '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': [11, '1wk'], '15y': [16, '1wk'], '20y': [21, '1wk'], 'max': ['max', '1mo'] };
+const HIST_RANGES = { '1w': ['5d', '15m'], '1m': ['1mo', '60m'], '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': [11, '1wk'], '15y': [16, '1wk'], '20y': [21, '1wk'], 'max': ['max', '1mo'] };
 const ySpan = v => typeof v === 'number' ? `period1=${Math.floor(Date.now() / 1000 - v * 365.25 * 86400)}&period2=${Math.floor(Date.now() / 1000)}` : `range=${v}`;
 const histCache = new Map();
 async function history(sym, rng) {
   const key = sym + rng + 'v3', hit = histCache.get(key);
-  if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.data;
+  if (hit && Date.now() - hit.at < (rng === '1w' || rng === '1m' ? 5 * 60e3 : 6 * 3600e3)) return hit.data; // intraday views stay fresh
   const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?${ySpan(HIST_RANGES[rng][0])}&interval=${HIST_RANGES[rng][1]}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!r.ok) throw new Error('yahoo ' + r.status);
   const j = (await r.json()).chart.result[0], t = [], c = [];
