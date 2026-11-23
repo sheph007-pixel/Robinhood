@@ -1612,8 +1612,8 @@ async function yearChange(){
   if(seq!==YCSEQ)return;
   const ch=vN-v1, gr=ch-added;
   if(!(v1>1000)||!(ch>0)){up.hidden=true;sub.textContent='';return;}
-  up.hidden=false; up.innerHTML='▲ '+usd(ch)+' (+'+Math.round(ch/v1*100)+'%)';
-  sub.textContent='Past year'+(gr>0?' · '+big(gr)+' growth':'')+' · '+big(added)+' added';
+  up.hidden=false; up.innerHTML='▲ '+big(ch)+' (+'+Math.round(ch/v1*100)+'%) 1Y'; up.title='Past 12 months: '+usd(gr)+' growth + '+usd(added)+' added';
+  sub.textContent='';
 }
 function draw(){
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
