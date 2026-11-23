@@ -1098,6 +1098,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">Current Plan</span><span class="ls">Current</span></span></div>
     <div class="muted small num" id="recNote"></div>
+    <div hidden><!-- What If removed from view; inputs kept so existing handlers still bind -->
     <div class="wiq num"><span class="wiqk">What If You Add</span>
       <label><input type="text" inputmode="decimal" id="dcaVTI" aria-label="Extra per day to VTI"><span class="ld">/day VTI</span><span class="lm">VTI Per Day</span></label>
       <label><input type="text" inputmode="decimal" id="dcaVXUS" aria-label="Extra per day to VXUS"><span class="ld">/day VXUS</span><span class="lm">VXUS Per Day</span></label>
@@ -1105,6 +1106,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
       <button type="button" class="wiqc" id="wClear" hidden>Clear</button><button type="button" id="wCalc" hidden></button>
     </div>
     <div class="wres num" id="wres"></div>
+    </div>
     <div class="range num">
       <div><span class="k">Poor Market</span><span class="v" id="fLo"></span></div>
       <div><span class="k">Average</span><span class="v" id="fMd2"></span></div>
