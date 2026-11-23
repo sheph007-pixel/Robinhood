@@ -537,7 +537,10 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .dcarow .dn,.dcarow .dv{display:flex;flex-direction:column}
 .dcarow .dv{text-align:right}
 .dcarow b{font-size:16px} .dcarow span{font-size:13px;color:var(--ink2)}
-.dcalist > div{display:grid;grid-template-columns:70px 60px 1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.dcalist .dlh{display:block;font-size:16px;font-weight:700;padding:6px 0 4px;border:0}
+.dcalist .dmore{display:block;padding:0;border:0} .dcalist .dmore summary{padding:10px 0;font-size:14px;font-weight:600;cursor:pointer;color:var(--gt)!important}
+.dcalist .ok{color:var(--gt);font-weight:700}
+.dcalist > div,.dcalist .dmore > div{display:grid;grid-template-columns:60px 1fr auto 52px;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
 .dcalist > div:last-child{border-bottom:0}
 @media (max-width:640px){.dcasum .v{font-size:17px}.dcasum{gap:8px}.dcasum > div{padding:10px}}
 @media (max-width:640px){
@@ -925,7 +928,7 @@ body.vm-on .tabs{visibility:hidden}
 .nwadd{display:flex;gap:8px;margin-top:10px} .nwadd input{flex:1;min-width:0} .nwadd #nwAmt{max-width:130px} .nwadd .btn{width:auto;padding:10px 16px}
 .tabs button[hidden]{display:none!important}
 
-#dbSum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+#dbSum{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
 #dbSum>div{background:var(--soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
 #dbSum .k{font-size:12px;color:var(--ink2)} #dbSum .v{font-size:18px;font-weight:800;white-space:nowrap} #dbSum .s{font-size:12px;color:var(--ink2)}
 
@@ -946,6 +949,7 @@ body.vm-on .tabs{visibility:hidden}
 .dsched .dsr b{margin-right:4px} .dsched .dsr.sub{font-size:13px;color:var(--ink2)} .dsched .ok{color:var(--gt);font-weight:700}
 .dcafund .d3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px} .dcafund .d3>div{display:flex;flex-direction:column;gap:1px;background:var(--surface);border-radius:8px;padding:6px 8px}
 .dcafund .d3 span{font-size:11px;color:var(--ink2)} .dcafund .d3 b{font-size:14px}
+.dcafund .dav{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--ink2);margin-top:6px} .dcafund .dav b{color:var(--ink)} .dcafund .dav .pill{flex:none;background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:2px 9px;font-size:12px}
 .dcafund .dwin{font-size:12px;font-weight:600;color:var(--gt)} .dcafund .dwin::before{content:'★ '}
 @media (max-width:560px){.dcafund{grid-template-columns:1fr}}
 
@@ -1033,6 +1037,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
   .card:has(> #mkVTI){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:40px}
   .card:has(> #mkVTI) > .head{grid-column:1/-1}
   .card:has(> #mkVTI) > .mk{border-bottom:0}
+  #dbSched .dsr:not(.sub){justify-content:flex-start;gap:8px 40px}
 }
 </style>
 </head>
@@ -1286,7 +1291,6 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
     <div class="dcafund num" id="dbFund"></div>
     <div class="dcasum num" id="dbSum"></div>
     <div class="dcalist num" id="dbList"></div>
-    <p class="muted small">Actual buys your recurring investments made in Robinhood. Updates with every sync.</p>
   </section>
   </div>
 
@@ -2349,19 +2353,15 @@ async function dcaFunds(){
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price})));
   const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4), ac=S.avgCost||{};
   const nf=(v,d)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-  const [m1,m2]=await Promise.all([ma200('VTI'),ma200('VXUS')]);
   const box=(k,sh,ma)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0), avg=+ac[k]||0, now=price(k);
     const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0), wins=avg?mine.filter(b=>+b.p<avg).length:0;
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
-    const st=avg&&now?(now<avg?['Discount Day','Today\'s buy lowers your average.']:['You\'re Ahead','Worth more than you paid.']):null;
-    const cell=(l,v)=>'<div><span>'+l+'</span><b>'+(v?usd(v,true):'—')+'</b></div>';
+    const gain=avg&&now?(now/avg-1)*100:null;
     return '<div><div class="dh"><b class="fn">'+k+'</b><span class="dsh">'+nf(sh,0)+' <small>shares</small></span></div>'+
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
       '<div class="fr"><span>'+nf(Math.max(1,goal-sh),0)+' to go to '+goal.toLocaleString('en-US')+'</span>'+(added>0?'<span class="g">+'+nf(added,0)+' this year</span>':'')+'</div>'+
-      '<div class="d3">'+cell('Your Average',avg)+cell('Today',now)+cell('200-Day',ma)+'</div>'+
-      (st?'<div class="fn2"><span class="up">'+st[0]+'</span>'+st[1]+'</div>':'')+
-      (wins?'<div class="dwin">'+wins+' buy'+(wins===1?'':'s')+' lowered your average this year</div>':'')+'</div>'; };
-  $('dbFund').innerHTML=box('VTI',+S.shVTI||0,m1)+box('VXUS',+S.shVXUS||0,m2);
+      (avg&&now?'<div class="dav"><span>You paid <b>'+usd(avg,true)+'</b> avg · now <b>'+usd(now,true)+'</b></span>'+(gain>=0?'<span class="pill">+'+gain.toFixed(1)+'%</span>':'<span class="g">Buying below your average</span>')+'</div>':'')+'</div>'; };
+  $('dbFund').innerHTML=box('VTI',+S.shVTI||0)+box('VXUS',+S.shVXUS||0);
 }
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
 function dcaSched(){
@@ -2382,9 +2382,13 @@ function dcaBuys(){
   const sum=f=>buys.filter(f).reduce((t,b)=>t+(+b.a||0),0), days=f=>new Set(buys.filter(f).map(b=>b.d)).size;
   const bd=n=>n+' buy day'+(n===1?'':'s');
   const tile=(k,v,sub)=>'<div><span class="k">'+k+'</span><span class="v">'+usd(v)+'</span><span class="s">'+sub+'</span></div>';
-  $('dbSum').innerHTML=tile('This Month',sum(b=>b.d.startsWith(m)),bd(days(b=>b.d.startsWith(m))))+tile('Last 30 Days',sum(b=>b.d>=d30),bd(days(b=>b.d>=d30)))+tile('This Year',sum(b=>b.d.startsWith(y)),bd(days(b=>b.d.startsWith(y))));
+  $('dbSum').innerHTML=tile('Invested This Month',sum(b=>b.d.startsWith(m)),bd(days(b=>b.d.startsWith(m))))+tile('Invested This Year',sum(b=>b.d.startsWith(y)),bd(days(b=>b.d.startsWith(y))));
   const fd=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  $('dbList').innerHTML=buys.slice(0,40).map(b=>'<div><span>'+fd(b.d)+'</span><span><b>'+b.s+'</b></span><span>'+usd(+b.a)+'</span><span class="muted">'+(b.p?'@ '+usd(b.p,true):'Pending')+'</span></div>').join('');
+  // One row per buy day (VTI and VXUS together); the last week shows, older days fold away.
+  const byDay=[]; buys.forEach(b=>{let r=byDay[byDay.length-1]; if(!r||r.d!==b.d){r={d:b.d,l:[],t:0,pend:false};byDay.push(r);} r.l.push(b); r.t+=+b.a||0; if(!(+b.p>0))r.pend=true;});
+  const row=r=>'<div><span>'+fd(r.d)+'</span><span class="muted">'+['VTI','VXUS'].map(k=>{const a=r.l.filter(b=>b.s===k).reduce((t,b)=>t+(+b.a||0),0);return a?k+' '+usd(a):'';}).filter(Boolean).join(' · ')+'</span><span><b>'+usd(r.t)+'</b></span><span class="'+(r.pend?'muted':'ok')+'">'+(r.pend?'Filling':'✓')+'</span></div>';
+  const D=byDay.slice(0,30);
+  $('dbList').innerHTML='<div class="dlh">Recent Buys</div>'+D.slice(0,5).map(row).join('')+(D.length>5?'<details class="dmore"><summary>Show more</summary>'+D.slice(5).map(row).join('')+'</details>':'');
 }
 $('onTrack').addEventListener('click',function(){const ed=$('goalEd'), open=ed.hidden; ed.hidden=!open; this.setAttribute('aria-expanded',String(open)); if(open)$('gAmt').focus();});
 $('ftInfo').addEventListener('click',e=>{e.stopPropagation();const f=document.querySelector('.ft'),o=!f.classList.contains('open');f.classList.toggle('open',o);$('ftInfo').setAttribute('aria-expanded',o);});
