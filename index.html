@@ -1146,18 +1146,9 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
     <div class="kp num" id="kpBody"></div>
   </section>
   <!-- Your Mix: what you hold vs. your targets (Invest tab) -->
-  <section class="card mix">
+  <section class="card mix" hidden>
     <div class="head"><h2>Your Mix</h2><span class="muted small" id="drift" hidden></span></div>
     <div class="mixl num" id="mix"></div>
-    <details class="edtg"><summary>Edit Targets</summary>
-    <div class="grid2">
-      <div class="ctl"><div class="row"><label for="us">US / International</label><output id="usO"></output></div>
-        <input type="range" id="us" min="0" max="100" step="5"></div>
-      <div class="ctl"><div class="row"><label for="eq">Stocks / Cash</label><output id="eqO"></output></div>
-        <input type="range" id="eq" min="0" max="100" step="5"></div>
-    </div>
-    <div hidden><div id="barNow"></div><div id="barTgt"></div></div>
-    </details>
   </section>
   <div hidden><span id="gPct"></span><span id="gTxt"></span><div id="gBar"></div><div id="gSub"></div><div id="gNeed"></div></div>
 
@@ -1226,6 +1217,15 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
       <div class="pfstats num" id="pfStats"></div>
       <div class="pfbar" id="pfBar"></div>
       <div class="pflist num" id="pfList"></div>
+    <details class="edtg"><summary>Edit Targets</summary>
+    <div class="grid2">
+      <div class="ctl"><div class="row"><label for="us">US / International</label><output id="usO"></output></div>
+        <input type="range" id="us" min="0" max="100" step="5"></div>
+      <div class="ctl"><div class="row"><label for="eq">Stocks / Cash</label><output id="eqO"></output></div>
+        <input type="range" id="eq" min="0" max="100" step="5"></div>
+    </div>
+    <div hidden><div id="barNow"></div><div id="barTgt"></div></div>
+    </details>
     </section>
     <div id="pfLook"><section class="card"><div class="muted small">Loading what's inside your funds…</div></section></div>
   </div>
