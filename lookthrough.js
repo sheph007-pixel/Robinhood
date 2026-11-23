@@ -77,21 +77,21 @@ async function build(rh, prev) {
     const fv = F[s] || {};
     funds[s] = {
       asOf: raw[s].asOf, count: byCo.size, hh,
-      top: [...byCo.values()].sort((a, b) => b.w - a.w).slice(0, 40),
+      top: [...byCo.values()].sort((a, b) => b.w - a.w).slice(0, 150),
       countries, sectors: secCov ? norm(sectors, secCov) : null, sectorCoverage: secCov,
       industries: secCov ? Object.entries(norm(industries, secCov)).sort((a, b) => b[1] - a[1]).slice(0, 12) : null,
       size: Object.keys(size).length ? norm(size, Object.values(size).reduce((a, b) => a + b, 0)) : null,
       pe: +fv.pe_ratio || null, pb: +fv.pb_ratio || null, dy: +fv.dividend_yield || null,
     };
   }
-  return { at: Date.now(), robinhood: !!connected, funds };
+  return { v: 2, at: Date.now(), robinhood: !!connected, funds };
 }
 
 module.exports = function makeLookthrough(rh, fs, file) {
   let mem = null, inflight = null;
   try { mem = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { /* none yet */ }
   return async function get() {
-    if (mem && Date.now() - mem.at < DAY && (mem.robinhood || !rh.connected())) return mem;
+    if (mem && mem.v === 2 && Date.now() - mem.at < DAY && (mem.robinhood || !rh.connected())) return mem; // v2: top 150 per fund
     if (!inflight) inflight = build(rh, mem).then(d => { mem = d; try { fs.writeFileSync(file, JSON.stringify(d)); } catch (e) { /* ignore */ } return d; }).finally(() => { inflight = null; });
     try { return await inflight; } catch (e) { if (mem) return mem; throw e; }
   };
