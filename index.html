@@ -1000,6 +1000,38 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
   main{padding-bottom:120px!important}
   html.tabgap .tabs{bottom:8px!important;padding-bottom:6px!important}
 }
+/* ===== Desktop (1024px+): use the width instead of a stretched phone column. Phones and tablets are untouched. ===== */
+@media (min-width:1024px){
+  main{max-width:1200px!important;padding-left:24px!important;padding-right:24px!important}
+  .duo .dv{font-size:56px!important}
+  .duo .side{padding:20px 24px!important}
+  .duo .k{font-size:15px!important}
+  .duo .fup{font-size:15px}
+  /* Home: chart on the left, goal / range / what-if stacked on the right */
+  #tab-home .future{display:grid;grid-template-columns:minmax(0,1fr) 380px;column-gap:32px;align-items:start}
+  #tab-home .future > .duo{grid-column:1/-1}
+  #tab-home .future > #wrap{grid-column:1;grid-row:2/span 4;margin-top:10px}
+  #tab-home .future > .clegend{grid-column:1;grid-row:6}
+  #tab-home .future > #recNote{grid-column:1;grid-row:7;margin-top:6px}
+  #tab-home .future > #goalCd{grid-column:2;grid-row:2}
+  #tab-home .future > .range{grid-column:2;grid-row:3;margin-top:10px}
+  #tab-home .future > .wiq{grid-column:2;grid-row:4;margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px}
+  #tab-home .future > .wres{grid-column:2;grid-row:5;margin-top:10px}
+  #tab-home .wiqk{grid-column:1/3;grid-row:1;align-self:center}
+  #tab-home .wiqc{grid-column:3;grid-row:1;justify-self:end;padding:0}
+  #tab-home .wiq label{grid-row:2;flex-direction:column-reverse;align-items:stretch;gap:3px;font-size:12px;min-width:0}
+  #tab-home .wiq label span{white-space:nowrap} #tab-home .wiq .ld{display:none} #tab-home .wiq .lm{display:block}
+  #tab-home .wiq input{width:100%;font-size:15px;padding:7px 8px}
+  #tab-home .wsum{flex-direction:column;align-items:flex-start;gap:2px}
+  .range .v{font-size:22px}
+  #tab-home .gcd b{font-size:17px;white-space:nowrap}
+  /* Holdings: the fund look-through sections sit two across */
+  #pfLook{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:48px;align-items:start}
+  #pfLook > :only-child,#pfLook > .pfnote{grid-column:1/-1}
+  /* Markets: VTI and VXUS charts side by side */
+  .card:has(> #mkVTI){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:40px}
+  .card:has(> #mkVTI) > .head{grid-column:1/-1}
+}
 </style>
 </head>
 <body>
@@ -1454,7 +1486,7 @@ function project(){
 // ---------- render ----------
 function render(reproject){
   const h=holdings(), w=weights(), T=h.total;
-  $('total').textContent=usd(T,true); fitDv();
+  $('total').textContent=usd(T); fitDv();
   const MS=[1e5,2.5e5,5e5,7.5e5,1e6,1.25e6,1.5e6,2e6,2.5e6,3e6,4e6,5e6,6e6,7.5e6,1e7,1.5e7,2e7,3e7,5e7];
   const nxt=MS.find(x=>x>T)||T*1.5, prv=[0,...MS].filter(x=>x<=T).pop()||0;
   $('mileT').textContent=T&&prv?'Passed '+big(prv)+' ✓':'Next milestone';
@@ -1560,7 +1592,7 @@ function draw(){
     else el.innerHTML='<div class="gch"><span class="gt">🎯 '+big(GL)+' Goal</span><span class="gp">'+pct.toFixed(0)+'% there</span></div><div class="gbar"><div style="width:'+Math.max(2,pct).toFixed(1)+'%"></div></div>'+
       (tm!=null?'<div class="gcd"><div><span class="k">Expected</span><b>'+fm(tm)+'</b><span class="m">age '+Math.floor(ageNow()+tm/12)+(scen?' · with extra':'')+'</span></div><div><span class="k">Countdown</span><b class="cd">'+Math.max(1,Math.round(tm*30.4375)).toLocaleString('en-US')+'</b><span class="m">days to go</span></div><div><span class="k">Range</span><b class="rg">'+(tH!=null?mDate(tH).getFullYear():'—')+'–'+(tL!=null?mDate(tL).getFullYear():'after 75')+'</b><span class="m">strong to poor market</span></div></div>'
         :'<div class="muted small">Not reached by age 75 on the average path. Raising your daily buys moves this up.</div>'); }
-  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=usd(md[Ma]); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+usd(gain)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]); fitDv();
+  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=usd(Math.round(md[Ma]/1e3)*1e3); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+usd(Math.round(gain/1e3)*1e3)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]); fitDv();
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
   { const el=$('wres');
@@ -1569,7 +1601,7 @@ function draw(){
       el.innerHTML='<div class="wsum"><span class="wbig">'+(gain<0?'−'+big(-gain):'+'+big(gain))+'</span><span>more at age '+S.age+' <b class="g">(+'+Math.max(0,pct).toFixed(0)+'%)</b> than your current plan of '+big(bmd[Ma])+'.<br><span class="muted">You\'d add '+big(own)+' of your own money; growth does the rest.</span></span></div>';}
   }
 
-  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(W<500?Math.max(220,W*.62):Math.min(380,Math.max(250,W*.5))), m={l:4,r:58,t:12,b:38}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(W<500?Math.max(220,W*.62):matchMedia('(min-width:1024px)').matches?Math.min(500,Math.max(380,W*.6)):Math.min(380,Math.max(250,W*.5))), m={l:4,r:58,t:12,b:38}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const Mx=Mh, top=Math.max(1,...hi,...(scen?scen.md.map((v,t)=>v/d(t)):[]));
   const steps=[1e5,2e5,5e5,1e6,2e6,2.5e6,5e6,1e7,2e7,2.5e7,5e7,1e8];
   const step=steps.find(x=>top/x<=6)||2e8, ymin=0, ymax=Math.ceil(top/step)*step;
