@@ -541,7 +541,10 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .dcalist .dmore{display:block;padding:0;border:0} .dcalist .dmore summary{padding:10px 0;font-size:14px;font-weight:600;cursor:pointer;color:var(--gt)!important}
 .dact{background:var(--soft);border:1px solid var(--g);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;margin-bottom:8px;font-size:14px;line-height:1.45} .dact .pill{background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:1px 8px;font-size:11px;margin-right:4px} .dact .dab2{display:flex;gap:8px} .dact .btn{width:auto;padding:8px 20px}
 .buyc.dhow{padding-top:4px} .buyc.dhow details{border-top:0}
-.dplan{background:var(--soft);border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px} .dplan .dsched{background:none;padding:0;margin:0} .dplan .dsched:empty{display:none}
+.dplan{background:var(--soft);border:1.5px solid transparent;border-radius:16px;padding:16px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px} .dplan .dsched{display:none}
+.dplan.ok{background:color-mix(in srgb,var(--g) 14%,var(--soft));border-color:var(--g)} .dplan.ok .dgbig{color:var(--gt)}
+.dplan.low{background:color-mix(in srgb,#f5c04a 14%,var(--soft));border-color:#f5c04a} .dplan.low .dgbig{color:var(--ink)}
+.dgoal .dgbig{font-size:26px;font-weight:800;letter-spacing:-.02em} .dgoal .dgsub{font-size:15px;color:var(--ink2)} .dgoal .dgsub .dged{font-size:15px} .dgoal .dgsp{font-size:13px;color:var(--ink2)}
 .dgoal{display:flex;flex-direction:column;gap:8px}
 .dgoal .dgh{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;color:var(--ink2)}
 .dgoal .dged{font:inherit;font-size:13px;font-weight:600;color:var(--gt);background:none;border:0;padding:0;cursor:pointer}
@@ -2400,11 +2403,14 @@ function dcaGoal(){
   const el=$('dbGoal'), R=REC(), cur=R.daily||Math.round((R.a1+R.a2)/21), h=holdings();
   if(!(h.total>0)||!(monthsTo(S.goalAge)>0)){el.innerHTML='';return;}
   const need=h.total>=S.goal?0:dailyNeeded(), u=S.us/100, sp=v=>'VTI '+usd(Math.round(v*u/10)*10)+' · VXUS '+usd(v-Math.round(v*u/10)*10);
-  const gap=need==null?null:need-cur, st=h.total>=S.goal?'<div class="dgs ok">✓ Goal reached</div>':need==null?'<div class="dgs low">Out of reach by '+S.goalAge+'. Try a later age.</div>':gap<=0?'<div class="dgs ok">✓ On track'+(gap<0?' · '+usd(-gap)+'/day ahead':'')+'</div>':'<div class="dgs low">Add <b>'+usd(gap)+'/day</b> · '+sp(gap)+'</div>';
-  el.innerHTML='<div class="dgh"><span>Goal</span><button type="button" class="dged" id="dgEdit">'+usd(S.goal)+' by age '+S.goalAge+' <span aria-hidden="true">✎</span></button></div>'+
-    '<div class="dgr"><div><span class="k">You buy</span><b>'+usd(cur)+'/day</b></div><div><span class="k">Goal needs</span><b>'+(need==null?'—':usd(need)+'/day')+'</b></div></div>'+st+
-    '<div class="dgf" id="dgForm" hidden><label><span>Goal</span><input type="text" inputmode="decimal" id="dgAmt" value="'+usd(S.goal)+'"></label><label><span>By age</span><input type="text" inputmode="numeric" id="dgAge" value="'+S.goalAge+'"></label><button type="button" class="btn" id="dgSave">Save</button></div>'+
-    '<div class="dgn">Based on an average market.</div>';
+  const reached=h.total>=S.goal, ok=reached||(need!=null&&cur>=need), tgt=need==null?null:Math.ceil(need/10)*10, g=usd(S.goal).replace(/,000,000$/,'M').replace(/(\d),(\d)00,000$/,'$1.$2M');
+  const goalBtn='<button type="button" class="dged" id="dgEdit">'+g+' by '+S.goalAge+' ✎</button>';
+  el.parentNode.className='dplan '+(ok?'ok':'low');
+  el.innerHTML=(reached?'<div class="dgbig">✓ Goal Reached</div><div class="dgsub">'+goalBtn+'</div>'
+      :ok?'<div class="dgbig">✓ On Track</div><div class="dgsub">'+usd(cur)+'/day → '+goalBtn+'</div>'
+      :need==null?'<div class="dgbig">Out of Reach</div><div class="dgsub">Try a later age · '+goalBtn+'</div>'
+      :'<div class="dgbig">Raise to '+usd(tgt)+'/day</div><div class="dgsub">to hit '+goalBtn+' · now '+usd(cur)+'</div><div class="dgsp">'+sp(tgt)+'</div>')+
+    '<div class="dgf" id="dgForm" hidden><label><span>Goal</span><input type="text" inputmode="decimal" id="dgAmt" value="'+usd(S.goal)+'"></label><label><span>By age</span><input type="text" inputmode="numeric" id="dgAge" value="'+S.goalAge+'"></label><button type="button" class="btn" id="dgSave">Save</button></div>';
   $('dgEdit').onclick=()=>{const f=$('dgForm'); f.hidden=!f.hidden; if(!f.hidden)$('dgAmt').focus();};
   $('dgSave').onclick=()=>{const g=parseAmt($('dgAmt').value), a=Math.round(parse($('dgAge').value)); if(g>=1000)S.goal=Math.round(g); if(a)S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a));
     try{$('gAmt').value=usd(S.goal);$('gAge').value=S.goalAge;}catch(e){} save(); render(true); dcaGoal();};
