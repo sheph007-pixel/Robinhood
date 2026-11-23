@@ -1266,7 +1266,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
     <div class="aimsg" id="brBody"><span class="typing">Loading today's brief…</span></div>
   </section>
   <section class="card">
-    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1w">1W</button><button data-r="1m">1M</button><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="15y">15Y</button><button data-r="20y">20Y</button><button data-r="max">All</button></div></div>
+    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="15y">15Y</button><button data-r="20y">20Y</button><button data-r="max">All</button></div></div>
     <div class="mk" id="mkVTI"></div>
     <div class="mk" id="mkVXUS"></div>
   </section>
@@ -1992,7 +1992,7 @@ function celebrate(items){
 }
 function toast(items){ const d=document.createElement('div'); d.className='ktoast'; d.innerHTML='<b>🎉 Nice work!</b>'+items.slice(0,3).map(i=>'<span>'+i+'</span>').join(''); document.body.appendChild(d);
   setTimeout(()=>d.classList.add('out'),4200); setTimeout(()=>d.remove(),4800); }
-async function markets(){ spxCard();
+async function markets(){ spxCard(); if(S.mr==='1w'||S.mr==='1m')S.mr='20y'; // long-term views only
   const r=S.mr||'20y'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
   for(const sym of ['VTI','VXUS']){const el=$('mk'+sym), k=sym+r;
     if(!HC[k]){el.innerHTML='<div class="muted small">Loading '+sym+'…</div>';try{const x=await fetch('/api/history?s='+sym+'&r='+r);if(!x.ok)throw 0;HC[k]=await x.json();}catch(e){el.innerHTML='<div class="muted small">'+sym+' history unavailable</div>';continue;}}
