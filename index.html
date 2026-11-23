@@ -541,6 +541,14 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .dcalist .dmore{display:block;padding:0;border:0} .dcalist .dmore summary{padding:10px 0;font-size:14px;font-weight:600;cursor:pointer;color:var(--gt)!important}
 .dact{background:var(--soft);border:1px solid var(--g);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;margin-bottom:8px;font-size:14px;line-height:1.45} .dact .pill{background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:1px 8px;font-size:11px;margin-right:4px} .dact .dab2{display:flex;gap:8px} .dact .btn{width:auto;padding:8px 20px}
 .buyc.dhow{padding-top:4px} .buyc.dhow details{border-top:0}
+.dplan{background:var(--soft);border-radius:14px;padding:12px 14px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px} .dplan .dsched{background:none;padding:0;margin:0} .dplan .dsched:empty{display:none}
+.dgoal{display:flex;flex-direction:column;gap:8px}
+.dgoal .dgh{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;color:var(--ink2)}
+.dgoal .dged{font:inherit;font-size:13px;font-weight:600;color:var(--gt);background:none;border:0;padding:0;cursor:pointer}
+.dgoal .dgr{display:grid;grid-template-columns:1fr 1fr;gap:8px} .dgoal .dgr>div{display:flex;flex-direction:column} .dgoal .dgr .k{font-size:12px;color:var(--ink2)} .dgoal .dgr b{font-size:20px;font-weight:800}
+.dgoal .dgs{font-size:14px;font-weight:600} .dgoal .dgs.ok{color:var(--gt)} .dgoal .dgs.low{color:var(--ink)} .dgoal .dgs.low b{color:var(--gt)}
+.dgoal .dgf{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap} .dgoal .dgf[hidden]{display:none} .dgoal .dgf label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)} .dgoal .dgf input{width:120px;max-width:none;text-align:left;font-size:16px;padding:7px 9px} .dgoal .dgf #dgAge{width:64px} .dgoal .dgf .btn{width:auto;padding:8px 18px}
+.dgoal .dgn{font-size:11px;color:var(--ink2)}
 .dcalist .ok{color:var(--gt);font-weight:700}
 .dcalist > div,.dcalist .dmore > div{display:grid;grid-template-columns:60px 1fr auto 52px;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
 .dcalist > div:last-child{border-bottom:0}
@@ -1276,7 +1284,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
   <div id="tab-dca2" class="panel" hidden>
   <section class="card">
     <div class="head"><h2>Recurring Buys</h2></div>
-    <div class="dsched num" id="dbSched"></div>
+    <div class="dplan"><div class="dgoal num" id="dbGoal"></div><div class="dsched num" id="dbSched"></div></div>
     <div id="alAct"></div>
     <div class="dcafund num" id="dbFund"></div>
     <div class="dcasum num" id="dbSum"></div>
@@ -1433,10 +1441,10 @@ let base=null, noRec=null;
 function REC(){const r=(S.rh&&S.rh.recurring)||[], g=sym=>r.filter(x=>x.symbol===sym).reduce((a,x)=>a+(+x.perMonth||0),0), dly=r.filter(x=>x.freq==='daily'&&!x.stopped).reduce((a,x)=>a+(+x.amount||0),0);
   return {a1:g('VTI'),a2:g('VXUS'),daily:dly,list:r};}
 // Final values at month m for a given daily buy (split by target US/Intl), small sample for speed.
-function goalVals(daily,m,L=0){
+function goalVals(daily,m,L=0,noRec=false){
   const h=holdings(), w=weights(), o=OUT[S.outlook], N=1500, r=rng(7);
   const mu1=Math.log(1+o.us-FEE.us)/12, mu2=Math.log(1+o.intl-FEE.intl)/12, s1=VOL.us/Math.sqrt(12), s2=VOL.intl/Math.sqrt(12), cm=Math.pow(1+S.apy/100,1/12)-1, k2=Math.sqrt(1-RHO*RHO);
-  const add=daily*21, u=S.us/100, out=new Float64Array(N), R=REC();
+  const add=daily*21, u=S.us/100, out=new Float64Array(N), R=noRec?{a1:0,a2:0}:REC();
   const gauss=()=>{let x=0;while(x===0)x=r();return Math.sqrt(-2*Math.log(x))*Math.cos(2*Math.PI*r());};
   for(let i=0;i<N;i++){let a=h.vti+L*w.vti,b=h.vxus+L*w.vxus,c=h.cash+L*w.cash;
     for(let t=1;t<=m;t++){const z1=gauss(),z2=RHO*z1+k2*gauss();a*=Math.exp(mu1+s1*z1);b*=Math.exp(mu2+s2*z2);c*=1+cm;a+=add*u+R.a1;b+=add*(1-u)+R.a2;}
@@ -1463,6 +1471,15 @@ function goalNeed(p,L=0){ // daily amount so that P(value >= goal) >= p (with an
   let res;
   if(ok(0))res=0; else{let lo=0,hi=50; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi);}}
   return GN[key]=res;
+}
+// Total daily buy (split by the US/Intl target) that reaches the goal by the goal age on the average (median) path.
+const GD={};
+function dailyNeeded(){
+  const m=Math.max(1,monthsTo(S.goalAge)), need=goalNeedFor(m), r1k=v=>Math.round(v/1000)*1000, h=holdings();
+  const key=[S.goal,S.goalAge,r1k(h.vti),r1k(h.vxus),r1k(h.cash),S.apy,S.outlook,S.us].join('|'); if(key in GD)return GD[key];
+  const ok=d=>{const v=goalVals(d,m,0,true);return v[Math.floor(v.length/2)]>=need;};
+  let res; if(ok(0))res=0; else{let lo=0,hi=200; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi/10)*10;}}
+  return GD[key]=res;
 }
 const SIMC=new Map();
 function sim(a1,a2,L,full){
@@ -2377,11 +2394,23 @@ function dcaSched(){
   const tb=((S.rh||{}).buys||[]).filter(b=>b.d===et), mkt=wd>0&&wd<6;
   const today=tb.length&&tb.every(b=>+b.p>0)?'<span class="ok">✓ Bought today</span>':tb.length?'<span>Filling today</span>':(mkt&&hm<1700?'<span>Buys ~11 AM ET</span>':'');
   const rs=r.slice().sort((a,b)=>a.symbol==='VTI'?-1:b.symbol==='VTI'?1:0), allD=rs.every(x=>x.freq==='daily');
-  el.innerHTML='<div class="dsr"><span class="dtot"><b>'+(allD?usd(dly)+'</b>/day':usd(tot)+'</b>/mo')+'</span>'+today+'</div>'+
-    '<div class="dsr sub"><span>'+rs.map(x=>x.symbol+' '+usd(+x.amount)+(allD?'':'/'+per(x))).join(' · ')+(allD?' · ≈ '+usd(tot)+'/mo':'')+'</span></div>';
+  el.innerHTML='<div class="dsr sub"><span>'+rs.map(x=>x.symbol+' '+usd(+x.amount)+(allD?'':'/'+per(x))).join(' · ')+' · ≈ '+usd(tot)+'/mo</span>'+today+'</div>';
+}
+function dcaGoal(){
+  const el=$('dbGoal'), R=REC(), cur=R.daily||Math.round((R.a1+R.a2)/21), h=holdings();
+  if(!(h.total>0)||!(monthsTo(S.goalAge)>0)){el.innerHTML='';return;}
+  const need=h.total>=S.goal?0:dailyNeeded(), u=S.us/100, sp=v=>'VTI '+usd(Math.round(v*u/10)*10)+' · VXUS '+usd(v-Math.round(v*u/10)*10);
+  const gap=need==null?null:need-cur, st=h.total>=S.goal?'<div class="dgs ok">✓ Goal reached</div>':need==null?'<div class="dgs low">Out of reach by '+S.goalAge+'. Try a later age.</div>':gap<=0?'<div class="dgs ok">✓ On track'+(gap<0?' · '+usd(-gap)+'/day ahead':'')+'</div>':'<div class="dgs low">Add <b>'+usd(gap)+'/day</b> · '+sp(gap)+'</div>';
+  el.innerHTML='<div class="dgh"><span>Goal</span><button type="button" class="dged" id="dgEdit">'+usd(S.goal)+' by age '+S.goalAge+' <span aria-hidden="true">✎</span></button></div>'+
+    '<div class="dgr"><div><span class="k">You buy</span><b>'+usd(cur)+'/day</b></div><div><span class="k">Goal needs</span><b>'+(need==null?'—':usd(need)+'/day')+'</b></div></div>'+st+
+    '<div class="dgf" id="dgForm" hidden><label><span>Goal</span><input type="text" inputmode="decimal" id="dgAmt" value="'+usd(S.goal)+'"></label><label><span>By age</span><input type="text" inputmode="numeric" id="dgAge" value="'+S.goalAge+'"></label><button type="button" class="btn" id="dgSave">Save</button></div>'+
+    '<div class="dgn">Based on an average market.</div>';
+  $('dgEdit').onclick=()=>{const f=$('dgForm'); f.hidden=!f.hidden; if(!f.hidden)$('dgAmt').focus();};
+  $('dgSave').onclick=()=>{const g=parseAmt($('dgAmt').value), a=Math.round(parse($('dgAge').value)); if(g>=1000)S.goal=Math.round(g); if(a)S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a));
+    try{$('gAmt').value=usd(S.goal);$('gAge').value=S.goalAge;}catch(e){} save(); render(true); dcaGoal();};
 }
 function dcaBuys(){
-  dcaFunds(); dcaSched();
+  dcaFunds(); dcaSched(); setTimeout(dcaGoal,0);
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price}))).slice().sort((a,b)=>b.d.localeCompare(a.d));
   if(!buys.length){$('dbSum').innerHTML='';$('dbList').innerHTML='<p class="muted">No recurring buys synced yet. Tap Refresh to sync with Robinhood.</p>';return;}
   const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), m=today.slice(0,7), y=today.slice(0,4), d30=new Date(Date.now()-30*864e5).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
