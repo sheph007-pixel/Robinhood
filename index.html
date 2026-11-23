@@ -813,7 +813,7 @@ body.vm-on .tabs{visibility:hidden}
 .dvc{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;background:var(--soft);border-radius:10px;padding:10px 12px} .dvc span:first-child{font-weight:700}
 @media (max-width:560px){.dvr{grid-template-columns:1.2fr 1.3fr .45fr;font-size:13px} .dvr span:nth-child(3){display:none}}
 .goalcd{display:flex;flex-direction:column;gap:8px;background:var(--soft);border-radius:14px;padding:12px 14px;margin-top:10px}
-.gch{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .gt{font-weight:800;font-size:16px;color:#f5c04a} .gp{font-weight:700;color:var(--ink2)}
+.gch{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .gtog{width:100%;font:inherit;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left} .gtog .gt{display:block;background:none;padding:0;border-radius:0} .gtog .gt,.gtog .gp{white-space:nowrap} .gtog .gt{min-width:0;overflow:hidden;text-overflow:ellipsis} .gt .gwhen{color:var(--ink)} .gchev{color:var(--ink2);margin-left:2px} .gdet{display:flex;flex-direction:column;gap:8px} .gdet[hidden]{display:none} .gt{font-weight:800;font-size:16px;color:#f5c04a} .gp{font-weight:700;color:var(--ink2)}
 .gbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden} .gbar div{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--g),#f5c04a)}
 .gcd{display:grid;grid-template-columns:repeat(3,1fr);gap:10px} .gcd>div{display:flex;flex-direction:column;gap:1px;min-width:0} .gcd .k{font-size:12px;color:var(--ink2);font-weight:600}
 .gcd b{font-size:20px;font-weight:800} .gcd b.cd{color:#f5c04a;font-variant-numeric:tabular-nums} .gcd .m{font-size:12px;color:var(--ink2)}
@@ -1597,6 +1597,7 @@ $('apply').addEventListener('click',()=>{
   save(); render(true);
 });
 
+let GOPEN=false; try{GOPEN=localStorage.getItem('goal-open')==='1';}catch(e){}
 function draw(){
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
     if(!proj)return;
@@ -1624,9 +1625,10 @@ function draw(){
     const tm=at(md), tH=at(hi), tL=at(lo), pct=Math.min(100,have/GL*100);
     el.hidden=false;
     if(have>=GL) el.innerHTML='<div class="gch"><span class="gt">🎉 '+big(GL)+' Goal Reached</span></div><div class="gbar"><div style="width:100%"></div></div>';
-    else el.innerHTML='<div class="gch"><span class="gt">🎯 '+big(GL)+' Goal</span><span class="gp">'+(()=>{const c=goalChance();return c==null?pct.toFixed(0)+'% there':(c>=99?'99%+':c+'%')+' chance by '+S.goalAge;})()+'</span></div><div class="gbar"><div style="width:'+Math.max(2,pct).toFixed(1)+'%"></div></div>'+
+    else el.innerHTML='<button type="button" class="gch gtog" aria-expanded="'+!!GOPEN+'"><span class="gt">🎯 '+big(GL)+(tm!=null?' · <span class="gwhen">'+fm(tm)+'</span>':'')+'</span><span class="gp">'+(()=>{const c=goalChance();return c==null?pct.toFixed(0)+'% there':(c>=99?'99%+':c+'%')+' chance';})()+' <span class="gchev">'+(GOPEN?'⌃':'›')+'</span></span></button><div class="gdet"'+(GOPEN?'':' hidden')+'><div class="gbar"><div style="width:'+Math.max(2,pct).toFixed(1)+'%"></div></div>'+
       (tm!=null?'<div class="gcd"><div><span class="k">Expected</span><b>'+fm(tm)+'</b><span class="m">age '+Math.floor(ageNow()+tm/12)+(scen?' · with extra':'')+'</span></div><div><span class="k">Countdown</span><b class="cd">'+Math.max(1,Math.round(tm*30.4375)).toLocaleString('en-US')+'</b><span class="m">days to go</span></div><div><span class="k">Range</span><b class="rg">'+(tH!=null?mDate(tH).getFullYear():'—')+'–'+(tL!=null?mDate(tL).getFullYear():'after 75')+'</b><span class="m">strong to poor market</span></div></div>'
-        :'<div class="muted small">Not reached by age 75 on the average path. Raising your daily buys moves this up.</div>'); }
+        :'<div class="muted small">Not reached by age 75 on the average path. Raising your daily buys moves this up.</div>')+'</div>';
+    const tg=el.querySelector('.gtog'); if(tg)tg.onclick=()=>{GOPEN=!GOPEN; try{localStorage.setItem('goal-open',GOPEN?'1':'');}catch(e){} const d=el.querySelector('.gdet'); d.hidden=!GOPEN; tg.setAttribute('aria-expanded',String(GOPEN)); tg.querySelector('.gchev').textContent=GOPEN?'⌃':'›';}; }
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=usd(Math.round(md[Ma]/1e3)*1e3); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+usd(Math.round(gain/1e3)*1e3)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]); fitDv();
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
