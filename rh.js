@@ -163,19 +163,20 @@ module.exports = function makeRh(DATA_DIR) {
         cur2 = d.next; if (!cur2) break;
       }
     }
-    // Every filled VTI/VXUS order in the last 12 months (any source), so the app can work out what you held a year ago.
-    // Refreshed at most every 12 hours; it pages through ~500 orders a year.
-    if (!yearCache || Date.now() - yearCache.at > 12 * 3600e3) {
-      const since365 = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), year = []; let cur3;
-      for (let i = 0; i < 100; i++) {
-        const r = await call('get_equity_orders', Object.assign({ created_at_gte: since365, state: 'filled' }, cur3 ? { cursor: cur3 } : {}));
-        const d = (r && r.data) || {};
-        (d.orders || []).filter(o => ['VTI', 'VXUS'].includes(o.symbol)).forEach(o => year.push({ date: String(o.created_at).slice(0, 10), symbol: o.symbol, side: o.side,
-          shares: +o.cumulative_quantity || 0, amount: Math.round((+o.cumulative_quantity || 0) * (+o.average_price || 0) * 100) / 100 }));
-        cur3 = d.next; if (!cur3) break;
-      }
-      yearCache = { at: Date.now(), since: since365, orders: year };
+    // Rolling 12 months of filled VTI/VXUS orders (any source), so the app can work out what you held exactly a year ago.
+    // The first sync pages through the full year; later syncs fetch only orders since the last check (with a 2-day overlap)
+    // and merge them by id, then drop anything older than 365 days, so the window rolls forward on every sync.
+    const since365 = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+    const from = yearCache ? new Date(yearCache.at - 2 * 864e5).toISOString().slice(0, 10) : since365, got = []; let cur3;
+    for (let i = 0; i < 100; i++) {
+      const r = await call('get_equity_orders', Object.assign({ created_at_gte: from, state: 'filled' }, cur3 ? { cursor: cur3 } : {}));
+      const d = (r && r.data) || {};
+      (d.orders || []).filter(o => ['VTI', 'VXUS'].includes(o.symbol)).forEach(o => got.push({ id: o.id, date: String(o.created_at).slice(0, 10), symbol: o.symbol, side: o.side,
+        shares: +o.cumulative_quantity || 0, amount: Math.round((+o.cumulative_quantity || 0) * (+o.average_price || 0) * 100) / 100 }));
+      cur3 = d.next; if (!cur3) break;
     }
+    const byId = new Map(((yearCache && yearCache.orders) || []).map(o => [o.id, o])); got.forEach(o => byId.set(o.id, o));
+    yearCache = { at: Date.now(), since: since365, orders: [...byId.values()].filter(o => o.date >= since365) };
     return { account: CORE_ACCOUNT, positions, cash, orders, manual, year: yearCache };
   }
 
