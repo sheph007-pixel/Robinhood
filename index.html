@@ -520,6 +520,7 @@ body.on-ai .upd{display:none}
 .sw-dd{border-top:2px dashed var(--down)}
 .upd{justify-content:center!important;gap:6px!important;padding:18px 0 8px!important;font-size:13px}
 .upd .status{font-size:13px}
+.rlink#recGo{color:var(--gt)!important}
 .rlink{font:inherit;font-size:13px;font-weight:600;color:var(--gt);background:none;border:0;padding:0 2px;cursor:pointer}
 .rlink:disabled{color:var(--ink2)}
 .upd .status::after{content:'·';margin-left:6px;color:var(--ink2)}
@@ -1340,7 +1341,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
 const $=id=>document.getElementById(id), css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const parse=v=>parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0;
 const usd=(v,c)=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:c?2:0,maximumFractionDigits:c?2:0});
-const big=v=>{const a=Math.abs(v),s=v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2)+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':usd(v);};
+const big=v=>{const a=Math.abs(v),s=v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2).replace(/\.00$/,'')+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':usd(v);};
 // Full dollar amounts (like Robinhood) in the hero tiles: shrink the font only when a number is too wide for its tile.
 function fitDv(){document.querySelectorAll('.duo .dv').forEach(el=>{el.style.removeProperty('font-size');const max=parseFloat(getComputedStyle(el).fontSize);let f=max;while(f>14&&el.scrollWidth>el.clientWidth){f-=1;el.style.setProperty('font-size',f+'px','important');}});}
 addEventListener('resize',()=>fitDv());
@@ -1484,6 +1485,8 @@ function dailyNeeded(){
   let res; if(ok(0))res=0; else{let lo=0,hi=200; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi/10)*10;}}
   return GD[key]=res;
 }
+function goalChance(){ if(!proj)return null; const gm=Math.min(proj.M,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], nd=goalNeedFor(gm)*(realOn()?Math.pow(1+INFL,gm/12):1);
+  let lo=0,hi=col.length; while(lo<hi){const mid=(lo+hi)>>1; if(col[mid]<nd)lo=mid+1; else hi=mid;} return Math.round((col.length-lo)/col.length*100); }
 const SIMC=new Map();
 function sim(a1,a2,L,full){
   const h0=holdings(), r1k=v=>Math.round(v/1000)*1000, key=[a1,a2,L,full,r1k(h0.vti),r1k(h0.vxus),r1k(h0.cash),S.apy,S.outlook,S.eq,S.us,monthsTo(Math.max(...AGES))].join('|');
@@ -1621,7 +1624,7 @@ function draw(){
     const tm=at(md), tH=at(hi), tL=at(lo), pct=Math.min(100,have/GL*100);
     el.hidden=false;
     if(have>=GL) el.innerHTML='<div class="gch"><span class="gt">🎉 '+big(GL)+' Goal Reached</span></div><div class="gbar"><div style="width:100%"></div></div>';
-    else el.innerHTML='<div class="gch"><span class="gt">🎯 '+big(GL)+' Goal</span><span class="gp">'+pct.toFixed(0)+'% there</span></div><div class="gbar"><div style="width:'+Math.max(2,pct).toFixed(1)+'%"></div></div>'+
+    else el.innerHTML='<div class="gch"><span class="gt">🎯 '+big(GL)+' Goal</span><span class="gp">'+(()=>{const c=goalChance();return c==null?pct.toFixed(0)+'% there':(c>=99?'99%+':c+'%')+' chance by '+S.goalAge;})()+'</span></div><div class="gbar"><div style="width:'+Math.max(2,pct).toFixed(1)+'%"></div></div>'+
       (tm!=null?'<div class="gcd"><div><span class="k">Expected</span><b>'+fm(tm)+'</b><span class="m">age '+Math.floor(ageNow()+tm/12)+(scen?' · with extra':'')+'</span></div><div><span class="k">Countdown</span><b class="cd">'+Math.max(1,Math.round(tm*30.4375)).toLocaleString('en-US')+'</b><span class="m">days to go</span></div><div><span class="k">Range</span><b class="rg">'+(tH!=null?mDate(tH).getFullYear():'—')+'–'+(tL!=null?mDate(tL).getFullYear():'after 75')+'</b><span class="m">strong to poor market</span></div></div>'
         :'<div class="muted small">Not reached by age 75 on the average path. Raising your daily buys moves this up.</div>'); }
   $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=usd(Math.round(md[Ma]/1e3)*1e3); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+usd(Math.round(gain/1e3)*1e3)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]); fitDv();
@@ -1959,12 +1962,6 @@ async function keepGoing(){
     '<div class="kst"><span class="kf">🔥</span><div><b>'+streak+(rh.streakAll?'+':'')+'</b><span>market days in a row</span></div>'+
       '<div class="kmsg">'+(q==null?'Every buy counts.':q>=0?'Up day: your shares are worth more.':'Down day: today\'s buy gets more shares.')+'</div></div>'+
     bar((streak-prev)/(next-prev))+'<div class="ksub"><span>'+(next-streak)+' more to a '+next+'-day streak</span><span>This year: '+days+' buy days · '+usd(inv)+'</span></div>'+
-    '<div class="kgrid">'+
-      '<div class="kt"><span class="k">Level '+(li+1)+'</span><b>'+LV[li][1]+'</b>'+(lnext?bar((days-LV[li][0])/(lnext[0]-LV[li][0]),' sm')+'<span class="m">'+(lnext[0]-days)+' buy days to '+lnext[1]+'</span>':'<span class="m">Top level</span>')+'</div>'+
-      (T<(S.goal||5e6)?'<div class="kt"><span class="k">Road to '+big(S.goal||5e6)+'</span><b>'+Math.floor(T/(S.goal||5e6)*100)+'%</b>'+bar(T/(S.goal||5e6),' sm')+'<span class="m">'+big((S.goal||5e6)-T)+' to go</span></div>':      '<div class="kt"><span class="k">Next Milestone</span><b>'+big(pnext)+'</b>'+bar((T-pprev)/(pnext-pprev),' sm')+'<span class="m">'+Math.round(T/pnext*100)+'% there · '+big(pnext-T)+' to go</span></div>')+
-      (daily?'<div class="kt"><span class="k">Future You</span><b>'+big(grow(daily))+'</b><span class="m">What today\'s '+usd(daily)+' could grow to by age '+S.age+'</span></div>':'')+
-    '</div>'+
-
     '<div class="kbadges">'+B.map(b=>'<span class="kb'+(b[2]?' on':'')+'" title="'+b[1]+(b[2]?' (earned)':' (locked)')+'"><i>'+b[0]+'</i>'+b[1]+'</span>').join('')+'</div>';
   const kb=null; if(kb)kb.onclick=()=>{ const u=S.us/100; $('dcaVTI').value=usd(Math.round(bump*u)); $('dcaVXUS').value=usd(bump-Math.round(bump*u)); $('wClear').hidden=false; $('wCalc').click(); $('wrap').scrollIntoView({behavior:'smooth',block:'center'}); };
   // Celebrate anything newly earned since the last visit.
@@ -2406,8 +2403,7 @@ function dcaGoal(){
   const need=h.total>=S.goal?0:dailyNeeded(), u=S.us/100, sp=v=>'VTI '+usd(Math.round(v*u/10)*10)+' · VXUS '+usd(v-Math.round(v*u/10)*10);
   const reached=h.total>=S.goal, ok=reached||(need!=null&&cur>=need), tgt=need==null?null:Math.ceil(need/10)*10, g=usd(S.goal).replace(/,000,000$/,'M').replace(/(\d),(\d)00,000$/,'$1.$2M');
   // Chance of reaching the goal with today's buys: share of simulated paths at or above the goal at the goal age (same model as Home).
-  let pct=null; try{ if(proj){ const gm=Math.min(proj.M,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], nd=goalNeedFor(gm)*(realOn()?Math.pow(1+INFL,gm/12):1);
-    let lo=0,hi=col.length; while(lo<hi){const mid=(lo+hi)>>1; if(col[mid]<nd)lo=mid+1; else hi=mid;} pct=Math.round((col.length-lo)/col.length*100); } }catch(e){}
+  let pct=null; try{pct=goalChance();}catch(e){}
   const pc=pct==null?'':'<span class="dgpct">'+(pct>=99?'99%+':pct+'%')+(ok?' chance':' now')+'</span>';
   const per=sym=>{const l=(R.list||[]).filter(x=>x.symbol===sym&&!x.stopped&&x.freq==='daily'); return l.length?l.reduce((t,x)=>t+(+x.amount||0),0):Math.round((sym==='VTI'?R.a1:R.a2)/21);};
   const curSp='VTI '+usd(per('VTI'))+' · VXUS '+usd(per('VXUS'))+' a day';
