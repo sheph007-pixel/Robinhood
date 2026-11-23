@@ -1804,8 +1804,8 @@ async function portfolio(){
   // Top 10
   const crow=(e,i)=>'<div class="t10"><span class="r">'+(i+1)+'</span><span class="nm">'+({META:'Meta Platforms'}[e.ticker]||e.name.replace(/,? (Inc|Corp|Co|Ltd|Corporation|Holding|Holdings|plc|SA|AG|NV|SE)\.?( NV| AG| Co\.?| Ltd\.?)*$/,'').replace(/\s*&$/,''))+(/^[A-Z.]{1,5}$/.test(e.ticker||'')?'<small>'+e.ticker+'</small>':'')+'</span><span>'+usd(e.w*st)+'</span><span class="pc">'+pc1(e.w)+'</span></div>';
   const t100=top.slice(0,100).reduce((s,e)=>s+e.w,0);
-  out+='<section class="card"><div class="head"><h2>Your Biggest Companies</h2><span class="muted small">Top 10 = '+Math.round(t10*100)+'% of your stocks</span></div><div class="top10 num">'+
-    top.slice(0,10).map(crow).join('')+(top.length>10?'<details class="t100"><summary>Show Top '+Math.min(100,top.length)+' ('+Math.round(t100*100)+'% of your stocks)</summary>'+top.slice(10,100).map((e,i)=>crow(e,i+10)).join('')+'</details>':'')+'</div></section>';
+  out+='<section class="card"><div class="head"><h2>Your Top '+Math.min(100,top.length)+' Companies</h2><span class="muted small">Top 10 = '+Math.round(t10*100)+'% · Top '+Math.min(100,top.length)+' = '+Math.round(t100*100)+'% of your stocks</span></div><div class="top10 num">'+
+    top.slice(0,100).map(crow).join('')+'</div></section>';
   // Countries
   const cTop=ctyL.slice(0,10), cRest=ctyL.slice(10).reduce((s,e)=>s+e[1],0), cMax=cTop[0][1];
   out+='<section class="card"><div class="head"><h2>Where the Companies Are</h2><span class="muted small">% of your stocks</span></div><div class="hb num">'+
