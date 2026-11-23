@@ -852,7 +852,7 @@ body.vm-on .tabs{visibility:hidden}
 .kchip{display:inline-block;font-size:12px;font-weight:700;color:#000;background:var(--g);border-radius:99px;padding:3px 10px}
 .kbar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden} .kbar div{height:100%;background:var(--g);border-radius:4px}
 .ksub{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--ink2)}
-.kbadges{display:flex;flex-wrap:wrap;gap:8px}
+.kbadges{display:flex;flex-wrap:wrap;gap:8px} .kgrid.k2{grid-template-columns:1fr 1fr} .kbd summary{font-size:14px;font-weight:600;color:var(--gt);cursor:pointer;padding:4px 0} .kbd .kbadges{margin-top:8px}
 .kb{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:6px 10px;border-radius:99px;background:var(--soft);color:var(--ink2);opacity:.45;filter:grayscale(1)}
 .kb.on{opacity:1;filter:none;color:var(--ink);box-shadow:inset 0 0 0 1px var(--g)} .kb i{font-style:normal}
 .kgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -1341,7 +1341,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
 const $=id=>document.getElementById(id), css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const parse=v=>parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0;
 const usd=(v,c)=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:c?2:0,maximumFractionDigits:c?2:0});
-const big=v=>{const a=Math.abs(v),s=v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2).replace(/\.00$/,'')+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':usd(v);};
+const big=v=>{const a=Math.abs(v),s=v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2).replace(/0$/,'').replace(/\.0$/,'')+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':usd(v);};
 // Full dollar amounts (like Robinhood) in the hero tiles: shrink the font only when a number is too wide for its tile.
 function fitDv(){document.querySelectorAll('.duo .dv').forEach(el=>{el.style.removeProperty('font-size');const max=parseFloat(getComputedStyle(el).fontSize);let f=max;while(f>14&&el.scrollWidth>el.clientWidth){f-=1;el.style.setProperty('font-size',f+'px','important');}});}
 addEventListener('resize',()=>fitDv());
@@ -1948,23 +1948,29 @@ async function keepGoing(){
   const LV=[[0,'Starter'],[10,'Builder'],[25,'Steady'],[50,'Committed'],[100,'Disciplined'],[250,'Long-Hauler'],[500,'Compounder'],[1000,'Legend']];
   let li=0; LV.forEach((l,i)=>{if(days>=l[0])li=i;}); const lnext=LV[li+1];
   // Next portfolio milestone.
-  const PM=[1e5,2.5e5,5e5,7.5e5,1e6,1.25e6,1.5e6,2e6,2.5e6,3e6,4e6,5e6,7.5e6,1e7,1.5e7,2e7,3e7,5e7], T=h.total, pnext=PM.find(x=>x>T)||T*1.5, pprev=[0,...PM].filter(x=>x<=T).pop()||0;
+  // Endless ladder: the next milestone always exists, so there's always something to work toward.
+  const T=h.total, pstep=v=>v<1e6?2.5e5:v<5e6?5e5:v<1e7?1e6:2.5e6, pprev=Math.floor(T/pstep(T))*pstep(T), pnext=pprev+pstep(T);
   // Future you: what one day of buys grows to by the chosen age at the average-market return.
   const R=REC(), daily=R.list.filter(x=>!x.stopped&&x.freq==='daily').reduce((t,x)=>t+(+x.amount),0), o=OUT[S.outlook]||OUT.mid;
   const g=(w.vti*(o.us-FEE.us)+w.vxus*(o.intl-FEE.intl))/((w.vti+w.vxus)||1), yrs=Math.max(0,monthsTo(S.age)/12), grow=v=>v*Math.pow(1+g,yrs);
   const bump=50, bumpGain=(()=>{let fv=0;for(let m=0;m<Math.round(yrs*12);m++)fv=fv*Math.pow(1+g,1/12)+bump*TD;return fv;})();
-  const MS=[10,25,50,100,250,500,1000], next=MS.find(m=>m>streak)||streak+100, prev=[0,...MS].filter(m=>m<=streak).pop()||0;
+  const MS=[10,25,50,100,250,500,750,1000], next=MS.find(m=>m>streak)||(Math.floor(streak/500)+1)*500, prev=[0,...MS].filter(m=>m<=streak).pop()||0;
   const sh=Math.max(+S.shVTI||0,+S.shVXUS||0);
   const B=[['🌱','Started',days>=1],['🔥','10-Day Streak',streak>=10],['💪','50 Buy Days',days>=50],['🏆','100 Buy Days',days>=100],['🛒','Bought the Dip',dip],
     ['💵','$25K Invested',inv>=25000],['💎','$100K Invested',inv>=100000],['📅','1-Year Streak',streak>=250],['📈','1,000 Shares',sh>=1000],['👑','$1M Portfolio',T>=1e6],['🎯',big(S.goal||5e6)+' Goal',T>=(S.goal||5e6)]];
   const q=Q&&Q.VTI&&Q.VTI.changePct!=null?Q.VTI.changePct:null;
-  $('kpToday').innerHTML=q==null?'':'<span class="kchip">'+(q>=0?'Up Day':'Down Day')+'</span>';
+  $('kpToday').innerHTML='';
   const bar=(v,cls)=>'<div class="kbar'+(cls||'')+'"><div style="width:'+Math.min(100,Math.max(3,v*100)).toFixed(1)+'%"></div></div>';
+  // Shares ladder: the fund closest (in %) to its next 1,000 shares.
+  const shN=k=>{const v=+S['sh'+k]||0, n=(Math.floor(v/1000)+1)*1000; return {k,v,n,p:(v-(n-1000))/1000};}, sx=[shN('VTI'),shN('VXUS')].sort((a,b)=>b.p-a.p)[0];
+  const tile=(k,v,sub,p)=>'<div class="kt"><span class="k">'+k+'</span><b>'+v+'</b>'+bar(p,' sm')+'<span class="m">'+sub+'</span></div>';
+  const got=B.filter(b=>b[2]);
   $('kpBody').innerHTML=
-    '<div class="kst"><span class="kf">🔥</span><div><b>'+streak+(rh.streakAll?'+':'')+'</b><span>market days in a row</span></div>'+
-      '<div class="kmsg">'+(q==null?'Every buy counts.':q>=0?'Up day: your shares are worth more.':'Down day: today\'s buy gets more shares.')+'</div></div>'+
+    '<div class="kst"><span class="kf">🔥</span><div><b>'+streak+(rh.streakAll?'+':'')+'</b><span>days your auto-invest ran in a row</span></div></div>'+
     bar((streak-prev)/(next-prev))+'<div class="ksub"><span>'+(next-streak)+' more to a '+next+'-day streak</span><span>This year: '+days+' buy days · '+usd(inv)+'</span></div>'+
-    '<div class="kbadges">'+B.map(b=>'<span class="kb'+(b[2]?' on':'')+'" title="'+b[1]+(b[2]?' (earned)':' (locked)')+'"><i>'+b[0]+'</i>'+b[1]+'</span>').join('')+'</div>';
+    '<div class="kgrid k2">'+tile('Next Milestone',big(pnext),big(pnext-T)+' to go',(T-pprev)/(pnext-pprev))+
+      tile('Next Shares',sx.n.toLocaleString('en-US')+' '+sx.k,Math.ceil(sx.n-sx.v).toLocaleString('en-US')+' shares to go',sx.p)+'</div>'+
+    '<details class="kbd"><summary>🏅 '+got.length+' badge'+(got.length===1?'':'s')+' earned</summary><div class="kbadges">'+got.map(b=>'<span class="kb on"><i>'+b[0]+'</i>'+b[1]+'</span>').join('')+'</div></details>';
   const kb=null; if(kb)kb.onclick=()=>{ const u=S.us/100; $('dcaVTI').value=usd(Math.round(bump*u)); $('dcaVXUS').value=usd(bump-Math.round(bump*u)); $('wClear').hidden=false; $('wCalc').click(); $('wrap').scrollIntoView({behavior:'smooth',block:'center'}); };
   // Celebrate anything newly earned since the last visit.
   const earned=[...B.filter(b=>b[2]).map(b=>b[1]),'Level '+(li+1)+' '+LV[li][1],'Passed '+big(pprev)].filter(x=>!/Passed \$0/.test(x));
