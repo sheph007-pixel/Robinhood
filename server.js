@@ -334,7 +334,7 @@ async function spxSnapshot(fresh) {
   // Last year of closes with the 200-day average, for the chart in the S&P box.
   const k0 = Math.max(0, c.length - 252), series = [];
   for (let k = k0; k < c.length; k++) { let ma = null; if (k >= 199) { let sum = 0; for (let q = k - 199; q <= k; q++) sum += c[q]; ma = Math.round(sum / 2) / 100; } series.push([ts[k], Math.round(c[k] * 100) / 100, ma]); }
-  const data = { last, prev, ma200, hi52, peak, series, at: Date.now() };
+  const data = { last, prev, ma200, hi52, peak, series, at: Date.now(), mt: m.regularMarketTime ? m.regularMarketTime * 1000 : null };
   spxCache = { at: Date.now(), data }; return { ...data, targets: targetsNow() };
 }
 const ddCache = new Map();
