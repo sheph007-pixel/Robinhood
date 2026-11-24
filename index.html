@@ -2051,7 +2051,7 @@ function toast(items){ const d=document.createElement('div'); d.className='ktoas
 // Range switches keep the current charts on screen until the new data is in, then redraw in place (no layout jump).
 // After the first draw, the other ranges load quietly in the background so later switches are instant.
 let MSEQ=0, MPRE=false;
-const MRANGES=['1m','1y','5y','10y','15y','20y','max'];
+const MRANGES=['6m','1y','5y','10y','15y','20y','max'];
 async function mhist(sym,r){ const k=sym+r; if(!HC[k]){ const x=await fetch('/api/history?s='+sym+'&r='+r); if(!x.ok)throw 0; HC[k]=await x.json(); } return HC[k]; }
 async function markets(rangeOnly){ if(!rangeOnly)spxCard(); if(!MRANGES.includes(S.mr))S.mr='20y'; // long-term views only
   const r=S.mr, seq=++MSEQ;
@@ -2064,7 +2064,7 @@ async function markets(rangeOnly){ if(!rangeOnly)spxCard(); if(!MRANGES.includes
 }
 function mchart(el,sym,h){
   const C=h.c.slice(), Tm=h.t.slice(); if(Q[sym]&&Q[sym].price){C.push(Q[sym].price);Tm.push(Date.now());}
-  const rg=S.mr||'20y', win={'1y':200,'5y':40,'10y':40,'15y':40,'20y':40,'max':10}[rg]||1e9, yrsBack={'1y':1,'5y':5,'10y':10,'15y':15,'20y':20}[rg], intra=rg==='1w'||rg==='1m';
+  const rg=S.mr||'20y', win={'6m':200,'1y':200,'5y':40,'10y':40,'15y':40,'20y':40,'max':10}[rg]||1e9, yrsBack={'6m':.5,'1y':1,'5y':5,'10y':10,'15y':15,'20y':20}[rg], intra=rg==='1w'||rg==='1m';
   const MA=C.map((v,i)=>{if(i<win-1)return null;let s=0;for(let j=i-win+1;j<=i;j++)s+=C[j];return s/win;});
   // Corrections: each time price fell 10%+ from its running high. Computed on the full series so peaks before the window still count.
   const DDp=[], DD=[]; { let pk=C[0],pi=0,ep=null; for(let i=0;i<C.length;i++){ if(C[i]>=pk){ if(ep){ep.end=i;DD.push(ep);ep=null;} pk=C[i];pi=i; DDp.push(0); continue; }
@@ -2073,10 +2073,10 @@ function mchart(el,sym,h){
   const c=C.slice(s0), t=Tm.slice(s0), ma=MA.slice(s0), dd=DDp.slice(s0);
   const n=c.length, first=c[0], last=c[n-1], chg=(last/first-1)*100, since=new Date(t[0]);
   const names={VTI:'US Total Stock Market',VXUS:'Total International Stock'};
-  const short=yrsBack&&since.getTime()>Date.now()-(yrsBack-.25)*365.25*864e5, lbl=rg==='1w'?'past week':rg==='1m'?'past month':(rg==='max'||short)?'since '+since.getFullYear():'in '+yrsBack+(yrsBack===1?' year':' years');
+  const short=yrsBack&&since.getTime()>Date.now()-(yrsBack-.25)*365.25*864e5, lbl=rg==='1w'?'past week':rg==='1m'?'past month':rg==='6m'?'past 6 months':(rg==='max'||short)?'since '+since.getFullYear():'in '+yrsBack+(yrsBack===1?' year':' years');
   el.innerHTML='<div class="mkh"><div><div class="mks">'+sym+' <span class="muted small">'+names[sym]+'</span></div><div class="mkp num">'+usd(last,true)+'</div>'+
     '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span>'+(intra?'':'<span><i class="sw sw-ma"></i>200-Day Average</span>')+''+(intra?'':'<span><i class="sw sw-dd"></i>10%+ Drop</span>')+'</div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>'+
-    '<div class="mrr" role="group" aria-label="Time range">'+[['1m','1M'],['1y','1Y'],['5y','5Y'],['10y','10Y'],['15y','15Y'],['20y','20Y'],['max','All']].map(([k,l])=>'<button type="button" data-r="'+k+'" aria-pressed="'+(k===rg)+'">'+l+'</button>').join('')+'</div>';
+    '<div class="mrr" role="group" aria-label="Time range">'+[['6m','6M'],['1y','1Y'],['5y','5Y'],['10y','10Y'],['15y','15Y'],['20y','20Y'],['max','All']].map(([k,l])=>'<button type="button" data-r="'+k+'" aria-pressed="'+(k===rg)+'">'+l+'</button>').join('')+'</div>';
   // Phones: edge-to-edge chart like Robinhood (no price scale or grid); press and hold still shows prices.
   const fb=matchMedia('(max-width:640px)').matches, mkw=el.querySelector('.mkw');
   if(fb){const r=el.getBoundingClientRect(); mkw.style.margin='0 '+(-(innerWidth-r.right))+'px 0 '+(-r.left)+'px';}
@@ -2106,7 +2106,7 @@ function mchart(el,sym,h){
   const wrap=el.querySelector('.mkw'), tip=el.querySelector('.mtip'), xh=svg.querySelector('.xh'), xd=svg.querySelector('.xd');
   wrap.onpointermove=wrap.onpointerdown=ev=>{const rc=svg.getBoundingClientRect(), i=Math.max(0,Math.min(n-1,Math.round((ev.clientX-rc.left-m.l)/iw*(n-1))));
     xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.setAttribute('visibility','visible');xd.setAttribute('cx',X(i));xd.setAttribute('cy',Y(c[i]));xd.setAttribute('visibility','visible');
-    tip.innerHTML='<b>'+usd(c[i],true)+'</b>'+(ma[i]!=null?'<br><span class="muted">200-day avg '+usd(ma[i],true)+'</span>':'')+(dd[i]<=-.01?'<br><span style="color:'+(dd[i]<=-.1?'var(--down)':'var(--ink2)')+'">'+(dd[i]*100).toFixed(1)+'% from high</span>':'')+'<br>'+(intra?new Date(t[i]).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(S.mr==='1y'?'numeric':undefined),year:'numeric'}));tip.style.display='block';
+    tip.innerHTML='<b>'+usd(c[i],true)+'</b>'+(ma[i]!=null?'<br><span class="muted">200-day avg '+usd(ma[i],true)+'</span>':'')+(dd[i]<=-.01?'<br><span style="color:'+(dd[i]<=-.1?'var(--down)':'var(--ink2)')+'">'+(dd[i]*100).toFixed(1)+'% from high</span>':'')+'<br>'+(intra?new Date(t[i]).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):new Date(t[i]).toLocaleDateString('en-US',{month:'short',day:(['1y','6m'].includes(S.mr)?'numeric':undefined),year:'numeric'}));tip.style.display='block';
     const tw=tip.offsetWidth;let x=X(i)+10;if(x+tw>W)x=X(i)-tw-10;tip.style.left=Math.max(0,x)+'px';};
   wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
   wrap.onpointerleave=()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
