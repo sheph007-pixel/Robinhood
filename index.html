@@ -1344,7 +1344,7 @@ const parse=v=>parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0;
 const usd=(v,c)=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:c?2:0,maximumFractionDigits:c?2:0});
 const big=v=>{const a=Math.abs(v),s=v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2).replace(/0$/,'').replace(/\.0$/,'')+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':usd(v);};
 // Full dollar amounts (like Robinhood) in the hero tiles: shrink the font only when a number is too wide for its tile.
-function fitDv(){document.querySelectorAll('.duo .dv').forEach(el=>{el.style.removeProperty('font-size');const max=parseFloat(getComputedStyle(el).fontSize);let f=max;while(f>14&&el.scrollWidth>el.clientWidth){f-=1;el.style.setProperty('font-size',f+'px','important');}});}
+function fitDv(){document.querySelectorAll('.duo .fup').forEach(el=>{el.style.removeProperty('font-size');if(el.hidden)return;const box=el.parentElement.clientWidth-parseFloat(getComputedStyle(el.parentElement).paddingLeft)-parseFloat(getComputedStyle(el.parentElement).paddingRight);let f=parseFloat(getComputedStyle(el).fontSize);while(f>9&&el.scrollWidth>box){f-=.5;el.style.setProperty('font-size',f+'px','important');}});document.querySelectorAll('.duo .dv').forEach(el=>{el.style.removeProperty('font-size');const max=parseFloat(getComputedStyle(el).fontSize);let f=max;while(f>14&&el.scrollWidth>el.clientWidth){f-=1;el.style.setProperty('font-size',f+'px','important');}});}
 addEventListener('resize',()=>fitDv());
 const fmtSh=v=>(+v).toLocaleString('en-US',{maximumFractionDigits:4});
 
@@ -1613,7 +1613,7 @@ async function yearChange(){
   const ch=vN-v1, gr=ch-added;
   if(!(v1>1000)||!(ch>0)){up.hidden=true;sub.textContent='';return;}
   up.hidden=false; up.innerHTML='▲ '+big(ch)+' (+'+Math.round(ch/v1*100)+'%) 1Y'; up.title='Past 12 months: '+usd(gr)+' growth + '+usd(added)+' added';
-  sub.textContent='';
+  sub.textContent=''; fitDv();
 }
 // Light haptic tick: Android via the Vibration API; iPhone (iOS 18+) via the switch-checkbox trick, the only haptic Safari exposes.
 let HAG=null, HAPI=null;
@@ -1665,7 +1665,8 @@ function draw(){
   const fbh=matchMedia('(max-width:640px)').matches, wrp=$('wrap');
   if(fbh){const r=wrp.parentElement.getBoundingClientRect(); wrp.style.marginLeft=(-r.left)+'px'; wrp.style.marginRight=(-(innerWidth-r.right))+'px';} else {wrp.style.marginLeft='';wrp.style.marginRight='';}
   const svg=$('chart'), W=fbh?innerWidth:Math.max(300,$('wrap').clientWidth), H=Math.round(fbh?Math.max(260,W*.72):W<500?Math.max(220,W*.62):matchMedia('(min-width:1024px)').matches?Math.min(500,Math.max(380,W*.6)):Math.min(380,Math.max(250,W*.5))), m=fbh?{l:0,r:30,t:12,b:52}:{l:4,r:58,t:12,b:52}, iw=W-m.l-m.r, ih=H-m.t-m.b;
-  const Mx=Mh, top=Math.max(1,...hi,...(scen?scen.md.map((v,t)=>v/d(t)):[]));
+  // Scale to the average path (plus headroom) so the goal and the likely path fill the chart; the strong-market band is clipped at the top.
+  const Mx=Mh, top=Math.max(1,Math.max(...md,...(scen?scen.md.map((v,t)=>v/d(t)):[]))*1.4, (S.goal||0)*1.2);
   const steps=[1e5,2e5,5e5,1e6,2e6,2.5e6,5e6,1e7,2e7,2.5e7,5e7,1e8];
   const step=steps.find(x=>top/x<=6)||2e8, ymin=0, ymax=Math.ceil(top/step)*step;
   const X=t=>m.l+t/Mx*iw, Y=v=>m.t+(1-(v-ymin)/(ymax-ymin))*ih, ink=css('--ink'), ink2=css('--ink2'), line=css('--line'), s1=css('--g'), sf=css('--surface');
@@ -1674,21 +1675,24 @@ function draw(){
   if(!fbh)for(let v=0;v<=ymax+1;v+=step)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+lab(v)+'</text>';
   // Age axis doubles as the age picker: tap a label to select it (selected = green pill).
   const ay=H-20, gt=css('--gt');
-  g+='<text x="'+(X(0)+(fbh?16:0))+'" y="'+(ay+5)+'" text-anchor="start" font-size="13" fill="'+ink2+'">Now</text>';
-  for(const a of AG){const t=monthsTo(a);if(t<=0||X(t)-X(0)<(fbh?56:38))continue; const on=a===S.age, cx=fbh?Math.max(24,Math.min(X(t),W-26)):X(t);
+  if(!fbh)g+='<text x="'+X(0)+'" y="'+(ay+5)+'" text-anchor="start" font-size="13" fill="'+ink2+'">Now</text>';
+  for(const a of AG){const t=monthsTo(a);if(t<=0||X(t)-X(0)<(fbh?24:38))continue; const on=a===S.age, cx=fbh?Math.max(24,Math.min(X(t),W-26)):X(t);
     g+='<g class="atk" data-a="'+a+'" role="button" tabindex="0" aria-label="Show age '+a+'" aria-pressed="'+on+'" style="cursor:pointer"><rect x="'+(cx-24)+'" y="'+(H-m.b+2)+'" width="48" height="'+(m.b-2)+'" fill="transparent"/>'+
       (on?'<rect x="'+(cx-22)+'" y="'+(ay-16)+'" width="44" height="32" rx="16" fill="'+s1+'"/>':'')+
       '<text x="'+cx+'" y="'+(ay+6)+'" text-anchor="middle" font-size="17" font-weight="700" fill="'+(on?'#000':gt)+'">'+a+'</text></g>';}
   const P=a=>{let p='';for(let t=0;t<=Mx;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(a[t]).toFixed(1);return p;};
   const B=(u,l)=>{let p='';for(let t=0;t<=Mx;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(u[t]).toFixed(1);for(let t=Mx;t>=0;t--)p+='L'+X(t).toFixed(1)+' '+Y(l[t]).toFixed(1);return p+'Z';};
+  g+='<defs><clipPath id="pclip"><rect x="0" y="'+m.t+'" width="'+W+'" height="'+ih+'"/></clipPath></defs><g clip-path="url(#pclip)">';
   g+='<path d="'+B(hi,lo)+'" fill="'+s1+'" opacity=".13"/>';
   g+='<path d="'+B(hq,lq)+'" fill="'+s1+'" opacity=".22"/>';
   g+='<path d="'+P(put)+'" fill="none" stroke="'+ink2+'" stroke-width="1.5" stroke-dasharray="4 4"/>';
   g+='<path d="'+P(lo)+'" fill="none" stroke="'+ink2+'" stroke-width="1.5"/>';
   if(scen){g+='<path d="'+P(bmd)+'" fill="none" stroke="'+ink+'" stroke-opacity=".55" stroke-width="1.6" stroke-dasharray="2 4" stroke-linecap="round"/>';g+='<circle cx="'+X(Ma)+'" cy="'+Y(bmd[Ma])+'" r="3.5" fill="'+sf+'" stroke="'+ink2+'" stroke-width="2"/>';}
-  { const GL=S.goal||5e6; if(GL<=ymax){ g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(GL)+'" y2="'+Y(GL)+'" stroke="#f5c04a" stroke-width="1.5" stroke-dasharray="6 5" opacity=".9"/><text x="'+(m.l+(fbh?16:6))+'" y="'+(Y(GL)-6)+'" font-size="11" font-weight="700" fill="#f5c04a">'+big(GL)+' goal</text>';
-      const gi=md.findIndex(v=>v>=GL); if(gi>0){ const gd=new Date(); gd.setMonth(gd.getMonth()+gi); g+='<circle cx="'+X(gi)+'" cy="'+Y(GL)+'" r="6" fill="#f5c04a" stroke="'+sf+'" stroke-width="2"/><text x="'+Math.min(X(gi)+10,m.l+iw-70)+'" y="'+(Y(GL)-8)+'" font-size="11" font-weight="700" fill="#f5c04a">🎯 '+gd.toLocaleDateString('en-US',{month:'short',year:'numeric'})+'</text>'; } } }
-  g+='<path d="'+P(md)+'" fill="none" stroke="'+s1+'" stroke-width="2.5" stroke-linejoin="round"/>';
+  { const GL=S.goal||5e6; if(GL<=ymax){ const gi=md.findIndex(v=>v>=GL), gd=new Date(); if(gi>0)gd.setMonth(gd.getMonth()+gi);
+      // One label at the left, above the goal line (the average path is still below the goal there, so nothing crosses it).
+      g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(GL)+'" y2="'+Y(GL)+'" stroke="#f5c04a" stroke-width="1.5" stroke-dasharray="6 5" opacity=".9"/><text x="'+(m.l+(fbh?16:6))+'" y="'+(Y(GL)-8)+'" font-size="12" font-weight="700" fill="#f5c04a" stroke="'+css('--page')+'" stroke-width="4" stroke-linejoin="round" paint-order="stroke">🎯 '+big(GL)+' goal</text>'+
+        (gi>0?'<circle cx="'+X(gi)+'" cy="'+Y(GL)+'" r="6" fill="#f5c04a" stroke="'+sf+'" stroke-width="2"/>':''); } }
+  g+='<path d="'+P(md)+'" fill="none" stroke="'+s1+'" stroke-width="2.5" stroke-linejoin="round"/></g>';
   g+='<line x1="'+X(Ma)+'" x2="'+X(Ma)+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink+'" stroke-dasharray="2 3" opacity=".5"/>';
   g+='<circle cx="'+X(Ma)+'" cy="'+Y(md[Ma])+'" r="5.5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2"/>';
   g+='<circle cx="'+X(Ma)+'" cy="'+Y(lo[Ma])+'" r="4" fill="'+ink2+'" stroke="'+sf+'" stroke-width="2"/>';
