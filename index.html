@@ -1344,7 +1344,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
 const $=id=>document.getElementById(id), css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const parse=v=>parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0;
 const usd=(v,c)=>(v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:c?2:0,maximumFractionDigits:c?2:0});
-const big=v=>{const a=Math.abs(v),s=v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2).replace(/0$/,'').replace(/\.0$/,'')+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':usd(v);};
+const big=v=>{const a=Math.abs(v),s=v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2).replace(/0$/,'').replace(/\.0$/,'')+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'K':usd(v);};
 // Full dollar amounts (like Robinhood) in the hero tiles: shrink the font only when a number is too wide for its tile.
 function fitDv(){document.querySelectorAll('.duo .fup').forEach(el=>{el.style.removeProperty('font-size');if(el.hidden)return;const box=el.parentElement.clientWidth-parseFloat(getComputedStyle(el.parentElement).paddingLeft)-parseFloat(getComputedStyle(el.parentElement).paddingRight);let f=parseFloat(getComputedStyle(el).fontSize);while(f>9&&el.scrollWidth>box){f-=.5;el.style.setProperty('font-size',f+'px','important');}});document.querySelectorAll('.duo .dv').forEach(el=>{el.style.removeProperty('font-size');const max=parseFloat(getComputedStyle(el).fontSize);let f=max;while(f>14&&el.scrollWidth>el.clientWidth){f-=1;el.style.setProperty('font-size',f+'px','important');}});}
 addEventListener('resize',()=>fitDv());
@@ -1524,7 +1524,7 @@ function project(){
 // ---------- render ----------
 function render(reproject){
   const h=holdings(), w=weights(), T=h.total;
-  $('total').textContent=usd(T); fitDv(); yearChange();
+  $('total').textContent=big(T); fitDv(); yearChange();
   const MS=[1e5,2.5e5,5e5,7.5e5,1e6,1.25e6,1.5e6,2e6,2.5e6,3e6,4e6,5e6,6e6,7.5e6,1e7,1.5e7,2e7,3e7,5e7];
   const nxt=MS.find(x=>x>T)||T*1.5, prv=[0,...MS].filter(x=>x<=T).pop()||0;
   $('mileT').textContent=T&&prv?'Passed '+big(prv)+' ✓':'Next milestone';
@@ -1654,7 +1654,7 @@ function draw(){
       (tm!=null?'<div class="gcd"><div><span class="k">Expected</span><b>'+fm(tm)+'</b><span class="m">age '+Math.floor(ageNow()+tm/12)+(scen?' · with extra':'')+'</span></div><div><span class="k">Countdown</span><b class="cd">'+Math.max(1,Math.round(tm*30.4375)).toLocaleString('en-US')+'</b><span class="m">days to go</span></div><div><span class="k">Range</span><b class="rg">'+(tH!=null?mDate(tH).getFullYear():'—')+'–'+(tL!=null?mDate(tL).getFullYear():'after 75')+'</b><span class="m">strong to poor market</span></div></div>'
         :'<div class="muted small">Not reached by age 75 on the average path. Raising your daily buys moves this up.</div>')+'</div>';
     const tg=el.querySelector('.gtog'); if(tg)tg.onclick=()=>{GOPEN=!GOPEN; try{localStorage.setItem('goal-open',GOPEN?'1':'');}catch(e){} const d=el.querySelector('.gdet'); d.hidden=!GOPEN; tg.setAttribute('aria-expanded',String(GOPEN)); tg.querySelector('.gchev').textContent=GOPEN?'⌃':'›';}; }
-  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=usd(md[Ma]); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+usd(gain)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]); fitDv();
+  $('fLo').textContent=big(lo[Ma]); $('fMd').textContent=big(md[Ma]); { const now0=holdings().total, gain=md[Ma]-now0; $('fUp').innerHTML=now0>0&&gain>0?'▲ '+big(gain)+' (+'+Math.round(gain/now0*100).toLocaleString('en-US')+'%)':''; } $('fHi').textContent=big(hi[Ma]); fitDv();
   $('fMd2').textContent=big(md[Ma]);
   $('lgScen').hidden=!scen;
   { const el=$('wres');
