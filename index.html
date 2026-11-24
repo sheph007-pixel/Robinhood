@@ -361,6 +361,8 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 .mkw svg{display:block;width:100%;height:auto}
 .mtip{position:absolute;top:0;display:none;pointer-events:none;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap}
 #mRange button{padding:6px 10px}
+.mrr{display:flex;justify-content:space-between;gap:4px;padding:10px 0 2px} .mrr button{font:inherit;font-size:14px;font-weight:700;color:var(--gt);background:none;border:0;border-radius:8px;padding:5px 12px;cursor:pointer} .mrr button[aria-pressed="true"]{background:var(--g);color:#000}
+@media (min-width:641px){.mrr{justify-content:flex-start;gap:10px}}
 @media (max-width:640px){#mRange{flex-wrap:nowrap;gap:0;width:100%;justify-content:space-between} #mRange button{padding:6px 8px;font-size:14px}}
 @media (max-width:640px){.tabs button{font-size:11px}}
 .ailog{display:flex;flex-direction:column;gap:12px}
@@ -1267,7 +1269,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
     <div class="aimsg" id="brBody"><span class="typing">Loading today's brief…</span></div>
   </section>
   <section class="card">
-    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range"><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="15y">15Y</button><button data-r="20y">20Y</button><button data-r="max">All</button></div></div>
+    <div class="head"><h2>Markets</h2><div class="chips" id="mRange" role="group" aria-label="Time range" hidden><button data-r="1y">1Y</button><button data-r="5y">5Y</button><button data-r="10y">10Y</button><button data-r="15y">15Y</button><button data-r="20y">20Y</button><button data-r="max">All</button></div></div>
     <div class="mk" id="mkVTI"></div>
     <div class="mk" id="mkVXUS"></div>
   </section>
@@ -2044,7 +2046,8 @@ function mchart(el,sym,h){
   const names={VTI:'US Total Stock Market',VXUS:'Total International Stock'};
   const short=yrsBack&&since.getTime()>Date.now()-(yrsBack-.25)*365.25*864e5, lbl=rg==='1w'?'past week':rg==='1m'?'past month':(rg==='max'||short)?'since '+since.getFullYear():'in '+yrsBack+(yrsBack===1?' year':' years');
   el.innerHTML='<div class="mkh"><div><div class="mks">'+sym+' <span class="muted small">'+names[sym]+'</span></div><div class="mkp num">'+usd(last,true)+'</div>'+
-    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span>'+(intra?'':'<span><i class="sw sw-ma"></i>200-Day Average</span>')+''+(intra?'':'<span><i class="sw sw-dd"></i>10%+ Drop</span>')+'</div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
+    '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span>'+(intra?'':'<span><i class="sw sw-ma"></i>200-Day Average</span>')+''+(intra?'':'<span><i class="sw sw-dd"></i>10%+ Drop</span>')+'</div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>'+
+    '<div class="mrr" role="group" aria-label="Time range">'+[['1y','1Y'],['5y','5Y'],['10y','10Y'],['15y','15Y'],['20y','20Y'],['max','All']].map(([k,l])=>'<button type="button" data-r="'+k+'" aria-pressed="'+(k===rg)+'">'+l+'</button>').join('')+'</div>';
   // Phones: edge-to-edge chart like Robinhood (no price scale or grid); press and hold still shows prices.
   const fb=matchMedia('(max-width:640px)').matches, mkw=el.querySelector('.mkw');
   if(fb){const r=el.getBoundingClientRect(); mkw.style.margin='0 '+(-(innerWidth-r.right))+'px 0 '+(-r.left)+'px';}
@@ -2079,7 +2082,7 @@ function mchart(el,sym,h){
   wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
   wrap.onpointerleave=()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
 }
-document.querySelectorAll('#mRange button').forEach(b=>b.addEventListener('click',()=>{S.mr=b.dataset.r;save();markets();}));
+document.addEventListener('click',e=>{const b=e.target.closest('.mrr button'); if(!b||b.dataset.r===S.mr)return; haptic(); S.mr=b.dataset.r;save();markets();});
 window.addEventListener('resize',()=>{if(S.tab==='mkt')markets();});
 // ---------- AI assistant ----------
 let AIM=[], CID=null;
