@@ -2027,11 +2027,19 @@ function celebrate(items){
 }
 function toast(items){ const d=document.createElement('div'); d.className='ktoast'; d.innerHTML='<b>🎉 Nice work!</b>'+items.slice(0,3).map(i=>'<span>'+i+'</span>').join(''); document.body.appendChild(d);
   setTimeout(()=>d.classList.add('out'),4200); setTimeout(()=>d.remove(),4800); }
-async function markets(){ spxCard(); if(S.mr==='1w'||S.mr==='1m')S.mr='20y'; // long-term views only
-  const r=S.mr||'20y'; document.querySelectorAll('#mRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
-  for(const sym of ['VTI','VXUS']){const el=$('mk'+sym), k=sym+r;
-    if(!HC[k]){el.innerHTML='<div class="muted small">Loading '+sym+'…</div>';try{const x=await fetch('/api/history?s='+sym+'&r='+r);if(!x.ok)throw 0;HC[k]=await x.json();}catch(e){el.innerHTML='<div class="muted small">'+sym+' history unavailable</div>';continue;}}
-    mchart(el,sym,HC[k]);}
+// Range switches keep the current charts on screen until the new data is in, then redraw in place (no layout jump).
+// After the first draw, the other ranges load quietly in the background so later switches are instant.
+let MSEQ=0, MPRE=false;
+const MRANGES=['1y','5y','10y','15y','20y','max'];
+async function mhist(sym,r){ const k=sym+r; if(!HC[k]){ const x=await fetch('/api/history?s='+sym+'&r='+r); if(!x.ok)throw 0; HC[k]=await x.json(); } return HC[k]; }
+async function markets(rangeOnly){ if(!rangeOnly)spxCard(); if(!MRANGES.includes(S.mr))S.mr='20y'; // long-term views only
+  const r=S.mr, seq=++MSEQ;
+  ['VTI','VXUS'].forEach(sym=>{const el=$('mk'+sym); if(!el.querySelector('svg'))el.innerHTML='<div class="muted small">Loading '+sym+'…</div>';});
+  document.querySelectorAll('.mrr button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r)));
+  const got=await Promise.all(['VTI','VXUS'].map(sym=>mhist(sym,r).catch(()=>null)));
+  if(seq!==MSEQ)return; // a newer tap won
+  ['VTI','VXUS'].forEach((sym,i)=>{const el=$('mk'+sym); if(got[i])mchart(el,sym,got[i]); else if(!el.querySelector('svg'))el.innerHTML='<div class="muted small">'+sym+' history unavailable</div>';});
+  if(!MPRE){MPRE=true; setTimeout(async()=>{for(const rr of MRANGES)for(const sym of ['VTI','VXUS']){try{await mhist(sym,rr);}catch(e){}}},1500);}
 }
 function mchart(el,sym,h){
   const C=h.c.slice(), Tm=h.t.slice(); if(Q[sym]&&Q[sym].price){C.push(Q[sym].price);Tm.push(Date.now());}
@@ -2082,7 +2090,7 @@ function mchart(el,sym,h){
   wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
   wrap.onpointerleave=()=>{tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
 }
-document.addEventListener('click',e=>{const b=e.target.closest('.mrr button'); if(!b||b.dataset.r===S.mr)return; haptic(); S.mr=b.dataset.r;save();markets();});
+document.addEventListener('click',e=>{const b=e.target.closest('.mrr button'); if(!b||b.dataset.r===S.mr)return; haptic(); S.mr=b.dataset.r;save();markets(true);});
 window.addEventListener('resize',()=>{if(S.tab==='mkt')markets();});
 // ---------- AI assistant ----------
 let AIM=[], CID=null;
