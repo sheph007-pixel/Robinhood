@@ -113,11 +113,11 @@ input[type=range]{width:100%;accent-color:var(--accent);height:28px;margin:0}
 /* projection table (Home) */
 .range[hidden]{display:none!important}
 .ptbl{display:flex;flex-direction:column;margin-top:14px;background:var(--soft);border-radius:16px;padding:6px 6px}
-.ptbl .pr{display:grid;grid-template-columns:1fr 1.2fr 1.3fr 1.2fr;align-items:center;gap:6px;padding:11px 12px;border:0;border-radius:12px;background:none;font:inherit;color:var(--ink);text-align:right;width:100%;cursor:pointer}
-.ptbl .pr span:first-child{text-align:left} .ptbl .ph{cursor:default;font-size:12px;font-weight:600;color:var(--ink2);padding-top:8px;padding-bottom:6px}
-.ptbl button.pr{font-size:16px;font-weight:600} .ptbl button.pr+button.pr{box-shadow:inset 0 1px 0 var(--line)}
+.ptbl .pr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;column-gap:12px;height:46px;padding:0 14px;font-variant-numeric:tabular-nums;border:0;border-radius:12px;background:none;font:inherit;color:var(--ink);text-align:right;width:100%;cursor:pointer}
+.ptbl .pr span:first-child{text-align:left} .ptbl .ph{cursor:default;font-size:12px;font-weight:600;color:var(--ink2);height:34px}
+.ptbl button.pr{font-size:16px;font-weight:600} @media (max-width:420px){.ptbl button.pr{font-size:15px} .ptbl .pr{column-gap:10px;padding:0 12px}}
 .ptbl .pa{font-weight:700} .ptbl .pa i{font-style:normal;font-size:13px} .ptbl .pavg{color:var(--gt);font-weight:800}
-.ptbl .pr.on{background:var(--g);color:#000;box-shadow:none} .ptbl .pr.on .pavg{color:#000} .ptbl .pr.on+button.pr{box-shadow:none}
+.ptbl .pr.on{background:var(--g);color:#000} .ptbl .pr.on .pavg{color:#000}
 table{border-collapse:collapse;width:100%;min-width:480px;font-size:14px;font-variant-numeric:tabular-nums}
 th,td{padding:9px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
@@ -1718,8 +1718,9 @@ function draw(){
   AG.forEach(a=>{const t=monthsTo(a);tb+='<tr'+(a===S.age?' class="sel"':'')+'><td>'+a+' <span class="muted small">in '+Math.round(t/12)+' yrs</span></td><td>'+big(put[t])+'</td><td>'+big(lo[t])+'</td><td class="exp">'+big(md[t])+'</td><td>'+big(hi[t])+'</td></tr>';});
   $('tbl').innerHTML=tb+'</tbody>';
   // Projection table under the chart: age, then poor / average / strong market. Tap a row to select that age.
+  const m2=v=>v>=1e6?'$'+(v/1e6).toFixed(2)+'M':'$'+Math.round(v/1e3)+'K'; // same format in every cell
   $('ptbl').innerHTML='<div class="pr ph" role="row"><span>Age</span><span>Poor</span><span>Average</span><span>Strong</span></div>'+
-    AG.map(a=>{const t=monthsTo(a); if(t<=0)return ''; return '<button type="button" class="pr'+(a===S.age?' on':'')+'" data-a="'+a+'" role="row"><span class="pa">'+a+(a===S.goalAge?' <i>🎯</i>':'')+'</span><span>'+big(lo[t])+'</span><span class="pavg">'+big(md[t])+'</span><span>'+big(hi[t])+'</span></button>';}).join('');
+    AG.map(a=>{const t=monthsTo(a); if(t<=0)return ''; return '<button type="button" class="pr'+(a===S.age?' on':'')+'" data-a="'+a+'" role="row"><span class="pa">'+a+(a===S.goalAge?' <i>🎯</i>':'')+'</span><span>'+m2(lo[t])+'</span><span class="pavg">'+m2(md[t])+'</span><span>'+m2(hi[t])+'</span></button>';}).join('');
   $('ptbl').querySelectorAll('button.pr').forEach(b=>b.onclick=()=>{const a=+b.dataset.a; if(a===S.age)return; haptic(); S.age=a; save(); draw();});
   { const gm=Math.min(Mh,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], need=goalNeedFor(gm)*d(gm);
     let lo2=0,hi2=col.length; while(lo2<hi2){const mid=(lo2+hi2)>>1; if(col[mid]<need)lo2=mid+1; else hi2=mid;}
