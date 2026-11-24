@@ -1896,15 +1896,19 @@ async function spxCard(){
   if(!SPX||Date.now()-spxAt>5*60e3){ try{const r=await fetch('/api/spx');if(!r.ok)throw 0;SPX=await r.json();spxAt=Date.now();}catch(e){ if(!SPX){$('spx').innerHTML='<div class="muted small">S&amp;P 500 data is unavailable right now.</div>';return;} } }
   const x=SPX, n=v=>Math.round(v).toLocaleString('en-US'), pc=v=>(v>=0?'+':'−')+Math.abs(v*100).toFixed(1)+'%';
   const day=x.prev?x.last/x.prev-1:null, vsMa=x.last/x.ma200-1, offHi=1-x.last/x.hi52, T=x.targets;
+  // Market open = a weekday between 9:30 AM and 4 PM ET with a price from today. Otherwise the number is the last close.
+  const et=d=>new Date(d).toLocaleString('en-US',{timeZone:'America/New_York',hour12:false,weekday:'short',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const etDay=d=>new Date(d).toLocaleDateString('en-CA',{timeZone:'America/New_York'}), hm=+new Date().toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:false,hour:'2-digit',minute:'2-digit'}).replace(':',''), wd=new Date().toLocaleDateString('en-US',{timeZone:'America/New_York',weekday:'short'});
+  const open=!!x.mt&&etDay(x.mt)===etDay(Date.now())&&!['Sat','Sun'].includes(wd)&&hm>=930&&hm<1600, mday=x.mt?new Date(x.mt).toLocaleDateString('en-US',{timeZone:'America/New_York',weekday:'short'}):'';
   const cell=(k,v,sub)=>'<div class="sc"><span class="k">'+k+'</span><span class="v">'+v+'</span><span class="s">'+sub+'</span></div>';
   const fc=T.banks.map(([b,t])=>'<div class="fr"><span>'+b+'</span><span><b>'+n(t)+'</b> <em>'+pc(t/x.last-1)+'</em></span></div>').join('')+
     (T.avg?'<div class="fr avg"><span>Average of '+(T.avgOf?T.avgOf+' ':'')+'Strategists</span><span><b>'+n(T.avg)+'</b> <em>'+pc(T.avg/x.last-1)+'</em></span></div>':'');
   $('spx').innerHTML=spxChart(x,T)+'<div class="spx3">'+
-    cell('Now',n(x.last),day!=null&&day>=0?'<span class="g">'+pc(day)+' today</span>':'Live price')+
+    cell(open?'Now':'Last Close',n(x.last),day!=null&&day>=0?'<span class="g">'+pc(day)+(open?' today':' '+mday)+'</span>':(open?'Live price':'Market closed'))+
     cell('200-Day Average',n(x.ma200),vsMa>=0?'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% above':'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% below')+
     cell('52-Week High',n(x.hi52),offHi<.01?'At its high':(offHi*100).toFixed(1)+'% below the high')+'</div>'+
     '<div class="spxf"><div class="spxh">Wall Street Forecast · End of '+T.year+'</div>'+fc+'<p class="pfnote">Updated '+new Date(T.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'. Checked automatically, weekly when banks publish (Nov–Jan, Jun–Jul). Forecasts are opinions, not promises.</p></div>';
-  $('spxAt').textContent=new Date(x.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  $('spxAt').textContent=open?'Live · '+new Date(x.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'Closed'+(x.mt?' · '+new Date(x.mt).toLocaleDateString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric'})+' close':'');
 }
 // Buy Alerts (server-owned, see /api/alerts): Home shows a compact banner; the Alerts tab holds the full list.
 let ALS=null, alsAt=0;
