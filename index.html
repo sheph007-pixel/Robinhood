@@ -1868,16 +1868,18 @@ async function portfolio(){
 // Past year of the S&P with its 200-day average, the 52-week high, and a dashed path to the Wall Street year-end targets.
 function spxChart(x,T){
   const S0=x.series||[]; if(S0.length<20)return '';
-  const W=Math.max(300,($('spx').clientWidth||600)), H=Math.round(Math.min(240,Math.max(170,W*.36))), m={l:4,r:56,t:14,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  // Phones: edge-to-edge like the other charts (no price scale or grid); labels keep a 16px inset.
+  const fb=matchMedia('(max-width:640px)').matches, rc=$('spx').getBoundingClientRect();
+  const W=fb?innerWidth:Math.max(300,($('spx').clientWidth||600)), H=Math.round(fb?Math.max(220,W*.6):Math.min(240,Math.max(170,W*.36))), m=fb?{l:0,r:24,t:18,b:24}:{l:4,r:56,t:14,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b, pin=fb?16:0;
   const t0=S0[0][0], tNow=S0[S0.length-1][0], tEnd=Date.UTC(T.year,11,31), tg=T.banks.map(b=>b[1]).concat(T.avg?[T.avg]:[]), tLo=Math.min(...tg), tHi=Math.max(...tg), tMid=T.avg||tg.reduce((a,b)=>a+b,0)/tg.length;
   const vals=S0.map(p=>p[1]).concat(S0.map(p=>p[2]).filter(Boolean),[x.hi52,tLo,tHi]); let lo=Math.min(...vals), hi=Math.max(...vals); const pad=(hi-lo)*.08; lo-=pad; hi+=pad;
   const X=t=>m.l+(t-t0)/(tEnd-t0)*iw, Y=v=>m.t+(1-(v-lo)/(hi-lo))*ih, n=v=>Math.round(v).toLocaleString('en-US');
   const g1=css('--g'), ink=css('--ink'), ink2=css('--ink2'), line=css('--line');
   let g=''; const st=[250,500,1000].find(s=>(hi-lo)/s<=5)||2000;
-  for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+n(v)+'</text>';
+  if(!fb)for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+n(v)+'</text>';
   let p='';S0.forEach((q,i)=>{p+=(i?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[1]).toFixed(1);});
   let mp='',on=false;S0.forEach(q=>{if(q[2]==null){on=false;return;}mp+=(on?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[2]).toFixed(1);on=true;});
-  g+='<line x1="'+X(t0)+'" x2="'+X(tNow)+'" y1="'+Y(x.hi52)+'" y2="'+Y(x.hi52)+'" stroke="'+ink2+'" stroke-dasharray="3 4" opacity=".8"/><text x="'+(X(t0)+4)+'" y="'+(Y(x.hi52)-5)+'" font-size="11" fill="'+ink2+'">52-wk high '+n(x.hi52)+'</text>';
+  g+='<line x1="'+X(t0)+'" x2="'+X(tNow)+'" y1="'+Y(x.hi52)+'" y2="'+Y(x.hi52)+'" stroke="'+ink2+'" stroke-dasharray="3 4" opacity=".8"/><text x="'+(X(t0)+4+pin)+'" y="'+(Y(x.hi52)-5)+'" font-size="11" fill="'+ink2+'">52-wk high '+n(x.hi52)+'</text>';
   if(tHi>tLo)g+='<path d="M'+X(tNow)+' '+Y(x.last)+'L'+X(tEnd)+' '+Y(tHi)+'L'+X(tEnd)+' '+Y(tLo)+'Z" fill="'+g1+'" opacity=".12"/>';
   g+='<path d="M'+X(tNow)+' '+Y(x.last)+'L'+X(tEnd)+' '+Y(tMid)+'" stroke="'+g1+'" stroke-width="2" stroke-dasharray="5 5" fill="none"/>';
   g+='<line x1="'+X(tNow)+'" x2="'+X(tNow)+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink2+'" opacity=".35"/>';
@@ -1886,8 +1888,8 @@ function spxChart(x,T){
   g+='<circle cx="'+X(tNow)+'" cy="'+Y(x.last)+'" r="4" fill="'+g1+'"/><circle cx="'+X(tEnd)+'" cy="'+Y(tMid)+'" r="4" fill="none" stroke="'+g1+'" stroke-width="2"/>';
   g+='<text x="'+(X(tEnd)-6)+'" y="'+(Y(tMid)-9)+'" text-anchor="end" font-size="11" font-weight="700" fill="'+g1+'">'+n(tMid)+(T.avg?' avg':'')+' target</text>';
   const dl=t=>new Date(t).toLocaleDateString('en-US',{month:'short',year:'numeric'});
-  g+='<text x="'+X(t0)+'" y="'+(H-6)+'" font-size="11" fill="'+ink2+'">'+dl(t0)+'</text><text x="'+X(tNow)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">Today</text><text x="'+X(tEnd)+'" y="'+(H-6)+'" text-anchor="end" font-size="11" fill="'+ink2+'">End '+T.year+'</text>';
-  return '<svg class="spxc" viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="S&amp;P 500 over the last year with its 200-day average and the path to the year-end '+T.year+' forecast">'+g+'</svg>'+
+  g+='<text x="'+(X(t0)+pin)+'" y="'+(H-6)+'" font-size="11" fill="'+ink2+'">'+dl(t0)+'</text><text x="'+X(tNow)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">Today</text><text x="'+(fb?W-pin:X(tEnd))+'" y="'+(H-6)+'" text-anchor="end" font-size="11" fill="'+ink2+'">End '+T.year+'</text>';
+  return '<svg class="spxc" viewBox="0 0 '+W+' '+H+'" width="'+(fb?W:'100%')+'"'+(fb?' style="display:block;max-width:none;width:'+W+'px;margin:0 '+(-(innerWidth-rc.right))+'px 0 '+(-rc.left)+'px"':'')+' role="img" aria-label="S&amp;P 500 over the last year with its 200-day average and the path to the year-end '+T.year+' forecast">'+g+'</svg>'+
     '<div class="mklg spxlg"><span><i class="sw sw-px"></i>S&amp;P 500</span><span><i class="sw sw-ma"></i>200-Day Average</span><span><i class="sw sw-fc"></i>Forecast</span></div>';
 }
 async function spxCard(){
