@@ -871,7 +871,7 @@ body.vm-on .tabs{visibility:hidden}
 .spxg{display:flex;flex-direction:column;gap:14px}
 .spx3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .spx3 .sc{background:var(--soft);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.spx3 .k{font-size:12px;color:var(--ink2);font-weight:600} .spx3 .v{font-size:22px;font-weight:700;letter-spacing:-.01em} .spx3 .s{font-size:12px;color:var(--ink2)} .spx3 .g{color:var(--gt);font-weight:600}
+.spx3 .k{font-size:12px;color:var(--ink2);font-weight:600} .spx3 .v{font-size:22px;font-weight:700;letter-spacing:-.01em} .spx3 .s{font-size:12px;color:var(--ink2);font-weight:600} .spx3 .k,.spx3 .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .spx3 .g{color:var(--gt);font-weight:600}
 .spxf{display:flex;flex-direction:column;gap:6px} .spxh{font-size:14px;font-weight:700;margin-bottom:2px}
 .spxf .fr{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:6px 0;border-top:1px solid var(--line)} .spxf .fr em{font-style:normal;color:var(--gt);font-weight:600;font-size:13px;margin-left:6px}
 .spxf .fr.avg span:first-child{color:var(--ink2)}
@@ -1905,8 +1905,8 @@ async function spxCard(){
     (T.avg?'<div class="fr avg"><span>Average of '+(T.avgOf?T.avgOf+' ':'')+'Strategists</span><span><b>'+n(T.avg)+'</b> <em>'+pc(T.avg/x.last-1)+'</em></span></div>':'');
   $('spx').innerHTML=spxChart(x,T)+'<div class="spx3">'+
     cell(open?'Now':'Last Close',n(x.last),day!=null&&day>=0?'<span class="g">'+pc(day)+(open?' today':' '+mday)+'</span>':(open?'Live price':'Market closed'))+
-    cell('200-Day Average',n(x.ma200),vsMa>=0?'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% above':'S&amp;P is '+Math.abs(vsMa*100).toFixed(1)+'% below')+
-    cell('52-Week High',n(x.hi52),offHi<.01?'At its high':(offHi*100).toFixed(1)+'% below the high')+'</div>'+
+    cell('200-Day Avg',n(x.ma200),Math.abs(vsMa*100).toFixed(1)+'% '+(vsMa>=0?'above':'below'))+
+    cell('52-Wk High',n(x.hi52),offHi<.01?'At the high':(offHi*100).toFixed(1)+'% below')+'</div>'+
     '<div class="spxf"><div class="spxh">Wall Street Forecast · End of '+T.year+'</div>'+fc+'<p class="pfnote">Updated '+new Date(T.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'. Checked automatically, weekly when banks publish (Nov–Jan, Jun–Jul). Forecasts are opinions, not promises.</p></div>';
   $('spxAt').textContent=open?'Live · '+new Date(x.at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'Closed'+(x.mt?' · '+new Date(x.mt).toLocaleDateString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric'})+' close':'');
 }
