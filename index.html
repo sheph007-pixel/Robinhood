@@ -1615,6 +1615,12 @@ async function yearChange(){
   up.hidden=false; up.innerHTML='▲ '+big(ch)+' (+'+Math.round(ch/v1*100)+'%) 1Y'; up.title='Past 12 months: '+usd(gr)+' growth + '+usd(added)+' added';
   sub.textContent='';
 }
+// Light haptic tick: Android via the Vibration API; iPhone (iOS 18+) via the switch-checkbox trick, the only haptic Safari exposes.
+let HAG=null, HAPI=null;
+function haptic(){ try{ if(navigator.vibrate){navigator.vibrate(8);return;}
+  if(!HAPI){const i=document.createElement('input'); i.type='checkbox'; i.setAttribute('switch',''); i.id='hapsw'; i.style.cssText='position:fixed;left:-99px;opacity:0;pointer-events:none';
+    const l=document.createElement('label'); l.htmlFor='hapsw'; l.style.cssText='position:fixed;left:-99px;opacity:0;pointer-events:none'; document.body.append(i,l); HAPI=l;}
+  HAPI.click(); }catch(e){} }
 function draw(){
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
     if(!proj)return;
@@ -1655,7 +1661,7 @@ function draw(){
       el.innerHTML='<div class="wsum"><span class="wbig">'+(gain<0?'−'+big(-gain):'+'+big(gain))+'</span><span>more at age '+S.age+' <b class="g">(+'+Math.max(0,pct).toFixed(0)+'%)</b> than your current plan of '+big(bmd[Ma])+'.<br><span class="muted">You\'d add '+big(own)+' of your own money; growth does the rest.</span></span></div>';}
   }
 
-  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(W<500?Math.max(220,W*.62):matchMedia('(min-width:1024px)').matches?Math.min(500,Math.max(380,W*.6)):Math.min(380,Math.max(250,W*.5))), m={l:4,r:58,t:12,b:38}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const svg=$('chart'), W=Math.max(300,$('wrap').clientWidth), H=Math.round(W<500?Math.max(220,W*.62):matchMedia('(min-width:1024px)').matches?Math.min(500,Math.max(380,W*.6)):Math.min(380,Math.max(250,W*.5))), m={l:4,r:58,t:12,b:52}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const Mx=Mh, top=Math.max(1,...hi,...(scen?scen.md.map((v,t)=>v/d(t)):[]));
   const steps=[1e5,2e5,5e5,1e6,2e6,2.5e6,5e6,1e7,2e7,2.5e7,5e7,1e8];
   const step=steps.find(x=>top/x<=6)||2e8, ymin=0, ymax=Math.ceil(top/step)*step;
@@ -1664,12 +1670,12 @@ function draw(){
   let g='';
   for(let v=0;v<=ymax+1;v+=step)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+lab(v)+'</text>';
   // Age axis doubles as the age picker: tap a label to select it (selected = green pill).
-  const ay=H-14, gt=css('--gt');
-  g+='<text x="'+X(0)+'" y="'+(ay+4)+'" text-anchor="start" font-size="11" fill="'+ink2+'">Now</text>';
-  for(const a of AG){const t=monthsTo(a);if(t<=0||X(t)-X(0)<34)continue; const on=a===S.age, cx=Math.min(X(t),W-m.r+4-16);
-    g+='<g class="atk" data-a="'+a+'" role="button" tabindex="0" aria-label="Show age '+a+'" aria-pressed="'+on+'" style="cursor:pointer"><rect x="'+(cx-20)+'" y="'+(H-m.b+2)+'" width="40" height="'+(m.b-2)+'" fill="transparent"/>'+
-      (on?'<rect x="'+(cx-17)+'" y="'+(ay-12)+'" width="34" height="24" rx="12" fill="'+s1+'"/>':'')+
-      '<text x="'+cx+'" y="'+(ay+4)+'" text-anchor="middle" font-size="13" font-weight="700" fill="'+(on?'#000':gt)+'">'+a+'</text></g>';}
+  const ay=H-20, gt=css('--gt');
+  g+='<text x="'+X(0)+'" y="'+(ay+5)+'" text-anchor="start" font-size="13" fill="'+ink2+'">Now</text>';
+  for(const a of AG){const t=monthsTo(a);if(t<=0||X(t)-X(0)<38)continue; const on=a===S.age, cx=Math.min(X(t),W-m.r+4-20);
+    g+='<g class="atk" data-a="'+a+'" role="button" tabindex="0" aria-label="Show age '+a+'" aria-pressed="'+on+'" style="cursor:pointer"><rect x="'+(cx-24)+'" y="'+(H-m.b+2)+'" width="48" height="'+(m.b-2)+'" fill="transparent"/>'+
+      (on?'<rect x="'+(cx-22)+'" y="'+(ay-16)+'" width="44" height="32" rx="16" fill="'+s1+'"/>':'')+
+      '<text x="'+cx+'" y="'+(ay+6)+'" text-anchor="middle" font-size="17" font-weight="700" fill="'+(on?'#000':gt)+'">'+a+'</text></g>';}
   const P=a=>{let p='';for(let t=0;t<=Mx;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(a[t]).toFixed(1);return p;};
   const B=(u,l)=>{let p='';for(let t=0;t<=Mx;t++)p+=(t?'L':'M')+X(t).toFixed(1)+' '+Y(u[t]).toFixed(1);for(let t=Mx;t>=0;t--)p+='L'+X(t).toFixed(1)+' '+Y(l[t]).toFixed(1);return p+'Z';};
   g+='<path d="'+B(hi,lo)+'" fill="'+s1+'" opacity=".13"/>';
@@ -1702,16 +1708,16 @@ function draw(){
     $('gSub').textContent=big(T0)+' of '+big(S.goal)+' today ('+Math.round(T0/S.goal*100)+'%'+(outsideTotal()?', incl. '+big(outsideTotal())+' outside Robinhood':'')+'). '+(T0>=S.goal?'You\'re already there. Now it\'s about keeping it.':when>=0?'Average path gets there at age '+Math.floor(ageNow()+when/12+1e-6)+'.':'Average path doesn\'t reach it by 75. Try adding more each month.'); }
 
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
-  svg.querySelectorAll('.atk').forEach(k=>{const pick=()=>{S.age=+k.dataset.a;save();draw();}; k.onclick=pick; k.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}};});
+  svg.querySelectorAll('.atk').forEach(k=>{const pick=()=>{if(S.age!==+k.dataset.a)haptic(); S.age=+k.dataset.a;save();draw();}; k.onclick=pick; k.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}};});
   wrap.onpointermove=wrap.onpointerdown=function(ev){ if(ev.target.closest&&ev.target.closest('.atk')){wrap.onpointerleave();return;}
     const rc=svg.getBoundingClientRect(), t=Math.max(0,Math.min(Mx,Math.round((ev.clientX-rc.left-m.l)/iw*Mx)));
     xh.setAttribute('x1',X(t));xh.setAttribute('x2',X(t));xh.setAttribute('visibility','visible');
     xd.setAttribute('cx',X(t));xd.setAttribute('cy',Y(md[t]));xd.setAttribute('visibility','visible');
-    const ag=Math.floor(ageNow()+t/12+1e-6);
+    const ag=Math.floor(ageNow()+t/12+1e-6); if(ag!==HAG){ if(HAG!=null)haptic(); HAG=ag; }
     tip.innerHTML='<div class="t">'+(t===0?'Today':'Age '+ag+' · '+(new Date().getFullYear()+Math.round(t/12)))+'</div><div class="r"><span>Strong Market</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Average</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor Market</span><b>'+big(lo[t])+'</b></div><div class="r"><span>What You Put In</span><b>'+big(put[t])+'</b></div>';
     tip.style.display='block'; const tw=tip.offsetWidth; let x=X(t)+12; if(x+tw>W)x=X(t)-tw-12; tip.style.left=Math.max(0,x)+'px'; tip.style.top=(m.t+4)+'px';};
   wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
-  wrap.onpointerleave=function(){tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
+  wrap.onpointerleave=function(){HAG=null;tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
 }
 
 // ---------- quotes ----------
