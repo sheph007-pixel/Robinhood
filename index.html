@@ -2035,11 +2035,14 @@ function mchart(el,sym,h){
   const short=yrsBack&&since.getTime()>Date.now()-(yrsBack-.25)*365.25*864e5, lbl=rg==='1w'?'past week':rg==='1m'?'past month':(rg==='max'||short)?'since '+since.getFullYear():'in '+yrsBack+(yrsBack===1?' year':' years');
   el.innerHTML='<div class="mkh"><div><div class="mks">'+sym+' <span class="muted small">'+names[sym]+'</span></div><div class="mkp num">'+usd(last,true)+'</div>'+
     '<div class="num mkc '+(chg>=0?'pos':'')+'">'+(chg>=0?'+':'')+chg.toFixed(1)+'% '+lbl+'</div></div><div class="mklg"><span><i class="sw sw-px"></i>Price</span>'+(intra?'':'<span><i class="sw sw-ma"></i>200-Day Average</span>')+''+(intra?'':'<span><i class="sw sw-dd"></i>10%+ Drop</span>')+'</div></div><div class="mkw"><svg></svg><div class="mtip"></div></div>';
-  const svg=el.querySelector('svg'), W=Math.max(300,el.clientWidth), H=Math.round(matchMedia('(min-width:1024px)').matches?Math.min(340,Math.max(260,W*.5)):Math.min(260,Math.max(180,W*.32))), m={l:4,r:52,t:24,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
+  // Phones: edge-to-edge chart like Robinhood (no price scale or grid); press and hold still shows prices.
+  const fb=matchMedia('(max-width:640px)').matches, mkw=el.querySelector('.mkw');
+  if(fb){const r=el.getBoundingClientRect(); mkw.style.margin='0 '+(-(innerWidth-r.right))+'px 0 '+(-r.left)+'px';}
+  const svg=el.querySelector('svg'), W=fb?innerWidth:Math.max(300,el.clientWidth), H=Math.round(fb?Math.max(240,W*.66):matchMedia('(min-width:1024px)').matches?Math.min(340,Math.max(260,W*.5)):Math.min(260,Math.max(180,W*.32))), m=fb?{l:0,r:0,t:24,b:24}:{l:4,r:52,t:24,b:22}, iw=W-m.l-m.r, ih=H-m.t-m.b;
   const mv=ma.filter(v=>v!=null); let lo=Math.min(...c,...mv), hi=Math.max(...c,...mv); const pad=(hi-lo)*.06; lo=Math.max(0,lo-pad); hi+=pad;
   const X=i=>m.l+i/(n-1)*iw, Y=v=>m.t+(1-(v-lo)/(hi-lo))*ih, g1=css('--g'), ink2=css('--ink2'), line=css('--line'), sf=css('--surface');
   let g=''; const st=[1,2,5,10,20,25,50,100].find(x=>(hi-lo)/x<=4)||200;
-  for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">$'+v+'</text>';
+  if(!fb)for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'" opacity=".6"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">$'+v+'</text>';
   const yrs=(t[n-1]-t[0])/3.156e10, every=yrs>12?5:yrs>6?2:yrs>2?1:0;
   if(every){let last=-1;t.forEach((ts,i)=>{const y=new Date(ts).getFullYear();if(y!==last&&y%every===0&&i>0&&X(i)>m.l+16&&X(i)<W-m.r-20){last=y;g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="11" fill="'+ink2+'">'+y+'</text>';}else if(y!==last&&y%every!==0)last=-1;});}
   else{[0,Math.floor(n/2),n-1].forEach((i,k)=>{g+='<text x="'+X(i)+'" y="'+(H-6)+'" text-anchor="'+(k===0?'start':k===2?'end':'middle')+'" font-size="11" fill="'+ink2+'">'+new Date(t[i]).toLocaleDateString('en-US',intra?{month:'short',day:'numeric'}:{month:'short',year:'2-digit'})+'</text>';});}
@@ -2051,7 +2054,7 @@ function mchart(el,sym,h){
       g+='<rect x="'+X(a).toFixed(1)+'" y="'+m.t+'" width="'+Math.max(1,X(b)-X(a)).toFixed(1)+'" height="'+ih+'" fill="'+dn+'" opacity=".09"/>';
       if(h<0)continue; const hx=X(h);
       g+='<line x1="'+hx.toFixed(1)+'" x2="'+hx.toFixed(1)+'" y1="'+(m.t-6)+'" y2="'+(m.t+ih)+'" stroke="'+dn+'" stroke-width="1.25" stroke-dasharray="3 3" opacity=".85"/>';
-      if(hx-lx>30&&hx<W-m.r){ g+='<text x="'+hx.toFixed(1)+'" y="'+(m.t-10)+'" text-anchor="middle" font-size="10" font-weight="600" fill="'+dn+'">−'+Math.round(-e.depth*100)+'%</text>'; lx=hx; } } }
+      const tx=Math.min(W-16,Math.max(16,hx)); if(tx-lx>30&&hx<=W-m.r){ g+='<text x="'+tx.toFixed(1)+'" y="'+(m.t-10)+'" text-anchor="middle" font-size="10" font-weight="600" fill="'+dn+'">−'+Math.round(-e.depth*100)+'%</text>'; lx=tx; } } }
   let p='';for(let i=0;i<n;i++)p+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(c[i]).toFixed(1);
   g+='<path d="'+p+'L'+X(n-1)+' '+(m.t+ih)+'L'+X(0)+' '+(m.t+ih)+'Z" fill="'+g1+'" opacity=".08"/><path d="'+p+'" fill="none" stroke="'+g1+'" stroke-width="2" stroke-linejoin="round"/>';
   { let mp='',on=false; for(let i=0;i<n;i++){if(ma[i]==null){on=false;continue;} mp+=(on?'L':'M')+X(i).toFixed(1)+' '+Y(ma[i]).toFixed(1); on=true;}
