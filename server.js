@@ -242,7 +242,7 @@ async function handleChat(req, res) {
 }
 // Each view fetches extra history so a 200-day moving average is complete from the first visible point.
 // A number means 'that many years back' via period1: Yahoo quietly turns range=max into monthly points even when weekly/daily is asked for.
-const HIST_RANGES = { '1w': ['5d', '15m'], '1m': ['1mo', '60m'], '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': [11, '1wk'], '15y': [16, '1wk'], '20y': [21, '1wk'], 'max': ['max', '1mo'] };
+const HIST_RANGES = { '1w': ['5d', '15m'], '1m': ['1mo', '60m'], '6m': ['2y', '1d'], '1y': ['2y', '1d'], '5y': ['10y', '1wk'], '10y': [11, '1wk'], '15y': [16, '1wk'], '20y': [21, '1wk'], 'max': ['max', '1mo'] };
 const ySpan = v => typeof v === 'number' ? `period1=${Math.floor(Date.now() / 1000 - v * 365.25 * 86400)}&period2=${Math.floor(Date.now() / 1000)}` : `range=${v}`;
 const histCache = new Map();
 async function history(sym, rng) {
