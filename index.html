@@ -883,7 +883,7 @@ body.vm-on .tabs{visibility:hidden}
 .pfbar{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px}
 .pflist{display:flex;flex-direction:column}
 .pfr{display:grid;grid-template-columns:1fr auto auto;gap:4px 16px;align-items:baseline;padding:12px 0;border-top:1px solid var(--line)}
-.pfr:first-child{border-top:0}
+.pfr:first-child{border-top:0} .pftot{border-top:2px solid var(--line)} .pftot .n,.pftot .v{font-size:18px;font-weight:800}
 .pfr .n{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px} .pfr .n i{width:10px;height:10px;border-radius:3px;display:inline-block}
 .pfr .d{font-size:13px;color:var(--ink2);grid-column:1} .pfr .v{font-weight:600;font-size:16px;text-align:right}
 .pfr .p{text-align:right;color:var(--ink2);font-size:14px;min-width:48px} .pfr .g{grid-column:2/4;text-align:right;font-size:13px}
@@ -1779,7 +1779,7 @@ async function portfolio(){
   $('pfList').innerHTML=rows.map(([k,nm,key,c,sh])=>{const v=h[key], cost=sh&&ac[k]?ac[k]*sh:0, g=cost?v-cost:null;
     return '<div class="pfr"><span class="n"><i style="background:var('+c+')"></i>'+k+'</span><span class="v">'+usd(v)+'</span><span class="p">'+(T?pc1(v/T):'0%')+'</span>'+
       '<span class="d">'+nm+(sh?' · '+(+sh).toLocaleString('en-US',{maximumFractionDigits:3})+' shares':'')+'</span>'+
-      (g>0?'<span class="g up">+'+usd(g)+' (+'+(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+(key==='cash'?(100-S.eq)+'% of total':key==='vti'?S.us+'% of stocks':(100-S.us)+'% of stocks')+'</span>')+'</div>';}).join('');
+      (g>0?'<span class="g up">+'+usd(g)+' (+'+(g/cost*100).toFixed(1)+'%)</span>':'<span class="g muted">target '+(key==='cash'?(100-S.eq)+'% of total':key==='vti'?S.us+'% of stocks':(100-S.us)+'% of stocks')+'</span>')+'</div>';}).join('')+'<div class="pfr pftot"><span class="n">Total</span><span class="v">'+usd(T)+'</span><span class="p">100%</span></div>';
   const fee=h.vti*FEE.us+h.vxus*FEE.intl;
   const tiles=(co,ct,sc,scl)=>[['Companies',co,'you own a piece of'],['Countries',ct,'where they are based'],['Diversification',sc,scl],['Yearly Cost',usd(fee),'to own it all']]
     .map(t=>'<div><span class="k">'+t[0]+'</span><span class="v">'+t[1]+'</span><span class="m">'+t[2]+'</span></div>').join('');
