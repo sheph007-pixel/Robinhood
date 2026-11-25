@@ -752,9 +752,11 @@ async function checkAlerts() {
     flex.band[f] = bandFor(drops[f].dd, flex.band[f] || 0);
   }
   // Normal = what Robinhood buys now, unless you're running a boost you accepted (Done): then it's that alert's pre-boost base.
-  const boosted = alerts.filter(a => a.type === 'dca' && a.status === 'done').slice().reverse()
-    .find(a => FUNDS.every(f => Math.abs(now[f] - a.to[f]) <= Math.max(2, a.to[f] * 0.02)) && FUNDS.some(f => a.to[f] !== (a.pb || a.base || {})[f]));
-  FUNDS.forEach(f => { const v = boosted ? (boosted.pb || boosted.base || {})[f] : now[f]; if (v > 0) flex.base[f] = v; });
+  // Only the latest Done alert counts, and only for funds it boosted (dip band > 0) while Robinhood still buys its amounts.
+  const lastDone = alerts.filter(a => a.type === 'dca' && a.status === 'done').slice(-1)[0];
+  const live = lastDone && FUNDS.every(f => Math.abs(now[f] - lastDone.to[f]) <= Math.max(2, lastDone.to[f] * 0.02));
+  FUNDS.forEach(f => { const bi = live && lastDone.bands ? lastDone.bands[f] || 0 : 0;
+    const v = bi > 0 ? (lastDone.pb ? lastDone.pb[f] : Math.round(now[f] / BANDS[bi][1])) : now[f]; if (v > 0) flex.base[f] = v; });
   const vix = await vixNow(); if (vix != null) flex.panic = flex.panic ? vix >= VIX_OFF : vix >= VIX_ON;
   flex.eff = {}; FUNDS.forEach(f => { const b = flex.band[f] || 0; flex.eff[f] = b > 0 && flex.panic ? Math.min(b + 1, BANDS.length - 1) : b; });
   // Base = the app's 90%-chance plan when it is at least your normal total (it only ever raises), else your normal buys.

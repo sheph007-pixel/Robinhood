@@ -560,7 +560,7 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .dgoal{display:flex;flex-direction:column;gap:8px}
 .dgoal .dgh{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;color:var(--ink2)}
 .dgoal .dgt{display:grid;grid-template-columns:1fr auto;gap:6px 0;align-items:baseline;font-size:16px;font-weight:600;margin:4px 0 2px} .dgoal .dgt.c3{grid-template-columns:1fr auto auto}
-.dgoal .dgt>span{text-align:right;white-space:nowrap;padding-left:18px} .dgoal .dgt .f{text-align:left;font-weight:700;padding-left:0} .dgoal .dgt .h{font-size:12px;font-weight:600;color:var(--ink2)} .dgoal .dgt .up{color:var(--gt);font-weight:800}
+.dgoal .dgt>span{text-align:right;white-space:nowrap;padding-left:18px;color:var(--ink)} .dgoal .dgt .f{text-align:left;font-weight:700;padding-left:0} .dgoal .dgt>.h{font-size:12px;font-weight:600;color:var(--ink2)} .dgoal .dgt>.up{color:var(--gt);font-weight:800}
 .dgoal .dgt .t{border-top:1px solid var(--line);padding-top:6px;font-weight:800} .dgoal .dab2{display:flex;gap:8px} .dgoal .dab2 .btn{flex:1}
 .dgoal .dged{font:inherit;font-size:13px;font-weight:600;color:var(--gt);background:none;border:0;padding:0;cursor:pointer}
 .dgoal .dgr{display:grid;grid-template-columns:1fr 1fr;gap:8px} .dgoal .dgr>div{display:flex;flex-direction:column} .dgoal .dgr .k{font-size:12px;color:var(--ink2)} .dgoal .dgr b{font-size:20px;font-weight:800}
@@ -1514,7 +1514,7 @@ function planDCA(){
   const need=h.total>=S.goal?0:dailyFor(PLAN_P); if(need==null)return null;
   const F=ALS&&ALS.flex&&ALS.flex.flex, fb=F&&F.base||{}, R=REC(), per=sym=>(R.list||[]).filter(x=>x.symbol===sym&&!x.stopped&&x.freq==='daily').reduce((t,x)=>t+(+x.amount||0),0);
   const norm=(fb.VTI||fb.VXUS)?{VTI:+fb.VTI||0,VXUS:+fb.VXUS||0}:{VTI:per('VTI'),VXUS:per('VXUS')}, nt=norm.VTI+norm.VXUS;
-  const raise=need>nt*1.02, B=raise?Math.ceil(need/10)*10:nt, u=S.us/100, st=h.vti+h.vxus, off=st>0?Math.abs(h.vti/st-u)*100:0;
+  const curT=per('VTI')+per('VXUS'), raise=need>Math.max(nt,curT)*1.02, B=raise?Math.ceil(need/10)*10:nt, u=S.us/100, st=h.vti+h.vxus, off=st>0?Math.abs(h.vti/st-u)*100:0;
   let VTI=norm.VTI; if(raise){const D=252; VTI=Math.round(Math.min(B,Math.max(0,(u*(st+B*D)-h.vti)/D))/10)*10;}
   return {VTI,VXUS:B-VTI,total:B,need,raise,norm,nt};
 }
@@ -2514,7 +2514,7 @@ function dcaGoal(){
   const goalBtn='<button type="button" class="dged" id="dgEdit">'+g+' by '+S.goalAge+' ✎</button>';
   // One simple table: Current vs Change To (from the pending alert: dip boost and/or the 90% plan).
   const A=ALS, pend=A&&A.alerts?A.alerts.filter(a=>a.status==='pending'&&a.type==='dca').slice(-1)[0]:null;
-  const now={VTI:per('VTI'),VXUS:per('VXUS')}, to=pend?pend.to:(P&&P.raise?{VTI:P.VTI,VXUS:P.VXUS}:null), chg=to&&['VTI','VXUS'].some(f=>to[f]!==now[f]);
+  const now={VTI:per('VTI'),VXUS:per('VXUS')}, to=pend?pend.to:(P&&P.raise&&P.total>now.VTI+now.VXUS?{VTI:P.VTI,VXUS:P.VXUS}:null), chg=to&&['VTI','VXUS'].some(f=>to[f]!==now[f]);
   const dd=A&&A.flex&&A.flex.drops, sale=pend?['VTI','VXUS'].filter(f=>(pend.bands[f]||0)>0):[];
   const why=!chg?'':sale.length?sale.map(f=>f+' '+(dd&&dd[f]?Math.round(dd[f].dd):'')+'% off its high').join(' · ')+' · buy more on sale':'For a '+Math.round(PLAN_P*100)+'% chance';
   const cell=(f,v)=>'<span class="'+(chg&&f&&to[f]!==now[f]?'up':'')+'">'+usd(v)+'</span>';
