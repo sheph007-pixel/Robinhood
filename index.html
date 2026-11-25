@@ -2455,9 +2455,8 @@ async function dcaFunds(){
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price})));
   const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4), ac=S.avgCost||{};
   const nf=(v,d)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-  // 'Your avg price paid' = average price of your recurring buys (dollars / shares), like Robinhood's recurring screen.
-  const box=(k,sh,ma)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0), all=buys.filter(b=>b.s===k&&+b.p>0&&+b.a>0), now=price(k);
-    const sa=all.reduce((t,b)=>t+(+b.a),0), ss=all.reduce((t,b)=>t+(+b.a)/(+b.p),0), avg=ss>0?sa/ss:(+ac[k]||0);
+  // Avg paid = average cost of all shares you own (Robinhood position avg cost).
+  const box=(k,sh,ma)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0), now=price(k), avg=+ac[k]||0;
     const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0), wins=avg?mine.filter(b=>+b.p<avg).length:0;
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
     const gain=avg&&now?(now/avg-1)*100:null;
