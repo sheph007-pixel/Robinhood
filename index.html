@@ -1988,7 +1988,7 @@ async function alertsTab(){
   const hist=all.filter(a=>a.status!=='pending'), lbl={done:'✓ Done',replaced:'Replaced',skipped:'Skipped'};
   $('alHistW').hidden=!hist.length;
   $('alList').innerHTML=hist.map(a=>'<div class="bh"><span>'+fd(a.at)+'</span><span>VTI '+usd(a.to.VTI)+' · VXUS '+usd(a.to.VXUS)+' /day</span><span class="'+(a.status==='done'?'g':'muted')+'">'+(lbl[a.status]||a.status)+(a.status==='skipped'?' <button type="button" class="rlink" data-al="'+a.id+'" data-act="reopen">Reopen</button>':'')+'</span></div>').join('');
-  document.querySelectorAll('#buyc [data-al]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{await fetch('/api/alerts/'+b.dataset.al+'/'+b.dataset.act,{method:'POST'});}catch(e){} await loadAlerts(true); alertsTab(); dipAlert(); });
+  document.querySelectorAll('#alAct [data-al], #buyc [data-al]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{await fetch('/api/alerts/'+b.dataset.al+'/'+b.dataset.act,{method:'POST'});}catch(e){} await loadAlerts(true); alertsTab(); dipAlert(); });
 }
 // Keep It Going: a streak, milestones and badges that only go up. Up days and down days are both wins.
 let KDD=null;
