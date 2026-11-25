@@ -1493,15 +1493,31 @@ function goalNeed(p,L=0){ // daily amount so that P(value >= goal) >= p (with an
   if(ok(0))res=0; else{let lo=0,hi=50; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi);}}
   return GN[key]=res;
 }
-// Total daily buy (split by the US/Intl target) that reaches the goal by the goal age on the average (median) path.
-const GD={};
-function dailyNeeded(){
+// Total daily buy (split by the US/Intl target) so that a share p of simulated markets reach the goal by the goal age
+// (p=.9: the goal is still hit in a Poor market, the bottom 10% of outcomes).
+const GD={}, PLAN_P=.9;
+function dailyFor(p){
   const m=Math.max(1,monthsTo(S.goalAge)), need=goalNeedFor(m), r1k=v=>Math.round(v/1000)*1000, h=holdings();
-  const key=[S.goal,S.goalAge,r1k(h.vti),r1k(h.vxus),r1k(h.cash),S.apy,S.outlook,S.us].join('|'); if(key in GD)return GD[key];
-  const ok=d=>{const v=goalVals(d,m,0,true);return v[Math.floor(v.length/2)]>=need;};
+  const key=[p,S.goal,S.goalAge,r1k(h.vti),r1k(h.vxus),r1k(h.cash),S.apy,S.outlook,S.us].join('|'); if(key in GD)return GD[key];
+  const ok=d=>{const v=goalVals(d,m,0,true);return v[Math.floor((1-p)*(v.length-1))]>=need;};
   let res; if(ok(0))res=0; else{let lo=0,hi=200; while(!ok(hi)&&hi<1e6)hi*=2; if(hi>=1e6)res=null; else{for(let k=0;k<14;k++){const mid=(lo+hi)/2; if(ok(mid))hi=mid; else lo=mid;} res=Math.ceil(hi/10)*10;}}
   return GD[key]=res;
 }
+// The plan: one base daily buy per fund. Total = enough for a 90% chance, never less than your normal buys (ahead of plan,
+// it never tells you to cut). Split = your target, tilted toward the fund under target so new money rebalances over ~a year
+// (no selling). Normal = the server's learned non-boosted daily buy, so a dip boost in Robinhood isn't mistaken for normal.
+function planDCA(){
+  const h=holdings(); if(!(h.total>0)||!(monthsTo(S.goalAge)>0))return null;
+  const need=h.total>=S.goal?0:dailyFor(PLAN_P); if(need==null)return null;
+  const F=ALS&&ALS.flex&&ALS.flex.flex, fb=F&&F.base||{}, R=REC(), per=sym=>(R.list||[]).filter(x=>x.symbol===sym&&!x.stopped&&x.freq==='daily').reduce((t,x)=>t+(+x.amount||0),0);
+  const norm=(fb.VTI||fb.VXUS)?{VTI:+fb.VTI||0,VXUS:+fb.VXUS||0}:{VTI:per('VTI'),VXUS:per('VXUS')}, nt=norm.VTI+norm.VXUS;
+  const raise=need>nt*1.02, B=raise?Math.ceil(need/10)*10:nt, u=S.us/100, st=h.vti+h.vxus, off=st>0?Math.abs(h.vti/st-u)*100:0;
+  let VTI=norm.VTI; if(raise||off>=3){const D=252; VTI=Math.round(Math.min(B,Math.max(0,(u*(st+B*D)-h.vti)/D))/10)*10;}
+  return {VTI,VXUS:B-VTI,total:B,need,raise,norm,nt};
+}
+// Save the plan when it moves enough to matter (5% or $20); the server turns a change into one alert with Done / Skip.
+function syncPlan(){ if(!synced||!S.rh||!ALS)return; const p=planDCA(); if(!p)return; const o=S.plan, big=(a,b)=>Math.abs(a-b)>=Math.max(20,.05*Math.max(a,b));
+  if(!o||big(o.VTI+o.VXUS,p.total)||big(o.VTI,p.VTI)||big(o.VXUS,p.VXUS)){S.plan={VTI:p.VTI,VXUS:p.VXUS,p:Math.round(PLAN_P*100),at:new Date().toISOString().slice(0,10)}; save(); setTimeout(()=>loadAlerts(true).then(()=>{alertsTab();dipAlert();}),2500);} }
 function goalChance(){ if(!proj)return null; const gm=Math.min(proj.M,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], nd=goalNeedFor(gm)*(realOn()?Math.pow(1+INFL,gm/12):1);
   let lo=0,hi=col.length; while(lo<hi){const mid=(lo+hi)>>1; if(col[mid]<nd)lo=mid+1; else hi=mid;} return Math.round((col.length-lo)/col.length*100); }
 const SIMC=new Map();
@@ -1938,7 +1954,7 @@ async function dipAlert(){
   const pend=A.alerts.filter(a=>a.status==='pending'&&a.type==='dca'), b=$('alBadge'); b.hidden=!pend.length; b.textContent=pend.length;
   if(!pend.length){el.hidden=true;return;}
   const a=pend[pend.length-1], up=a.to.VTI+a.to.VXUS>(a.base.VTI||0)+(a.base.VXUS||0);
-  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">'+(up?'🛒 Buy Alert':'✓ Back to Normal')+'</span><span><b><span class="dl">Set daily buys to </span>'+dayAmt(a.to.VTI+a.to.VXUS)+'</b></span><span class="che">View ›</span></button>';
+  el.hidden=false; el.innerHTML='<button type="button" class="dabn" id="dipGo"><span class="dab">'+(['VTI','VXUS'].some(f=>(a.bands[f]||0)>0)?'🛒 Buy Alert':up?'🎯 Plan Update':'✓ Back to Normal')+'</span><span><b><span class="dl">Set daily buys to </span>'+dayAmt(a.to.VTI+a.to.VXUS)+'</b></span><span class="che">View ›</span></button>';
   $('dipGo').onclick=()=>showTab('alerts');
 }
 // Phone notifications (Web Push). iPhone needs the app added to the Home Screen first (iOS 16.4+).
@@ -1979,7 +1995,7 @@ async function alertsTab(){
     return '<div class="bfr'+(chg?' chg':'')+'"><div><b>'+f+'</b><span>'+(off(f)<0.5?'At its high':'<b class="offp">'+off(f).toFixed(1)+'% off</b> its high')+(bi?' · '+B[bi][1]+'×':'')+'</span></div>'+
       '<div class="bamt">'+(chg?'<s>'+usd(cur)+'</s> → ':'')+'<b>'+dayAmt(tgt)+'</b></div></div>';}).join('');
   const why=onSale?(vix!=null&&vix>=30?'In past drops like this with fear this high, money invested earned a median <b>21–36% the next year</b>, versus about 13% normally.':'Money invested 10%+ below the high has historically done as well or better than average, and much better in deeper drops.'):'';
-  $('alAct').innerHTML=pend?'<div class="dact"><div><span class="pill">On Sale</span> In Robinhood, change '+['VTI','VXUS'].filter(f=>pend.to[f]!==now[f]).map(f=>'<b>'+f+' '+usd(now[f])+' → '+dayAmt(pend.to[f])+'</b>').join(' and ')+'</div>'+
+  $('alAct').innerHTML=pend?'<div class="dact"><div><span class="pill">'+(['VTI','VXUS'].some(f=>(pend.bands[f]||0)>0)?'On Sale':'Plan')+'</span> In Robinhood, change '+['VTI','VXUS'].filter(f=>pend.to[f]!==now[f]).map(f=>'<b>'+f+' '+usd(now[f])+' → '+dayAmt(pend.to[f])+'</b>').join(' and ')+'</div>'+
       '<div class="dab2"><button type="button" class="btn" data-al="'+pend.id+'" data-act="done">Done</button><button type="button" class="btn ghost" data-al="'+pend.id+'" data-act="skip">Skip</button></div></div>':'';
   // This sale's score: buy days since the drop started and extra dollars invested above normal.
   let sc='';
@@ -2485,8 +2501,8 @@ function dcaGoal(){
   const el=$('dbGoal'), R=REC(), cur=R.daily||Math.round((R.a1+R.a2)/21), h=holdings();
   if(!(h.total>0)||!(monthsTo(S.goalAge)>0)){el.innerHTML='';return;}
   if(!proj){clearTimeout(dcaGoal.t); dcaGoal.t=setTimeout(dcaGoal,150); if(el.innerHTML)return;}
-  const need=h.total>=S.goal?0:dailyNeeded(), u=S.us/100, sp=v=>'VTI '+usd(Math.round(v*u/10)*10)+' · VXUS '+usd(v-Math.round(v*u/10)*10);
-  const reached=h.total>=S.goal, ok=reached||(need!=null&&cur>=need), tgt=need==null?null:Math.ceil(need/10)*10, g=usd(S.goal).replace(/,000,000$/,'M').replace(/(\d),(\d)00,000$/,'$1.$2M');
+  const P=planDCA(), need=h.total>=S.goal?0:(P?P.need:dailyFor(PLAN_P)), sp=()=>'VTI '+usd(P.VTI)+' · VXUS '+usd(P.VXUS);
+  const reached=h.total>=S.goal, ok=reached||(P?!P.raise:need!=null&&cur>=need), tgt=P?P.total:need==null?null:Math.ceil(need/10)*10, g=usd(S.goal).replace(/,000,000$/,'M').replace(/(\d),(\d)00,000$/,'$1.$2M');
   // Chance of reaching the goal with today's buys: share of simulated paths at or above the goal at the goal age (same model as Home).
   let pct=null; try{pct=goalChance();}catch(e){}
   const pc=pct==null?'':'<span class="dgpct">'+(pct>=99?'99%+':pct+'%')+(ok?' Chance':' Now')+'</span>';
@@ -2497,14 +2513,14 @@ function dcaGoal(){
   el.innerHTML=(reached?'<div class="dgtop"><div class="dgbig">✓ Goal Reached</div></div><div class="dgsub">'+goalBtn+'</div>'
       :ok?'<div class="dgtop"><div class="dgbig">✓ On Track</div>'+pc+'</div><div class="dgsub"><b>'+usd(curTot)+'/day</b> · '+curSp+'</div><div class="dgsub">→ '+goalBtn+'</div>'
       :need==null?'<div class="dgtop"><div class="dgbig">Out of Reach</div>'+pc+'</div><div class="dgsub">Try a later age · '+goalBtn+'</div>'
-      :'<div class="dgtop"><div class="dgbig">Raise to '+usd(tgt)+'/day</div>'+pc+'</div><div class="dgsub">'+sp(tgt)+'</div><div class="dgsub">→ '+goalBtn+'</div><div class="dgsp">Now '+usd(curTot)+'/day · '+curSp+'</div>')+
+      :'<div class="dgtop"><div class="dgbig">Raise to '+usd(tgt)+'/day</div>'+pc+'</div><div class="dgsub">'+(P?sp():'')+'</div><div class="dgsub">→ '+Math.round(PLAN_P*100)+'% Chance of '+goalBtn+'</div><div class="dgsp">Now '+usd(curTot)+'/day · '+curSp+'</div>')+
     '<div class="dgf" id="dgForm" hidden><label><span>Goal</span><input type="text" inputmode="decimal" id="dgAmt" value="'+usd(S.goal)+'"></label><label><span>By age</span><input type="text" inputmode="numeric" id="dgAge" value="'+S.goalAge+'"></label><button type="button" class="btn" id="dgSave">Save</button></div>';
   $('dgEdit').onclick=()=>{const f=$('dgForm'); f.hidden=!f.hidden; if(!f.hidden)$('dgAmt').focus();};
   $('dgSave').onclick=()=>{const g=parseAmt($('dgAmt').value), a=Math.round(parse($('dgAge').value)); if(g>=1000)S.goal=Math.round(g); if(a)S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a));
-    try{$('gAmt').value=usd(S.goal);$('gAge').value=S.goalAge;}catch(e){} save(); render(true); setTimeout(dcaGoal,30);};
+    try{$('gAmt').value=usd(S.goal);$('gAge').value=S.goalAge;}catch(e){} save(); render(true); setTimeout(()=>{dcaGoal();syncPlan();},30);};
 }
 function dcaBuys(){
-  dcaFunds(); dcaSched(); setTimeout(dcaGoal,0);
+  dcaFunds(); dcaSched(); setTimeout(dcaGoal,0); setTimeout(()=>loadAlerts().then(()=>{syncPlan();dcaGoal();}),400);
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price}))).slice().sort((a,b)=>b.d.localeCompare(a.d));
   if(!buys.length){$('dbSum').innerHTML='';$('dbList').innerHTML='<p class="muted">No recurring buys synced yet. Tap Refresh to sync with Robinhood.</p>';return;}
   const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), m=today.slice(0,7), y=today.slice(0,4), d30=new Date(Date.now()-30*864e5).toLocaleDateString('en-CA',{timeZone:'America/New_York'});

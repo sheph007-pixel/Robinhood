@@ -542,10 +542,12 @@ async function handleState(req, res) {
     try {
       const obj = JSON.parse(await readBody(req));
       if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return json(res, 400, { error: 'bad data' });
+      const planWas = JSON.stringify((readState() || {}).plan || null);
       fs.mkdirSync(DATA_DIR, { recursive: true });
       const tmp = STATE_FILE + '.tmp';
       fs.writeFileSync(tmp, JSON.stringify(obj));
       fs.renameSync(tmp, STATE_FILE);
+      if (JSON.stringify(obj.plan || null) !== planWas) checkAlerts().catch(() => {});
       return json(res, 200, { ok: true });
     } catch (e) { return json(res, 400, { error: 'bad data' }); }
   }
@@ -752,14 +754,18 @@ async function checkAlerts() {
   }
   const vix = await vixNow(); if (vix != null) flex.panic = flex.panic ? vix >= VIX_OFF : vix >= VIX_ON;
   flex.eff = {}; FUNDS.forEach(f => { const b = flex.band[f] || 0; flex.eff[f] = b > 0 && flex.panic ? Math.min(b + 1, BANDS.length - 1) : b; });
-  const target = {}; FUNDS.forEach(f => { target[f] = Math.round((flex.base[f] || 0) * BANDS[flex.eff[f]][1]); });
+  // Base = the app's 90%-chance plan when it is at least your normal total (it only ever raises), else your normal buys.
+  const pl = st.plan, plOk = pl && +pl.VTI >= 0 && +pl.VXUS >= 0 && (+pl.VTI + +pl.VXUS) >= (flex.base.VTI || 0) + (flex.base.VXUS || 0);
+  const base = plOk ? { VTI: Math.round(+pl.VTI), VXUS: Math.round(+pl.VXUS) } : { VTI: flex.base.VTI || 0, VXUS: flex.base.VXUS || 0 };
+  flex.plan = plOk ? base : null;
+  const target = {}; FUNDS.forEach(f => { target[f] = Math.round(base[f] * BANDS[flex.eff[f]][1]); });
   const last = alerts.filter(a => a.type === 'dca').slice(-1)[0], lastTo = last ? last.to : { VTI: flex.base.VTI || 0, VXUS: flex.base.VXUS || 0 };
   if ((flex.base.VTI || flex.base.VXUS) && FUNDS.some(f => target[f] !== lastTo[f])) {
     if (pending) pending.status = 'replaced';
-    const up = FUNDS.some(f => target[f] > (flex.base[f] || 0));
-    alerts.push({ id: crypto.randomBytes(4).toString('hex'), type: 'dca', at, from: { ...now }, to: target, base: { ...flex.base },
+    const up = FUNDS.some(f => target[f] > (flex.base[f] || 0)), dip = FUNDS.some(f => flex.eff[f] > 0);
+    alerts.push({ id: crypto.randomBytes(4).toString('hex'), type: 'dca', at, from: { ...now }, to: target, base: { ...flex.base }, plan: !!flex.plan,
       bands: { ...flex.eff }, vix: vix != null ? Math.round(vix * 10) / 10 : null, dd: { VTI: +drops.VTI.dd.toFixed(1), VXUS: +drops.VXUS.dd.toFixed(1) }, status: 'pending' });
-    notes.push([up ? 'Buy Alert: raise your daily buys' : 'Daily buys back to normal', 'Set recurring buys to ' + money(target.VTI) + ' VTI + ' + money(target.VXUS) + ' VXUS a day (now ' + money(now.VTI + now.VXUS) + ').', 'dca']);
+    notes.push([dip && up ? 'Buy Alert: raise your daily buys' : up ? 'Plan update: raise your daily buys for a 90% chance' : 'Daily buys back to normal', 'Set recurring buys to ' + money(target.VTI) + ' VTI + ' + money(target.VXUS) + ' VXUS a day (now ' + money(now.VTI + now.VXUS) + ').', 'dca']);
     changed = true;
   }
   for (const a of alerts.filter(a => a.status === 'pending' && a.type === 'dca')) {
