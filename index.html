@@ -556,7 +556,7 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .dplan{background:var(--soft);border:1.5px solid transparent;border-radius:16px;padding:16px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px} .dplan .dsched{display:none}
 .dplan.ok{background:color-mix(in srgb,var(--g) 14%,var(--soft));border-color:var(--g)} .dplan.ok .dgbig{color:var(--gt)}
 .dplan.low{background:color-mix(in srgb,#f5c04a 14%,var(--soft));border-color:#f5c04a} .dplan.low .dgbig{color:var(--ink);font-size:22px}
-.dgoal .dgbig{font-size:26px;font-weight:800;letter-spacing:-.02em} .dgoal .dgtop{display:flex;justify-content:space-between;align-items:center;gap:10px} .dgoal .dgpct{flex:none;font-size:14px;font-weight:700;border-radius:99px;padding:4px 10px;background:var(--surface);color:var(--ink)} .dplan.ok .dgpct{background:var(--g);color:#000} .dgoal .dgsub{font-size:15px;color:var(--ink2)} .dgoal .dgsub .dged{font-size:15px} .dgoal .dgsp{font-size:13px;color:var(--ink2)}
+.dgoal .dgbig{font-size:26px;font-weight:800;letter-spacing:-.02em} .dgoal .dgtop{display:flex;justify-content:space-between;align-items:center;gap:10px} .dgoal .dgpct{flex:none;font-size:14px;font-weight:700;border-radius:99px;padding:4px 10px;background:var(--surface);color:var(--ink)} .dplan.ok .dgpct{background:var(--g);color:#000} .dgoal .dgsub{font-size:15px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .dgoal .dgsub b{color:var(--ink);font-weight:700} .dgoal .dgsub .dged{font-size:15px} .dgoal .dgsp{font-size:13px;color:var(--ink2)}
 .dgoal{display:flex;flex-direction:column;gap:8px}
 .dgoal .dgh{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;color:var(--ink2)}
 .dgoal .dged{font:inherit;font-size:13px;font-weight:600;color:var(--gt);background:none;border:0;padding:0;cursor:pointer}
@@ -974,10 +974,13 @@ body.vm-on .tabs{visibility:hidden}
 .dsched .dsr b{margin-right:4px} .dsched .dsr.sub{font-size:13px;color:var(--ink2)} .dsched .ok{color:var(--gt);font-weight:700}
 .dcafund .d3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px} .dcafund .d3>div{display:flex;flex-direction:column;gap:1px;background:var(--surface);border-radius:8px;padding:6px 8px}
 .dcafund .d3 span{font-size:11px;color:var(--ink2)} .dcafund .d3 b{font-size:14px}
+.dcafund .dbars{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;margin-top:10px} .dcafund .dbars>div{display:flex;flex-direction:column;gap:1px;min-width:0}
+.dcafund .dbars .k{font-size:11px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .dcafund .dbars b{font-size:15px;font-weight:700}
+.dcafund .dbars i{display:block;margin-top:6px;border-radius:4px 4px 0 0;background:color-mix(in srgb,var(--g) 55%,var(--soft))} .dcafund .dbars i.up{background:var(--g)}
 .dcafund .dav{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0 10px;font-size:13px;color:var(--ink2);margin-top:6px} .dcafund .dav b{color:var(--ink)} .dcafund .dav .pill{flex:none;background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:2px 9px;font-size:12px}
 .dcafund .dwin{font-size:12px;font-weight:600;color:var(--gt)} .dcafund .dwin::before{content:'★ '}
 @media (max-width:560px){.dcafund .dsh{font-size:20px} .dcafund .fr{flex-direction:column;gap:0}}
-.dcafund .dh .pill{flex:none;background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:2px 8px;font-size:11px}
+.dcafund .dh .pill{flex:none;background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:2px 8px;font-size:11px} .dcafund .dh .pill.pbelow{background:var(--surface);color:var(--ink2)}
 .dsched .dtot{font-size:20px} .dsched .dtot b{font-weight:800;margin:0}
 .dsched .dsr:not(.sub){align-items:baseline} .dsched .dsr:not(.sub)>span:not(.dtot){font-size:13px;color:var(--ink2)} .dsched .dsr:not(.sub)>span.ok{color:var(--gt)}
 .dcafund .fr span.g{color:var(--gt)!important;font-weight:700!important} .dcafund .fr span:last-child:not(.g){font-weight:500;color:var(--ink2)}
@@ -2452,15 +2455,17 @@ async function dcaFunds(){
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price})));
   const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4), ac=S.avgCost||{};
   const nf=(v,d)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-  const box=(k,sh,ma)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0), avg=+ac[k]||0, now=price(k);
+  // Avg paid = average cost of all shares you own (Robinhood position avg cost).
+  const box=(k,sh,ma)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0), now=price(k), avg=+ac[k]||0;
     const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0), wins=avg?mine.filter(b=>+b.p<avg).length:0;
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
     const gain=avg&&now?(now/avg-1)*100:null;
-    const tag=gain==null?'':gain>=0?'<span class="pill">+'+gain.toFixed(1)+'%</span>':'<span class="pill">On Sale</span>';
+    const tag=gain==null?'':gain>=0?'<span class="pill">+'+gain.toFixed(1)+'%</span>':'<span class="pill pbelow">Below Avg</span>';
     return '<div><div class="dh"><b class="fn">'+k+'</b>'+tag+'</div><div class="dsh">'+nf(sh,0)+' <small>shares</small></div>'+
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
       '<div class="fr">'+(added>0?'<span class="g">+'+nf(added,0)+' this year</span>':'')+'<span>'+nf(Math.max(1,goal-sh),0)+' to '+goal.toLocaleString('en-US')+'</span></div>'+
-      (avg&&now?'<div class="dav"><span>Avg <b>'+usd(avg,true)+'</b></span><span>Now <b>'+usd(now,true)+'</b></span></div>':'')+'</div>'; };
+      (avg&&now?(()=>{const mx=Math.max(avg,now), h=v=>Math.max(6,v/mx*36).toFixed(0);
+        return '<div class="dbars"><div><span class="k">Avg Paid</span><b>'+usd(avg,true)+'</b><i style="height:'+h(avg)+'px"></i></div><div><span class="k">Now</span><b>'+usd(now,true)+'</b><i class="'+(now>=avg?'up':'')+'" style="height:'+h(now)+'px"></i></div></div>';})():'')+'</div>'; };
   $('dbFund').innerHTML=box('VTI',+S.shVTI||0)+box('VXUS',+S.shVXUS||0);
 }
 // DCA tab: real recurring buys from Robinhood (no guessed schedule)
@@ -2484,13 +2489,13 @@ function dcaGoal(){
   let pct=null; try{pct=goalChance();}catch(e){}
   const pc=pct==null?'':'<span class="dgpct">'+(pct>=99?'99%+':pct+'%')+(ok?' Chance':' Now')+'</span>';
   const per=sym=>{const l=(R.list||[]).filter(x=>x.symbol===sym&&!x.stopped&&x.freq==='daily'); return l.length?l.reduce((t,x)=>t+(+x.amount||0),0):Math.round((sym==='VTI'?R.a1:R.a2)/21);};
-  const curSp='VTI '+usd(per('VTI'))+' · VXUS '+usd(per('VXUS'))+' a day';
+  const curSp='VTI '+usd(per('VTI'))+' · VXUS '+usd(per('VXUS')), curTot=per('VTI')+per('VXUS');
   const goalBtn='<button type="button" class="dged" id="dgEdit">'+g+' by '+S.goalAge+' ✎</button>';
   el.parentNode.className='dplan '+(ok?'ok':'low');
   el.innerHTML=(reached?'<div class="dgtop"><div class="dgbig">✓ Goal Reached</div></div><div class="dgsub">'+goalBtn+'</div>'
-      :ok?'<div class="dgtop"><div class="dgbig">✓ On Track</div>'+pc+'</div><div class="dgsub">'+curSp+' → '+goalBtn+'</div>'
+      :ok?'<div class="dgtop"><div class="dgbig">✓ On Track</div>'+pc+'</div><div class="dgsub"><b>'+usd(curTot)+'/day</b> · '+curSp+'</div><div class="dgsub">→ '+goalBtn+'</div>'
       :need==null?'<div class="dgtop"><div class="dgbig">Out of Reach</div>'+pc+'</div><div class="dgsub">Try a later age · '+goalBtn+'</div>'
-      :'<div class="dgtop"><div class="dgbig">Raise to '+usd(tgt)+'/day</div>'+pc+'</div><div class="dgsub">'+sp(tgt)+' a day → '+goalBtn+'</div><div class="dgsp">Now '+curSp+'</div>')+
+      :'<div class="dgtop"><div class="dgbig">Raise to '+usd(tgt)+'/day</div>'+pc+'</div><div class="dgsub">'+sp(tgt)+'</div><div class="dgsub">→ '+goalBtn+'</div><div class="dgsp">Now '+usd(curTot)+'/day · '+curSp+'</div>')+
     '<div class="dgf" id="dgForm" hidden><label><span>Goal</span><input type="text" inputmode="decimal" id="dgAmt" value="'+usd(S.goal)+'"></label><label><span>By age</span><input type="text" inputmode="numeric" id="dgAge" value="'+S.goalAge+'"></label><button type="button" class="btn" id="dgSave">Save</button></div>';
   $('dgEdit').onclick=()=>{const f=$('dgForm'); f.hidden=!f.hidden; if(!f.hidden)$('dgAmt').focus();};
   $('dgSave').onclick=()=>{const g=parseAmt($('dgAmt').value), a=Math.round(parse($('dgAge').value)); if(g>=1000)S.goal=Math.round(g); if(a)S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a));
