@@ -1507,15 +1507,15 @@ function dailyFor(p){
   return GD[key]=res;
 }
 // The plan: one base daily buy per fund. Total = enough for a 90% chance, never less than your normal buys (ahead of plan,
-// it never tells you to cut). Split = your target, tilted toward the fund under target so new money rebalances over ~a year
-// (no selling). Normal = the server's learned non-boosted daily buy, so a dip boost in Robinhood isn't mistaken for normal.
+// it never tells you to cut). When raising, the split follows your target, tilted toward the fund under target so new money
+// rebalances over ~a year (no selling); otherwise your split stays as is. Normal = the server's learned non-boosted daily buy, so a dip boost in Robinhood isn't mistaken for normal.
 function planDCA(){
   const h=holdings(); if(!(h.total>0)||!(monthsTo(S.goalAge)>0))return null;
   const need=h.total>=S.goal?0:dailyFor(PLAN_P); if(need==null)return null;
   const F=ALS&&ALS.flex&&ALS.flex.flex, fb=F&&F.base||{}, R=REC(), per=sym=>(R.list||[]).filter(x=>x.symbol===sym&&!x.stopped&&x.freq==='daily').reduce((t,x)=>t+(+x.amount||0),0);
   const norm=(fb.VTI||fb.VXUS)?{VTI:+fb.VTI||0,VXUS:+fb.VXUS||0}:{VTI:per('VTI'),VXUS:per('VXUS')}, nt=norm.VTI+norm.VXUS;
   const raise=need>nt*1.02, B=raise?Math.ceil(need/10)*10:nt, u=S.us/100, st=h.vti+h.vxus, off=st>0?Math.abs(h.vti/st-u)*100:0;
-  let VTI=norm.VTI; if(raise||off>=3){const D=252; VTI=Math.round(Math.min(B,Math.max(0,(u*(st+B*D)-h.vti)/D))/10)*10;}
+  let VTI=norm.VTI; if(raise){const D=252; VTI=Math.round(Math.min(B,Math.max(0,(u*(st+B*D)-h.vti)/D))/10)*10;}
   return {VTI,VXUS:B-VTI,total:B,need,raise,norm,nt};
 }
 // Save the plan when it moves enough to matter (5% or $20); the server turns a change into one alert with Done / Skip.

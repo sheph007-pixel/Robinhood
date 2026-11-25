@@ -750,8 +750,11 @@ async function checkAlerts() {
   const pending = alerts.find(a => a.status === 'pending' && a.type === 'dca');
   for (const f of FUNDS) {
     flex.band[f] = bandFor(drops[f].dd, flex.band[f] || 0);
-    if (now[f] > 0 && (!flex.base[f] || (flex.band[f] === 0 && !pending))) flex.base[f] = now[f]; // learn "normal": at first use, then whenever the fund isn't down
   }
+  // Normal = what Robinhood buys now, unless you're running a boost you accepted (Done): then it's that alert's pre-boost base.
+  const boosted = alerts.filter(a => a.type === 'dca' && a.status === 'done').slice().reverse()
+    .find(a => FUNDS.every(f => Math.abs(now[f] - a.to[f]) <= Math.max(2, a.to[f] * 0.02)) && FUNDS.some(f => a.to[f] !== (a.pb || a.base || {})[f]));
+  FUNDS.forEach(f => { const v = boosted ? (boosted.pb || boosted.base || {})[f] : now[f]; if (v > 0) flex.base[f] = v; });
   const vix = await vixNow(); if (vix != null) flex.panic = flex.panic ? vix >= VIX_OFF : vix >= VIX_ON;
   flex.eff = {}; FUNDS.forEach(f => { const b = flex.band[f] || 0; flex.eff[f] = b > 0 && flex.panic ? Math.min(b + 1, BANDS.length - 1) : b; });
   // Base = the app's 90%-chance plan when it is at least your normal total (it only ever raises), else your normal buys.
@@ -763,7 +766,7 @@ async function checkAlerts() {
   if ((flex.base.VTI || flex.base.VXUS) && FUNDS.some(f => target[f] !== lastTo[f])) {
     if (pending) pending.status = 'replaced';
     const up = FUNDS.some(f => target[f] > (flex.base[f] || 0)), dip = FUNDS.some(f => flex.eff[f] > 0);
-    alerts.push({ id: crypto.randomBytes(4).toString('hex'), type: 'dca', at, from: { ...now }, to: target, base: { ...flex.base }, plan: !!flex.plan,
+    alerts.push({ id: crypto.randomBytes(4).toString('hex'), type: 'dca', at, from: { ...now }, to: target, base: { ...flex.base }, pb: { ...base }, plan: !!flex.plan,
       bands: { ...flex.eff }, vix: vix != null ? Math.round(vix * 10) / 10 : null, dd: { VTI: +drops.VTI.dd.toFixed(1), VXUS: +drops.VXUS.dd.toFixed(1) }, status: 'pending' });
     notes.push([dip && up ? 'Buy Alert: raise your daily buys' : up ? 'Plan update: raise your daily buys for a 90% chance' : 'Daily buys back to normal', 'Set recurring buys to ' + money(target.VTI) + ' VTI + ' + money(target.VXUS) + ' VXUS a day (now ' + money(now.VTI + now.VXUS) + ').', 'dca']);
     changed = true;
