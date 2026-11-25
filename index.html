@@ -2516,7 +2516,7 @@ function dcaGoal(){
   const A=ALS, pend=A&&A.alerts?A.alerts.filter(a=>a.status==='pending'&&a.type==='dca').slice(-1)[0]:null;
   const now={VTI:per('VTI'),VXUS:per('VXUS')}, to=pend?pend.to:(P&&P.raise&&P.total>now.VTI+now.VXUS?{VTI:P.VTI,VXUS:P.VXUS}:null), chg=to&&['VTI','VXUS'].some(f=>to[f]!==now[f]);
   const dd=A&&A.flex&&A.flex.drops, sale=pend?['VTI','VXUS'].filter(f=>(pend.bands[f]||0)>0):[];
-  const why=!chg?'':sale.length?sale.map(f=>f+' '+(dd&&dd[f]?Math.round(dd[f].dd):'')+'% off its high').join(' · ')+' · buy more on sale':'For a '+Math.round(PLAN_P*100)+'% chance';
+  const why=!chg?'':sale.length?sale.map(f=>f+' '+(dd&&dd[f]?Math.round(dd[f].dd):'')+'% off its high').join(' · ')+(A.flex&&A.flex.flex&&A.flex.flex.panic?' · fear high (VIX), one step more':'')+' · buy more on sale':'For a '+Math.round(PLAN_P*100)+'% chance';
   const cell=(f,v)=>'<span class="'+(chg&&f&&to[f]!==now[f]?'up':'')+'">'+usd(v)+'</span>';
   const tbl='<div class="dgt'+(chg?' c3':'')+'"><span></span><span class="h">Current</span>'+(chg?'<span class="h">Change To</span>':'')+
     ['VTI','VXUS'].map(f=>'<span class="f">'+f+'</span><span>'+usd(now[f])+'</span>'+(chg?cell(f,to[f]):'')).join('')+
