@@ -559,6 +559,9 @@ input.ro{background:transparent!important;border-color:transparent!important;pad
 .dgoal .dgbig{font-size:26px;font-weight:800;letter-spacing:-.02em} .dgoal .dgtop{display:flex;justify-content:space-between;align-items:center;gap:10px} .dgoal .dgpct{flex:none;font-size:14px;font-weight:700;border-radius:99px;padding:4px 10px;background:var(--surface);color:var(--ink)} .dplan.ok .dgpct{background:var(--g);color:#000} .dgoal .dgsub{font-size:15px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .dgoal .dgsub b{color:var(--ink);font-weight:700} .dgoal .dgsub .dged{font-size:15px} .dgoal .dgsp{font-size:13px;color:var(--ink2)}
 .dgoal{display:flex;flex-direction:column;gap:8px}
 .dgoal .dgh{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;color:var(--ink2)}
+.dgoal .dgt{display:grid;grid-template-columns:1fr auto;gap:6px 0;align-items:baseline;font-size:16px;font-weight:600;margin:4px 0 2px} .dgoal .dgt.c3{grid-template-columns:1fr auto auto}
+.dgoal .dgt>span{text-align:right;white-space:nowrap;padding-left:18px} .dgoal .dgt .f{text-align:left;font-weight:700;padding-left:0} .dgoal .dgt .h{font-size:12px;font-weight:600;color:var(--ink2)} .dgoal .dgt .up{color:var(--gt);font-weight:800}
+.dgoal .dgt .t{border-top:1px solid var(--line);padding-top:6px;font-weight:800} .dgoal .dab2{display:flex;gap:8px} .dgoal .dab2 .btn{flex:1}
 .dgoal .dged{font:inherit;font-size:13px;font-weight:600;color:var(--gt);background:none;border:0;padding:0;cursor:pointer}
 .dgoal .dgr{display:grid;grid-template-columns:1fr 1fr;gap:8px} .dgoal .dgr>div{display:flex;flex-direction:column} .dgoal .dgr .k{font-size:12px;color:var(--ink2)} .dgoal .dgr b{font-size:20px;font-weight:800}
 .dgoal .dgs{font-size:14px;font-weight:600} .dgoal .dgs.ok{color:var(--gt)} .dgoal .dgs.low{color:var(--ink)} .dgoal .dgs.low b{color:var(--gt)}
@@ -1517,7 +1520,7 @@ function planDCA(){
 }
 // Save the plan when it moves enough to matter (5% or $20); the server turns a change into one alert with Done / Skip.
 function syncPlan(){ if(!synced||!S.rh||!ALS)return; const p=planDCA(); if(!p)return; const o=S.plan, big=(a,b)=>Math.abs(a-b)>=Math.max(20,.05*Math.max(a,b));
-  if(!o||big(o.VTI+o.VXUS,p.total)||big(o.VTI,p.VTI)||big(o.VXUS,p.VXUS)){S.plan={VTI:p.VTI,VXUS:p.VXUS,p:Math.round(PLAN_P*100),at:new Date().toISOString().slice(0,10)}; save(); setTimeout(()=>loadAlerts(true).then(()=>{alertsTab();dipAlert();}),2500);} }
+  if(!o||big(o.VTI+o.VXUS,p.total)||big(o.VTI,p.VTI)||big(o.VXUS,p.VXUS)){S.plan={VTI:p.VTI,VXUS:p.VXUS,p:Math.round(PLAN_P*100),at:new Date().toISOString().slice(0,10)}; save(); setTimeout(()=>loadAlerts(true).then(()=>{alertsTab();dipAlert();dcaGoal();}),2500);} }
 function goalChance(){ if(!proj)return null; const gm=Math.min(proj.M,Math.max(1,monthsTo(S.goalAge))), col=proj.cols[gm], nd=goalNeedFor(gm)*(realOn()?Math.pow(1+INFL,gm/12):1);
   let lo=0,hi=col.length; while(lo<hi){const mid=(lo+hi)>>1; if(col[mid]<nd)lo=mid+1; else hi=mid;} return Math.round((col.length-lo)/col.length*100); }
 const SIMC=new Map();
@@ -1995,7 +1998,7 @@ async function alertsTab(){
     return '<div class="bfr'+(chg?' chg':'')+'"><div><b>'+f+'</b><span>'+(off(f)<0.5?'At its high':'<b class="offp">'+off(f).toFixed(1)+'% off</b> its high')+(bi?' · '+B[bi][1]+'×':'')+'</span></div>'+
       '<div class="bamt">'+(chg?'<s>'+usd(cur)+'</s> → ':'')+'<b>'+dayAmt(tgt)+'</b></div></div>';}).join('');
   const why=onSale?(vix!=null&&vix>=30?'In past drops like this with fear this high, money invested earned a median <b>21–36% the next year</b>, versus about 13% normally.':'Money invested 10%+ below the high has historically done as well or better than average, and much better in deeper drops.'):'';
-  $('alAct').innerHTML=pend?'<div class="dact"><div><span class="pill">'+(['VTI','VXUS'].some(f=>(pend.bands[f]||0)>0)?'On Sale':'Plan')+'</span> In Robinhood, change '+['VTI','VXUS'].filter(f=>pend.to[f]!==now[f]).map(f=>'<b>'+f+' '+usd(now[f])+' → '+dayAmt(pend.to[f])+'</b>').join(' and ')+'</div>'+
+  $('alAct').innerHTML=false&&pend?'<div class="dact"><div><span class="pill">'+(['VTI','VXUS'].some(f=>(pend.bands[f]||0)>0)?'On Sale':'Plan')+'</span> In Robinhood, change '+['VTI','VXUS'].filter(f=>pend.to[f]!==now[f]).map(f=>'<b>'+f+' '+usd(now[f])+' → '+dayAmt(pend.to[f])+'</b>').join(' and ')+'</div>'+
       '<div class="dab2"><button type="button" class="btn" data-al="'+pend.id+'" data-act="done">Done</button><button type="button" class="btn ghost" data-al="'+pend.id+'" data-act="skip">Skip</button></div></div>':'';
   // This sale's score: buy days since the drop started and extra dollars invested above normal.
   let sc='';
@@ -2505,16 +2508,25 @@ function dcaGoal(){
   const reached=h.total>=S.goal, ok=reached||(P?!P.raise:need!=null&&cur>=need), tgt=P?P.total:need==null?null:Math.ceil(need/10)*10, g=usd(S.goal).replace(/,000,000$/,'M').replace(/(\d),(\d)00,000$/,'$1.$2M');
   // Chance of reaching the goal with today's buys: share of simulated paths at or above the goal at the goal age (same model as Home).
   let pct=null; try{pct=goalChance();}catch(e){}
-  const pc=pct==null?'':'<span class="dgpct">'+(pct>=99?'99%+':pct+'%')+(ok?' Chance':' Now')+'</span>';
+  const pc=pct==null?'':'<span class="dgpct">'+(pct>=99?'99%+':pct+'%')+' Chance</span>';
   const per=sym=>{const l=(R.list||[]).filter(x=>x.symbol===sym&&!x.stopped&&x.freq==='daily'); return l.length?l.reduce((t,x)=>t+(+x.amount||0),0):Math.round((sym==='VTI'?R.a1:R.a2)/21);};
   const curSp='VTI '+usd(per('VTI'))+' · VXUS '+usd(per('VXUS')), curTot=per('VTI')+per('VXUS');
   const goalBtn='<button type="button" class="dged" id="dgEdit">'+g+' by '+S.goalAge+' ✎</button>';
-  el.parentNode.className='dplan '+(ok?'ok':'low');
-  el.innerHTML=(reached?'<div class="dgtop"><div class="dgbig">✓ Goal Reached</div></div><div class="dgsub">'+goalBtn+'</div>'
-      :ok?'<div class="dgtop"><div class="dgbig">✓ On Track</div>'+pc+'</div><div class="dgsub"><b>'+usd(curTot)+'/day</b> · '+curSp+'</div><div class="dgsub">→ '+goalBtn+'</div>'
-      :need==null?'<div class="dgtop"><div class="dgbig">Out of Reach</div>'+pc+'</div><div class="dgsub">Try a later age · '+goalBtn+'</div>'
-      :'<div class="dgtop"><div class="dgbig">Raise to '+usd(tgt)+'/day</div>'+pc+'</div><div class="dgsub">'+(P?sp():'')+'</div><div class="dgsub">→ '+Math.round(PLAN_P*100)+'% Chance of '+goalBtn+'</div><div class="dgsp">Now '+usd(curTot)+'/day · '+curSp+'</div>')+
+  // One simple table: Current vs Change To (from the pending alert: dip boost and/or the 90% plan).
+  const A=ALS, pend=A&&A.alerts?A.alerts.filter(a=>a.status==='pending'&&a.type==='dca').slice(-1)[0]:null;
+  const now={VTI:per('VTI'),VXUS:per('VXUS')}, to=pend?pend.to:(P&&P.raise?{VTI:P.VTI,VXUS:P.VXUS}:null), chg=to&&['VTI','VXUS'].some(f=>to[f]!==now[f]);
+  const dd=A&&A.flex&&A.flex.drops, sale=pend?['VTI','VXUS'].filter(f=>(pend.bands[f]||0)>0):[];
+  const why=!chg?'':sale.length?sale.map(f=>f+' '+(dd&&dd[f]?Math.round(dd[f].dd):'')+'% off its high').join(' · ')+' · buy more on sale':'For a '+Math.round(PLAN_P*100)+'% chance';
+  const cell=(f,v)=>'<span class="'+(chg&&f&&to[f]!==now[f]?'up':'')+'">'+usd(v)+'</span>';
+  const tbl='<div class="dgt'+(chg?' c3':'')+'"><span></span><span class="h">Current</span>'+(chg?'<span class="h">Change To</span>':'')+
+    ['VTI','VXUS'].map(f=>'<span class="f">'+f+'</span><span>'+usd(now[f])+'</span>'+(chg?cell(f,to[f]):'')).join('')+
+    '<span class="f t">Total</span><span class="t">'+usd(now.VTI+now.VXUS)+'</span>'+(chg?'<span class="t up">'+usd(to.VTI+to.VXUS)+'</span>':'')+'</div>';
+  const btns=chg&&pend?'<div class="dab2"><button type="button" class="btn" data-al="'+pend.id+'" data-act="done">Done</button><button type="button" class="btn ghost" data-al="'+pend.id+'" data-act="skip">Skip</button></div>':'';
+  el.parentNode.className='dplan '+(chg?'low':'ok');
+  el.innerHTML='<div class="dgtop"><div class="dgbig">'+(reached?'✓ Goal Reached':chg?'Change Daily Buys':'✓ On Track')+'</div>'+pc+'</div>'+tbl+
+    (why?'<div class="dgsp">'+why+'</div>':'')+btns+'<div class="dgsub">Goal: '+goalBtn+'</div>'+
     '<div class="dgf" id="dgForm" hidden><label><span>Goal</span><input type="text" inputmode="decimal" id="dgAmt" value="'+usd(S.goal)+'"></label><label><span>By age</span><input type="text" inputmode="numeric" id="dgAge" value="'+S.goalAge+'"></label><button type="button" class="btn" id="dgSave">Save</button></div>';
+  el.querySelectorAll('[data-al]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{await fetch('/api/alerts/'+b.dataset.al+'/'+b.dataset.act,{method:'POST'});}catch(e){} await loadAlerts(true); dcaGoal(); dipAlert(); });
   $('dgEdit').onclick=()=>{const f=$('dgForm'); f.hidden=!f.hidden; if(!f.hidden)$('dgAmt').focus();};
   $('dgSave').onclick=()=>{const g=parseAmt($('dgAmt').value), a=Math.round(parse($('dgAge').value)); if(g>=1000)S.goal=Math.round(g); if(a)S.goalAge=Math.min(75,Math.max(Math.ceil(ageNow()+.1),a));
     try{$('gAmt').value=usd(S.goal);$('gAge').value=S.goalAge;}catch(e){} save(); render(true); setTimeout(()=>{dcaGoal();syncPlan();},30);};
