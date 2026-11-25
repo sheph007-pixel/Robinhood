@@ -960,6 +960,7 @@ body.vm-on .tabs{visibility:hidden}
 .dcafund{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 .dcafund>div{background:var(--soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .dcafund .fn{font-size:16px}
+.dcafund .dinv{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:13px} .dcafund .dinv span{color:var(--ink2);white-space:nowrap} .dcafund .dinv b{white-space:nowrap}
 .dcafund .fr{display:flex;justify-content:space-between;gap:6px;font-size:13px} .dcafund .fr span:first-child{color:var(--ink2);white-space:nowrap} .dcafund .fr span:last-child{font-weight:700;white-space:nowrap}
 .dcafund em{font-style:normal;font-weight:700} .dcafund em.up{color:var(--gt)} .dcafund em.dn{color:var(--ink2)}
 .dcafund .fn2{font-size:12px;color:var(--ink2);line-height:1.35;margin-top:2px}
@@ -2455,15 +2456,16 @@ async function dcaFunds(){
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price})));
   const y=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,4), ac=S.avgCost||{};
   const nf=(v,d)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+  // Dollars invested per fund: this calendar month, and the rolling 12 months (synced y1 totals; calendar-year buys as fallback).
+  const inv=k=>{const m=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).slice(0,7), y1=(rh.y1||{})[k];
+    return {m:buys.filter(b=>b.s===k&&b.d.startsWith(m)).reduce((t,b)=>t+(+b.a||0),0), y:y1&&y1.ba!=null?+y1.ba:buys.filter(b=>b.s===k&&b.d.startsWith(y)).reduce((t,b)=>t+(+b.a||0),0)};};
+  dcaFunds.inv=inv;
   // Avg paid = average cost of all shares you own (Robinhood position avg cost).
-  const box=(k,sh,ma)=>{ const mine=buys.filter(b=>b.s===k&&b.d.startsWith(y)&&+b.p>0), now=price(k), avg=+ac[k]||0;
-    const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0), wins=avg?mine.filter(b=>+b.p<avg).length:0;
-    const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
+  const box=(k,sh)=>{ const now=price(k), avg=+ac[k]||0;
     const gain=avg&&now?(now/avg-1)*100:null;
     const tag=gain==null?'':gain>=0?'<span class="pill">+'+gain.toFixed(1)+'%</span>':'';
     return '<div><div class="dh"><b class="fn">'+k+'</b>'+tag+'</div><div class="dsh">'+nf(sh,0)+' <small>shares</small></div>'+
-      '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
-      '<div class="fr">'+(added>0?'<span class="g">+'+nf(added,0)+' this year</span>':'')+'<span>'+nf(Math.max(1,goal-sh),0)+' to '+goal.toLocaleString('en-US')+'</span></div>'+
+      '<div class="dinv"><span>This Month</span><b>'+usd(inv(k).m)+'</b></div><div class="dinv"><span>12 Months</span><b>'+usd(inv(k).y)+'</b></div>'+
       (avg&&now?(()=>{const mx=Math.max(avg,now), h=v=>Math.max(6,v/mx*36).toFixed(0);
         return '<div class="dbars"><div><span class="k">Avg Paid</span><b>'+usd(avg,true)+'</b><i style="height:'+h(avg)+'px"></i></div><div><span class="k">Now</span><b>'+usd(now,true)+'</b><i class="'+(now>=avg?'up':'')+'" style="height:'+h(now)+'px"></i></div></div>';})():'')+'</div>'; };
   $('dbFund').innerHTML=box('VTI',+S.shVTI||0)+box('VXUS',+S.shVXUS||0);
@@ -2506,10 +2508,9 @@ function dcaBuys(){
   const rh=S.rh||{}, buys=(rh.buys&&rh.buys.length?rh.buys:(rh.recent||[]).map(o=>({d:o.date,s:o.symbol,a:o.amount,p:o.price}))).slice().sort((a,b)=>b.d.localeCompare(a.d));
   if(!buys.length){$('dbSum').innerHTML='';$('dbList').innerHTML='<p class="muted">No recurring buys synced yet. Tap Refresh to sync with Robinhood.</p>';return;}
   const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), m=today.slice(0,7), y=today.slice(0,4), d30=new Date(Date.now()-30*864e5).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
-  const sum=f=>buys.filter(f).reduce((t,b)=>t+(+b.a||0),0), days=f=>new Set(buys.filter(f).map(b=>b.d)).size;
-  const bd=n=>n+' buy day'+(n===1?'':'s');
-  const tile=(k,v,sub)=>'<div><span class="k">'+k+'</span><span class="v">'+usd(v)+'</span><span class="s">'+sub+'</span></div>';
-  $('dbSum').innerHTML=tile('This Month',sum(b=>b.d.startsWith(m)),bd(days(b=>b.d.startsWith(m))))+tile('This Year',sum(b=>b.d.startsWith(y)),bd(days(b=>b.d.startsWith(y))));
+  const tile=(k,v)=>'<div><span class="k">'+k+'</span><span class="v">'+usd(v)+'</span></div>';
+  const I=dcaFunds.inv, tm=I('VTI').m+I('VXUS').m, ty=I('VTI').y+I('VXUS').y;
+  $('dbSum').innerHTML=tile('Total This Month',tm)+tile('Total 12 Months',ty);
   const fd=v=>new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
   // One row per buy day (VTI and VXUS together); the last week shows, older days fold away.
   const byDay=[]; buys.forEach(b=>{let r=byDay[byDay.length-1]; if(!r||r.d!==b.d){r={d:b.d,l:[],t:0,pend:false};byDay.push(r);} r.l.push(b); r.t+=+b.a||0; if(!(+b.p>0))r.pend=true;});
