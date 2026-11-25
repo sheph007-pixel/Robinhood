@@ -980,7 +980,7 @@ body.vm-on .tabs{visibility:hidden}
 .dcafund .dav{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0 10px;font-size:13px;color:var(--ink2);margin-top:6px} .dcafund .dav b{color:var(--ink)} .dcafund .dav .pill{flex:none;background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:2px 9px;font-size:12px}
 .dcafund .dwin{font-size:12px;font-weight:600;color:var(--gt)} .dcafund .dwin::before{content:'★ '}
 @media (max-width:560px){.dcafund .dsh{font-size:20px} .dcafund .fr{flex-direction:column;gap:0}}
-.dcafund .dh .pill{flex:none;background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:2px 8px;font-size:11px} .dcafund .dh .pill.pbelow{background:var(--surface);color:var(--ink2)}
+.dcafund .dh .pill{flex:none;background:var(--g);color:#000;font-weight:700;border-radius:99px;padding:2px 8px;font-size:11px}
 .dsched .dtot{font-size:20px} .dsched .dtot b{font-weight:800;margin:0}
 .dsched .dsr:not(.sub){align-items:baseline} .dsched .dsr:not(.sub)>span:not(.dtot){font-size:13px;color:var(--ink2)} .dsched .dsr:not(.sub)>span.ok{color:var(--gt)}
 .dcafund .fr span.g{color:var(--gt)!important;font-weight:700!important} .dcafund .fr span:last-child:not(.g){font-weight:500;color:var(--ink2)}
@@ -2460,7 +2460,7 @@ async function dcaFunds(){
     const added=mine.reduce((t,b)=>t+(+b.a)/(+b.p),0), wins=avg?mine.filter(b=>+b.p<avg).length:0;
     const step=Math.max(1,Math.pow(10,Math.floor(Math.log10(Math.max(sh,1)))-1)), goal=Math.floor(sh/step)*step+step, prev=goal-step;
     const gain=avg&&now?(now/avg-1)*100:null;
-    const tag=gain==null?'':gain>=0?'<span class="pill">+'+gain.toFixed(1)+'%</span>':'<span class="pill pbelow">Below Avg</span>';
+    const tag=gain==null?'':gain>=0?'<span class="pill">+'+gain.toFixed(1)+'%</span>':'';
     return '<div><div class="dh"><b class="fn">'+k+'</b>'+tag+'</div><div class="dsh">'+nf(sh,0)+' <small>shares</small></div>'+
       '<div class="dp"><div style="width:'+Math.min(100,Math.max(2,(sh-prev)/step*100)).toFixed(1)+'%"></div></div>'+
       '<div class="fr">'+(added>0?'<span class="g">+'+nf(added,0)+' this year</span>':'')+'<span>'+nf(Math.max(1,goal-sh),0)+' to '+goal.toLocaleString('en-US')+'</span></div>'+
