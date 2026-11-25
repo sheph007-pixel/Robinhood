@@ -2526,7 +2526,7 @@ function dcaGoal(){
     btns='<div class="dab2"><button type="button" class="btn" data-al="'+pend.id+'" data-act="done">I Changed It</button><button type="button" class="btn ghost" data-al="'+pend.id+'" data-act="skip">Skip</button></div>'; }
   else if(last&&last.status==='done'&&!same(now,last.to)){ to=last.to; const d=(last.doneAt||last.at).slice(0,10);
     if(buyAfter(d)){ mode='chk'; why='Robinhood still bought the old amounts on the last buy day. Set '+F2.filter(f=>to[f]!==now[f]).map(f=>f+' to '+usd(to[f])).join(' and ')+' in Robinhood.'; }
-    else { mode='wait'; why='Changed in Robinhood ✓ · shows here after the next buy, <b>'+nbS+'</b> ~noon ET'; } }
+    else { mode='wait'; why='Changed in Robinhood ✓ · shows here once Robinhood places the next buy, <b>'+nbS+'</b> ~11:30 AM ET'; } }
   else if(P&&P.raise&&P.total>now.VTI+now.VXUS){ mode='chg'; to={VTI:P.VTI,VXUS:P.VXUS}; why='For a '+Math.round(PLAN_P*100)+'% chance'; }
   else if(last&&last.status==='done'&&same(now,last.to)){ const bo=F2.filter(f=>(last.bands[f]||0)>0); if(bo.length)why=bo.map(f=>f+' boosted '+mult(last.bands[f])+'×').join(' · ')+' while on sale'; }
   const two=!!to&&F2.some(f=>to[f]!==now[f]), h2=mode==='chg'?'Change To':'New';
