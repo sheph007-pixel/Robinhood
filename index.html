@@ -370,7 +370,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 .mkw svg{display:block;width:100%;height:auto}
 .mtip{position:absolute;top:0;display:none;pointer-events:none;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap}
 #mRange button{padding:6px 10px}
-#pvt.mrr{justify-content:flex-start;gap:6px;padding:4px 0 8px} #pastWrap{position:relative} .phd{display:flex;flex-direction:column;gap:2px;margin-bottom:6px} .phd b{font-size:22px;font-weight:800} .phd span{font-size:13px;color:var(--ink2)} .phd .up{color:var(--gt);font-weight:700}
+#pastWrap{position:relative} .phd{display:flex;flex-direction:column;gap:2px;margin-bottom:6px} .phd b{font-size:30px;font-weight:800;letter-spacing:-.02em} .phd span{font-size:13px;color:var(--ink2)} .phd .up{color:var(--gt);font-weight:700}
 .mrr{display:flex;justify-content:space-between;gap:4px;padding:10px 0 2px} .mrr button{font:inherit;font-size:14px;font-weight:700;color:var(--gt);background:none;border:0;border-radius:8px;padding:5px 12px;cursor:pointer} .mrr button[aria-pressed="true"]{background:var(--g);color:#000}
 @media (min-width:641px){.mrr{justify-content:flex-start;gap:10px}} @media (max-width:420px){.mrr{gap:0} .mrr button{padding:5px 8px}}
 @media (max-width:640px){#mRange{flex-wrap:nowrap;gap:0;width:100%;justify-content:space-between} #mRange button{padding:6px 8px;font-size:14px}}
@@ -1237,6 +1237,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
   </div>
 
   <div id="tab-port" class="panel" hidden>
+    <section class="card pgc"><div class="phd num" id="pastHd"></div><div id="pastWrap"><svg id="pastChart" role="img" aria-label="Your total since you started"></svg></div></section>
     <section class="card">
       <div class="head"><h2>Holdings</h2><span class="muted small num" id="pfTot" hidden></span></div>
       <div class="pfstats num" id="pfStats"></div>
@@ -1663,20 +1664,18 @@ function haptic(){ try{ if(navigator.vibrate){navigator.vibrate(8);return;}
   HAPI.click(); }catch(e){} }
 // Your actual value since you started (Robinhood orders + daily prices, weekly points): the solid line left of today.
 let PAST=null, PASTK='';
-async function pastLoad(){ const yo=(S.rh||{}).yo; if(!yo||!yo.length)return; const k=yo.length+'|'+yo[yo.length-1][0]+'|'+S.shVTI+'|'+S.shVXUS; if(k===PASTK)return; PASTK=k;
+async function pastLoad(){ const yo=(S.rh||{}).yo, so=(S.rh||{}).so||[], cp=S.cashParts||{savings:0,brokerage:+S.cash||0}; if(!yo||!yo.length)return; const k=yo.length+'|'+yo[yo.length-1][0]+'|'+S.shVTI+'|'+S.shVXUS+'|'+so.length+'|'+S.cash; if(k===PASTK)return; PASTK=k;
   try{ const get=async s=>HC[s+'1y']||(HC[s+'1y']=await (await fetch('/api/history?s='+s+'&r=1y')).json()), [a,b]=await Promise.all([get('VTI'),get('VXUS')]);
     const px=(h,ts)=>{let i=h.t.findIndex(x=>x>ts); i=i<0?h.t.length-1:Math.max(0,i-1); return h.c[i]||0;}, now=Date.now(), pts=[];
     for(let ts=Date.parse(yo[0][0]+'T21:00:00Z'); ts<now-864e5; ts+=7*864e5){ const d=new Date(ts).toISOString().slice(0,10); let v=+S.shVTI||0, x=+S.shVXUS||0;
       for(const o of yo) if(o[0]>d){ if(o[1]==='VTI')v-=o[2]*o[3]; else if(o[1]==='VXUS')x-=o[2]*o[3]; }
-      pts.push({d, m:(ts-now)/(30.4375*864e5), v:Math.max(0,v)*px(a,ts)+Math.max(0,x)*px(b,ts)}); }
+      let sv=+cp.savings||0; for(const t of so) if(t[0]>d)sv-=t[1];
+      pts.push({d, m:(ts-now)/(30.4375*864e5), v:Math.max(0,v)*px(a,ts)+Math.max(0,x)*px(b,ts)+Math.max(0,sv)+(+cp.brokerage||0)}); }
     PAST=pts.length>1?{pts}:null; drawPast(); }catch(e){ PASTK=''; } }
-// Home chart switch: Progress (your real value since you started) | Projection (the future). Remembered on this device.
-function homeView(v){ if(v){S.hv=v; save();} const past=S.hv==='past'; $('pastWrap').hidden=!past; $('wrap').hidden=past; document.querySelector('.clegend').hidden=past;
-  $('pvt').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===(past?'past':'proj')))); if(past)drawPast(); }
-function drawPast(){ if(S.hv!=='past')return; const el=$('pastChart'), hd=$('pastHd'), h0=holdings(), T0=h0.vti+h0.vxus, fdm=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',year:'numeric'});
-  if(!PAST){ hd.innerHTML='<span>Your history fills in after the next sync. Tap Refresh.</span>'; el.innerHTML=''; return; }
+function drawPast(){ if($('tab-port').hidden)return; const el=$('pastChart'), hd=$('pastHd'), T0=holdings().total, fdm=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',year:'numeric'});
+  if(!PAST){ pastLoad(); hd.innerHTML='<b>'+usd(Math.round(T0))+'</b><span>Your history fills in after the next sync.</span>'; el.innerHTML=''; return; }
   const pts=PAST.pts.concat([{d:new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}),m:0,v:T0}]), v0=pts[0].v;
-  const head=(p)=>{const ch=p.v-v0; hd.innerHTML='<b>'+usd(Math.round(p.v))+'</b><span>'+(p.m===0?'Invested today':new Date(p.d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'}))+(ch>0?' · <span class="up">▲ '+big(ch)+' since '+fdm(pts[0].d)+'</span>':'')+'</span>';};
+  const head=(p)=>{const ch=p.v-v0; hd.innerHTML='<b>'+usd(Math.round(p.v))+'</b><span>'+(p.m===0?'Total today':new Date(p.d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'}))+(ch>0?' · <span class="up">▲ '+big(ch)+' since '+fdm(pts[0].d)+'</span>':'')+'</span>';};
   const fb=matchMedia('(max-width:640px)').matches, pw=$('pastWrap'); if(fb){const r=pw.parentElement.getBoundingClientRect(); el.style.marginLeft=(-r.left)+'px'; el.style.width=innerWidth+'px';} else {el.style.marginLeft='';el.style.width='';}
   const W=fb?innerWidth:Math.max(300,pw.clientWidth), H=Math.round(fb?Math.max(220,W*.6):Math.min(340,Math.max(220,W*.45))), P={l:fb?16:4,r:fb?16:4,t:10,b:24}, iw=W-P.l-P.r, ih=H-P.t-P.b;
   const vs=pts.map(p=>p.v), lo=Math.min(...vs)*.95, hi=Math.max(...vs)*1.03, m0=pts[0].m, X=mm=>P.l+(mm-m0)/(0-m0)*iw, Y=v=>P.t+(1-(v-lo)/((hi-lo)||1))*ih, g1=css('--g'), ink2=css('--ink2');
@@ -1691,7 +1690,7 @@ function drawPast(){ if(S.hv!=='past')return; const el=$('pastChart'), hd=$('pas
     if(p!==last){ if(last)haptic(); last=p; } xh.setAttribute('x1',X(p.m));xh.setAttribute('x2',X(p.m));xh.setAttribute('visibility','visible'); xd.setAttribute('cx',X(p.m));xd.setAttribute('cy',Y(p.v));xd.setAttribute('visibility','visible'); head(p);};
   el.onpointerleave=el.onpointerup=el.onpointercancel=()=>{xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden'); head(pts[pts.length-1]); last=null;}; }
 function draw(){
-  pastLoad(); if(!draw.hv){draw.hv=1; $('pvt').querySelectorAll('button').forEach(b=>b.onclick=()=>{haptic(); homeView(b.dataset.v);}); homeView();}
+
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
     if(!proj)return;
   const d=t=>realOn()?Math.pow(1+INFL,t/12):1, Mh=proj.M, Ma=Math.min(Mh,monthsTo(S.age));
@@ -1856,7 +1855,7 @@ async function loadBrief(force){
 // ---------- Holdings tab: what you own, and what's inside the funds ----------
 let LT=null, ltAt=0;
 const CNAME=(()=>{let dn=null;try{dn=new Intl.DisplayNames(['en'],{type:'region'});}catch(e){} return c=>{try{return (dn&&dn.of(c))||c;}catch(e){return c;}};})();
-async function portfolio(){
+async function portfolio(){ setTimeout(()=>{pastLoad();drawPast();},0);
   const h=holdings(), T=h.total, st=h.vti+h.vxus, w=weights(), pc1=v=>(v*100).toFixed(v>=.1?0:1)+'%';
   $('pfTot').textContent=usd(T);
   const rows=[['VTI','US Total Stock Market','vti','--s1',S.shVTI],['VXUS','Total International Stock','vxus','--s2',S.shVXUS],['Cash',(S.cashParts&&S.cashParts.savings>0?'Savings + brokerage · ':'')+'Earning '+S.apy.toFixed(2)+'% APY','cash','--s3',null]];
