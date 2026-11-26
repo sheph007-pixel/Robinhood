@@ -1139,6 +1139,8 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
     <div class="goalcd num" id="goalCd" hidden></div>
     <div hidden><button type="button" class="ontrack" id="onTrack" aria-expanded="false" aria-controls="goalEd" hidden></button>
     <div class="goalin goaled" id="goalEd" hidden><label class="wf"><span>Goal Amount</span><input type="text" inputmode="decimal" id="gAmt" placeholder="$3M"></label><label class="wf"><span>By Age</span><input type="text" inputmode="numeric" id="gAge"></label></div></div>
+    <div class="mrr pvt" id="pvt" role="group" aria-label="Chart"><button type="button" data-v="past">Progress</button><button type="button" data-v="proj">Projection</button></div>
+    <div id="pastWrap" hidden><div class="phd num" id="pastHd"></div><svg id="pastChart" role="img" aria-label="Your value since you started"></svg></div>
     <div id="wrap"><svg id="chart" role="img" aria-label="Projected portfolio value from now to age 75 with a range from poor to strong markets"></svg><div id="tip"></div></div>
     <div class="legend clegend"><span><i class="sw sw-avg"></i><span class="ll">Average Market</span><span class="ls">Average</span></span><span><i class="sw sw-rng"></i><span class="ll">Likely Range</span><span class="ls">Range</span></span><span><i class="sw sw-poor"></i><span class="ll">Poor Market</span><span class="ls">Poor</span></span><span><i class="sw sw-put"></i><span class="ll">What You Put In</span><span class="ls">Put In</span></span><span id="lgScen" hidden><i class="sw sw-scen"></i><span class="ll">Current Plan</span><span class="ls">Current</span></span></div>
     <div hidden><!-- What If removed from view; inputs kept so existing handlers still bind -->
