@@ -1658,7 +1658,17 @@ function haptic(){ try{ if(navigator.vibrate){navigator.vibrate(8);return;}
   if(!HAPI){const i=document.createElement('input'); i.type='checkbox'; i.setAttribute('switch',''); i.id='hapsw'; i.style.cssText='position:fixed;left:-99px;opacity:0;pointer-events:none';
     const l=document.createElement('label'); l.htmlFor='hapsw'; l.style.cssText='position:fixed;left:-99px;opacity:0;pointer-events:none'; document.body.append(i,l); HAPI=l;}
   HAPI.click(); }catch(e){} }
+// Your actual value since you started (Robinhood orders + daily prices, weekly points): the solid line left of today.
+let PAST=null, PASTK='';
+async function pastLoad(){ const yo=(S.rh||{}).yo; if(!yo||!yo.length)return; const k=yo.length+'|'+yo[yo.length-1][0]+'|'+S.shVTI+'|'+S.shVXUS; if(k===PASTK)return; PASTK=k;
+  try{ const get=async s=>HC[s+'1y']||(HC[s+'1y']=await (await fetch('/api/history?s='+s+'&r=1y')).json()), [a,b]=await Promise.all([get('VTI'),get('VXUS')]);
+    const px=(h,ts)=>{let i=h.t.findIndex(x=>x>ts); i=i<0?h.t.length-1:Math.max(0,i-1); return h.c[i]||0;}, now=Date.now(), pts=[];
+    for(let ts=Date.parse(yo[0][0]+'T21:00:00Z'); ts<now-864e5; ts+=7*864e5){ const d=new Date(ts).toISOString().slice(0,10); let v=+S.shVTI||0, x=+S.shVXUS||0;
+      for(const o of yo) if(o[0]>d){ if(o[1]==='VTI')v-=o[2]*o[3]; else if(o[1]==='VXUS')x-=o[2]*o[3]; }
+      pts.push({d, m:(ts-now)/(30.4375*864e5), v:Math.max(0,v)*px(a,ts)+Math.max(0,x)*px(b,ts)}); }
+    PAST=pts.length>1?{pts}:null; draw(); }catch(e){ PASTK=''; } }
 function draw(){
+  pastLoad();
   const AG=ages(); if(!AG.includes(S.age))S.age=AG.includes(65)?65:AG[AG.length-1];
     if(!proj)return;
   const d=t=>realOn()?Math.pow(1+INFL,t/12):1, Mh=proj.M, Ma=Math.min(Mh,monthsTo(S.age));
@@ -1706,13 +1716,13 @@ function draw(){
   const Mx=Mh, top=Math.max(1,Math.max(...md,...(scen?scen.md.map((v,t)=>v/d(t)):[]))*1.4, (S.goal||0)*1.2);
   const steps=[1e5,2e5,5e5,1e6,2e6,2.5e6,5e6,1e7,2e7,2.5e7,5e7,1e8];
   const step=steps.find(x=>top/x<=6)||2e8, ymin=0, ymax=Math.ceil(top/step)*step;
-  const X=t=>m.l+t/Mx*iw, Y=v=>m.t+(1-(v-ymin)/(ymax-ymin))*ih, ink=css('--ink'), ink2=css('--ink2'), line=css('--line'), s1=css('--g'), sf=css('--surface');
+  const Mp=PAST?-PAST.pts[0].m:0, X=t=>m.l+(t+Mp)/(Mx+Mp)*iw, Y=v=>m.t+(1-(v-ymin)/(ymax-ymin))*ih, ink=css('--ink'), ink2=css('--ink2'), line=css('--line'), s1=css('--g'), sf=css('--surface');
   const lab=v=>v>=1e6?'$'+(v/1e6)+'M':v>=1e3?'$'+(v/1e3)+'k':'$'+v;
   let g='';
   if(!fbh)for(let v=0;v<=ymax+1;v+=step)g+='<line x1="'+m.l+'" x2="'+(m.l+iw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+line+'"/><text x="'+(W-4)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="11" fill="'+ink2+'">'+lab(v)+'</text>';
   // Age axis doubles as the age picker: tap a label to select it (selected = green pill).
   const ay=H-20, gt=css('--gt');
-  { if(!S.startAge){S.startAge=Math.floor(ageNow()); save();} const a0=S.startAge, c0=Math.max(18,X(monthsTo(a0))); g+='<text x="'+c0+'" y="'+(ay+6)+'" text-anchor="middle" font-size="17" font-weight="700" fill="'+ink2+'" aria-label="Age you started">'+a0+'</text>'; }
+  { if(!S.startAge){S.startAge=Math.floor(ageNow()); save();} const a0=S.startAge, c0=Math.max(18,X(PAST?-Mp:monthsTo(a0))); g+='<text x="'+c0+'" y="'+(ay+6)+'" text-anchor="middle" font-size="17" font-weight="700" fill="'+ink2+'" aria-label="Age you started">'+a0+'</text>'; }
   for(const a of AG){const t=monthsTo(a);if(t<=0||X(t)-X(0)<(fbh?24:38))continue; const on=a===S.age, cx=fbh?Math.max(24,Math.min(X(t),W-26)):X(t);
     g+='<g class="atk" data-a="'+a+'" role="button" tabindex="0" aria-label="Show age '+a+'" aria-pressed="'+on+'" style="cursor:pointer"><rect x="'+(cx-24)+'" y="'+(H-m.b+2)+'" width="48" height="'+(m.b-2)+'" fill="transparent"/>'+
       (on?'<rect x="'+(cx-22)+'" y="'+(ay-16)+'" width="44" height="32" rx="16" fill="'+s1+'"/>':'')+
@@ -1733,6 +1743,10 @@ function draw(){
         '<text x="'+lx+'" y="'+(m.t+14)+'" text-anchor="'+anc+'" font-size="12" font-weight="700" fill="#f5c04a" stroke="'+css('--page')+'" stroke-width="4" stroke-linejoin="round" paint-order="stroke">🎯 '+big(GL)+' by '+S.goalAge+'</text>'+
 ''; GDOT='<circle cx="'+gx+'" cy="'+Y(GL)+'" r="6" fill="#f5c04a" stroke="'+sf+'" stroke-width="2"/>'; } }
   g+='<path d="'+P(md)+'" fill="none" stroke="'+s1+'" stroke-width="2.5" stroke-linejoin="round"/></g>';
+  // Progress so far: solid line from where you started to today, with the starting value.
+  if(PAST){ const T0=holdings().total, p0=PAST.pts[0], pp=PAST.pts.map((p,i)=>(i?'L':'M')+X(p.m).toFixed(1)+' '+Y(p.v).toFixed(1)).join('')+'L'+X(0).toFixed(1)+' '+Y(T0).toFixed(1);
+    g+='<path d="'+pp+'" fill="none" stroke="'+ink+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="'+X(p0.m)+'" cy="'+Y(p0.v)+'" r="4.5" fill="'+ink+'" stroke="'+sf+'" stroke-width="2"/>'+
+      '<text x="'+(X(p0.m)-2)+'" y="'+(Y(p0.v)-26)+'" font-size="12" font-weight="700" fill="'+ink2+'" stroke="'+css('--page')+'" stroke-width="4" stroke-linejoin="round" paint-order="stroke">Start '+big(p0.v)+'</text>'; }
   if(S.age!==S.goalAge)g+='<line x1="'+X(Ma)+'" x2="'+X(Ma)+'" y1="'+m.t+'" y2="'+(m.t+ih)+'" stroke="'+ink+'" stroke-dasharray="2 3" opacity=".5"/>';
   g+='<circle cx="'+X(Ma)+'" cy="'+Y(md[Ma])+'" r="5.5" fill="'+s1+'" stroke="'+sf+'" stroke-width="2"/>';
   g+='<circle cx="'+X(Ma)+'" cy="'+Y(lo[Ma])+'" r="4" fill="'+ink2+'" stroke="'+sf+'" stroke-width="2"/>'+GDOT;
@@ -1762,7 +1776,12 @@ function draw(){
   const wrap=$('wrap'), tip=$('tip'), xh=svg.querySelector('#xh'), xd=svg.querySelector('#xd');
   svg.querySelectorAll('.atk').forEach(k=>{const pick=()=>{if(S.age!==+k.dataset.a)haptic(); S.age=+k.dataset.a;save();draw();}; k.onclick=pick; k.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}};});
   wrap.onpointermove=wrap.onpointerdown=function(ev){ if(ev.target.closest&&ev.target.closest('.atk')){wrap.onpointerleave();return;}
-    const rc=svg.getBoundingClientRect(), t=Math.max(0,Math.min(Mx,Math.round((ev.clientX-rc.left-m.l)/iw*Mx)));
+    const rc=svg.getBoundingClientRect(), tr=(ev.clientX-rc.left-m.l)/iw*(Mx+Mp)-Mp;
+    if(PAST&&tr<0){ const p=PAST.pts.reduce((b,q)=>Math.abs(q.m-tr)<Math.abs(b.m-tr)?q:b);
+      xh.setAttribute('x1',X(p.m));xh.setAttribute('x2',X(p.m));xh.setAttribute('visibility','visible'); xd.setAttribute('cx',X(p.m));xd.setAttribute('cy',Y(p.v));xd.setAttribute('visibility','visible');
+      tip.innerHTML='<div class="t">'+new Date(p.d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'})+'</div><div class="r"><span>Your Stocks</span><b>'+big(p.v)+'</b></div>';
+      tip.style.display='block'; const tw=tip.offsetWidth; let x=X(p.m)+12; if(x+tw>W)x=X(p.m)-tw-12; tip.style.left=Math.max(0,x)+'px'; tip.style.top=(m.t+4)+'px'; return; }
+    const t=Math.max(0,Math.min(Mx,Math.round(tr)));
     xh.setAttribute('x1',X(t));xh.setAttribute('x2',X(t));xh.setAttribute('visibility','visible');
     xd.setAttribute('cx',X(t));xd.setAttribute('cy',Y(md[t]));xd.setAttribute('visibility','visible');
     const ag=Math.floor(ageNow()+t/12+1e-6); if(ag!==HAG){ if(HAG!=null)haptic(); HAG=ag; }
