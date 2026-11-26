@@ -492,7 +492,7 @@ function applySync(b) {
   // Compact past-year VTI/VXUS orders [date, symbol, +1 buy / -1 sell, shares] so Home can draw your real value since you started.
   const yo = b.year && Array.isArray(b.year.orders) ? b.year.orders.filter(o => +o.shares > 0).map(o => [o.date, o.symbol, o.side === 'sell' ? -1 : 1, +o.shares]).sort((p, q) => p[0].localeCompare(q[0]))
     : ((st.rh && st.rh.yo) || []);
-  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30, streak: r.streak, streakAll: r.streakAll, buys: r.buys, y1, yo };
+  st.rh = { account: String(b.account || '').slice(-4), syncedAt: new Date().toISOString(), recurring: r.recurring, recent: r.recent, days30: r.days30, invested30: r.invested30, streak: r.streak, streakAll: r.streakAll, buys: r.buys, y1, yo, so: Array.isArray(b.savTx) ? b.savTx : ((st.rh && st.rh.so) || []) };
   st.rhSync = st.rh.syncedAt;
   writeState(st);
   return { ok: true, shVTI: st.shVTI, shVXUS: st.shVXUS, cash: st.cash, recurring: r.recurring };

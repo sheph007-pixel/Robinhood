@@ -18,7 +18,7 @@ const READ_TOOLS = [
   'get_equity_tax_lots', 'get_realized_pnl', 'search',
 ];
 // Read only by the server's own sync (never offered to the in-app AI): the individual savings balance counts as cash.
-const SYNC_ONLY = ['get_bank_accounts'];
+const SYNC_ONLY = ['get_bank_accounts', 'get_banking_transactions'];
 const ACCOUNT_TOOLS = ['get_equity_positions', 'get_portfolio', 'get_equity_orders', 'get_equity_tax_lots', 'get_realized_pnl'];
 
 module.exports = function makeRh(DATA_DIR) {
@@ -137,7 +137,7 @@ module.exports = function makeRh(DATA_DIR) {
   }
 
   // Pull the Core account and return the payload shape that /api/rh-sync expects.
-  let yearCache = null;
+  let yearCache = null, savCache = null;
   async function syncPayload(opts) {
     const [pos, port] = await Promise.all([call('get_equity_positions', {}), call('get_portfolio', {})]);
     const d35 = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10), jan1 = new Date().getUTCFullYear() + '-01-01';
@@ -153,9 +153,18 @@ module.exports = function makeRh(DATA_DIR) {
     const positions = (((pos && pos.data) || {}).positions || []).map(p => ({ symbol: p.symbol, quantity: p.quantity, average_buy_price: p.average_buy_price }));
     const cash = +((port && port.data) || {}).cash || 0;
     // Individual savings account balance (Robinhood Banking); null if it can't be read, so the last value is kept.
-    let savings = null;
+    let savings = null, savTx = null;
     try { const ba = await call('get_bank_accounts', {}, true), l = (((ba && ba.data) || {}).bank_accounts || []).filter(a => a.account_type === 'SAVINGS' && a.ownership === 'INDIVIDUAL' && a.account_status === 'NORMAL');
-      if (l.length) savings = Math.round(l.reduce((t, a) => t + (+a.current_balance || 0), 0) * 100) / 100; } catch (e) { /* keep last */ }
+      if (l.length) savings = Math.round(l.reduce((t, a) => t + (+a.current_balance || 0), 0) * 100) / 100;
+      // Posted savings transactions for the past year (incremental, merged by id), so Holdings can rebuild past cash.
+      const s365 = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), from = savCache ? new Date(savCache.at - 2 * 864e5).toISOString().slice(0, 10) : s365, got = [];
+      for (const acct of l) { let cur; for (let i = 0; i < 40; i++) {
+        const r = await call('get_banking_transactions', Object.assign({ account_id: acct.id, start_date: from, limit: 250 }, cur ? { cursor: cur } : {}), true), d = (r && r.data) || {};
+        (d.transactions || []).filter(t => t.status === 'POSTED').forEach(t => got.push({ id: t.id, d: String(t.date).slice(0, 10), a: +t.amount || 0 }));
+        cur = d.next; if (!cur) break; } }
+      const byId = new Map(((savCache && savCache.tx) || []).map(t => [t.id, t])); got.forEach(t => byId.set(t.id, t));
+      savCache = { at: Date.now(), tx: [...byId.values()].filter(t => t.d >= s365) }; savTx = savCache.tx.map(t => [t.d, Math.round(t.a * 100) / 100]);
+    } catch (e) { /* keep last */ }
     // Buys you place yourself (not the recurring ones), so Buy Alerts can be checked off. Only fetched while an alert is pending.
     const manual = [];
     if (opts && opts.manualSince) {
@@ -183,7 +192,7 @@ module.exports = function makeRh(DATA_DIR) {
     }
     const byId = new Map(((yearCache && yearCache.orders) || []).map(o => [o.id, o])); got.forEach(o => byId.set(o.id, o));
     yearCache = { at: Date.now(), since: since365, orders: [...byId.values()].filter(o => o.date >= since365) };
-    return { account: CORE_ACCOUNT, positions, cash, savings, orders, manual, year: yearCache };
+    return { account: CORE_ACCOUNT, positions, cash, savings, savTx, orders, manual, year: yearCache };
   }
 
   return {
