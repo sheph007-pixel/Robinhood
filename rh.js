@@ -17,6 +17,8 @@ const READ_TOOLS = [
   'get_index_quotes', 'get_index_historicals', 'get_indexes', 'get_earnings_calendar',
   'get_equity_tax_lots', 'get_realized_pnl', 'search',
 ];
+// Read only by the server's own sync (never offered to the in-app AI): the individual savings balance counts as cash.
+const SYNC_ONLY = ['get_bank_accounts'];
 const ACCOUNT_TOOLS = ['get_equity_positions', 'get_portfolio', 'get_equity_orders', 'get_equity_tax_lots', 'get_realized_pnl'];
 
 module.exports = function makeRh(DATA_DIR) {
@@ -114,8 +116,8 @@ module.exports = function makeRh(DATA_DIR) {
     await post({ jsonrpc: '2.0', method: 'notifications/initialized' });
   }
 
-  async function call(name, args) {
-    if (!READ_TOOLS.includes(name)) throw new Error('Tool not allowed: ' + name);
+  async function call(name, args, internal) {
+    if (!READ_TOOLS.includes(name) && !(internal === true && SYNC_ONLY.includes(name))) throw new Error('Tool not allowed: ' + name);
     const a = Object.assign({}, args || {});
     if (ACCOUNT_TOOLS.includes(name)) a.account_number = CORE_ACCOUNT; // always the Core account
     if (!session) await init();
@@ -150,6 +152,10 @@ module.exports = function makeRh(DATA_DIR) {
     }
     const positions = (((pos && pos.data) || {}).positions || []).map(p => ({ symbol: p.symbol, quantity: p.quantity, average_buy_price: p.average_buy_price }));
     const cash = +((port && port.data) || {}).cash || 0;
+    // Individual savings account balance (Robinhood Banking); null if it can't be read, so the last value is kept.
+    let savings = null;
+    try { const ba = await call('get_bank_accounts', {}, true), l = (((ba && ba.data) || {}).bank_accounts || []).filter(a => a.account_type === 'SAVINGS' && a.ownership === 'INDIVIDUAL' && a.account_status === 'NORMAL');
+      if (l.length) savings = Math.round(l.reduce((t, a) => t + (+a.current_balance || 0), 0) * 100) / 100; } catch (e) { /* keep last */ }
     // Buys you place yourself (not the recurring ones), so Buy Alerts can be checked off. Only fetched while an alert is pending.
     const manual = [];
     if (opts && opts.manualSince) {
@@ -177,7 +183,7 @@ module.exports = function makeRh(DATA_DIR) {
     }
     const byId = new Map(((yearCache && yearCache.orders) || []).map(o => [o.id, o])); got.forEach(o => byId.set(o.id, o));
     yearCache = { at: Date.now(), since: since365, orders: [...byId.values()].filter(o => o.date >= since365) };
-    return { account: CORE_ACCOUNT, positions, cash, orders, manual, year: yearCache };
+    return { account: CORE_ACCOUNT, positions, cash, savings, orders, manual, year: yearCache };
   }
 
   return {

@@ -1825,7 +1825,7 @@ const CNAME=(()=>{let dn=null;try{dn=new Intl.DisplayNames(['en'],{type:'region'
 async function portfolio(){
   const h=holdings(), T=h.total, st=h.vti+h.vxus, w=weights(), pc1=v=>(v*100).toFixed(v>=.1?0:1)+'%';
   $('pfTot').textContent=usd(T);
-  const rows=[['VTI','US Total Stock Market','vti','--s1',S.shVTI],['VXUS','Total International Stock','vxus','--s2',S.shVXUS],['Cash','Earning '+S.apy.toFixed(2)+'% APY','cash','--s3',null]];
+  const rows=[['VTI','US Total Stock Market','vti','--s1',S.shVTI],['VXUS','Total International Stock','vxus','--s2',S.shVXUS],['Cash',(S.cashParts&&S.cashParts.savings>0?'Savings + brokerage · ':'')+'Earning '+S.apy.toFixed(2)+'% APY','cash','--s3',null]];
   $('pfBar').innerHTML=rows.filter(r=>h[r[2]]>0).map(r=>'<div style="flex:'+h[r[2]]+';background:var('+r[3]+')"></div>').join('');
   const ac=S.avgCost||{};
   $('pfList').innerHTML=rows.map(([k,nm,key,c,sh])=>{const v=h[key], cost=sh&&ac[k]?ac[k]*sh:0, g=cost?v-cost:null;
