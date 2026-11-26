@@ -478,7 +478,11 @@ function applySync(b) {
   st.shVTI = q('VTI'); st.shVXUS = q('VXUS');
   const ac = sym => { const p = pos.find(x => String(x.symbol).toUpperCase() === sym); return p && +p.average_buy_price ? +p.average_buy_price : null; };
   st.avgCost = { VTI: ac('VTI'), VXUS: ac('VXUS') };
-  if (b.cash != null && isFinite(+b.cash)) st.cash = Math.max(0, Math.round(+b.cash * 100) / 100);
+  // Cash = brokerage cash + your individual Robinhood savings account (both earn the APY shown on Holdings).
+  if (b.cash != null && isFinite(+b.cash)) {
+    const sv = b.savings != null && isFinite(+b.savings) ? Math.max(0, +b.savings) : ((st.cashParts || {}).savings || 0);
+    st.cashParts = { brokerage: Math.max(0, Math.round(+b.cash * 100) / 100), savings: Math.round(sv * 100) / 100 };
+    st.cash = Math.round((st.cashParts.brokerage + st.cashParts.savings) * 100) / 100; }
   const r = summarizeRecurring(Array.isArray(b.orders) ? b.orders : []);
   // Past 12 months: shares and dollars bought and sold per fund, so the app can rebuild what you held a year ago.
   let y1 = (st.rh && st.rh.y1) || null;
