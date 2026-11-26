@@ -1785,7 +1785,7 @@ function draw(){
     xh.setAttribute('x1',X(t));xh.setAttribute('x2',X(t));xh.setAttribute('visibility','visible');
     xd.setAttribute('cx',X(t));xd.setAttribute('cy',Y(md[t]));xd.setAttribute('visibility','visible');
     const ag=Math.floor(ageNow()+t/12+1e-6); if(ag!==HAG){ if(HAG!=null)haptic(); HAG=ag; }
-    tip.innerHTML='<div class="t">'+(t===0?'Today':'Age '+ag+' · '+(new Date().getFullYear()+Math.round(t/12)))+'</div><div class="r"><span>Strong Market</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Average</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor Market</span><b>'+big(lo[t])+'</b></div><div class="r"><span>What You Put In</span><b>'+big(put[t])+'</b></div>';
+    tip.innerHTML=t===0?'<div class="t">Today</div><div class="r"><span>You Have</span><b>'+big(holdings().total)+'</b></div>':'<div class="t">Age '+ag+' · '+(new Date().getFullYear()+Math.round(t/12))+'</div><div class="r"><span>Strong Market</span><b>'+big(hi[t])+'</b></div><div class="r"><span>Average</span><b>'+big(md[t])+'</b></div><div class="r"><span>Poor Market</span><b>'+big(lo[t])+'</b></div><div class="r"><span>What You Put In</span><b>'+big(put[t])+'</b></div>';
     tip.style.display='block'; const tw=tip.offsetWidth; let x=X(t)+12; if(x+tw>W)x=X(t)-tw-12; tip.style.left=Math.max(0,x)+'px'; tip.style.top=(m.t+4)+'px';};
   wrap.onpointerup=wrap.onpointercancel=e=>{if(e.pointerType!=='mouse')wrap.onpointerleave();};
   wrap.onpointerleave=function(){HAG=null;tip.style.display='none';xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
