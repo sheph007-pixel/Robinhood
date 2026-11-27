@@ -370,7 +370,7 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 .mkw svg{display:block;width:100%;height:auto}
 .mtip{position:absolute;top:0;display:none;pointer-events:none;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap}
 #mRange button{padding:6px 10px}
-#pastWrap{position:relative} .phd{display:flex;flex-direction:column;gap:2px;margin-bottom:6px} .phd b{font-size:30px;font-weight:800;letter-spacing:-.02em} .phd span{font-size:13px;color:var(--ink2)} .phd .up{color:var(--gt);font-weight:700}
+#pastWrap{position:relative} #pastChart{touch-action:pan-y;display:block} .phd{display:flex;flex-direction:column;gap:2px;margin-bottom:6px} .phd b{font-size:30px;font-weight:800;letter-spacing:-.02em} .phd span{font-size:13px;color:var(--ink2)} .phd .up{color:var(--gt);font-weight:700}
 .mrr{display:flex;justify-content:space-between;gap:4px;padding:10px 0 2px} .mrr button{font:inherit;font-size:14px;font-weight:700;color:var(--gt);background:none;border:0;border-radius:8px;padding:5px 12px;cursor:pointer} .mrr button[aria-pressed="true"]{background:var(--g);color:#000}
 @media (min-width:641px){.mrr{justify-content:flex-start;gap:10px}} @media (max-width:420px){.mrr{gap:0} .mrr button{padding:5px 8px}}
 @media (max-width:640px){#mRange{flex-wrap:nowrap;gap:0;width:100%;justify-content:space-between} #mRange button{padding:6px 8px;font-size:14px}}
@@ -1235,7 +1235,7 @@ h2{font-size:26px;font-weight:500;letter-spacing:-.015em}
   </div>
 
   <div id="tab-port" class="panel" hidden>
-    <section class="card pgc"><div class="phd num" id="pastHd"></div><div id="pastWrap"><svg id="pastChart" role="img" aria-label="Your total since you started"></svg></div></section>
+    <section class="card pgc"><div class="phd num" id="pastHd"></div><div id="pastWrap"><svg id="pastChart" role="img" aria-label="Your total since you started"></svg><div class="mrr" id="pastR" role="group" aria-label="Range" hidden></div></div></section>
     <section class="card">
       <div class="head"><h2>Holdings</h2><span class="muted small num" id="pfTot" hidden></span></div>
       <div class="pfstats num" id="pfStats"></div>
@@ -1664,28 +1664,36 @@ function haptic(){ try{ if(navigator.vibrate){navigator.vibrate(8);return;}
 let PAST=null, PASTK='';
 async function pastLoad(){ const yo=(S.rh||{}).yo, so=(S.rh||{}).so||[], cp=S.cashParts||{savings:0,brokerage:+S.cash||0}; if(!yo||!yo.length)return; const k=yo.length+'|'+yo[yo.length-1][0]+'|'+S.shVTI+'|'+S.shVXUS+'|'+so.length+'|'+S.cash; if(k===PASTK)return; PASTK=k;
   try{ const get=async s=>HC[s+'1y']||(HC[s+'1y']=await (await fetch('/api/history?s='+s+'&r=1y')).json()), [a,b]=await Promise.all([get('VTI'),get('VXUS')]);
-    const px=(h,ts)=>{let i=h.t.findIndex(x=>x>ts); i=i<0?h.t.length-1:Math.max(0,i-1); return h.c[i]||0;}, now=Date.now(), pts=[];
-    for(let ts=Date.parse(yo[0][0]+'T21:00:00Z'); ts<now-864e5; ts+=7*864e5){ const d=new Date(ts).toISOString().slice(0,10); let v=+S.shVTI||0, x=+S.shVXUS||0;
+    // One point per trading day (VTI's daily closes) from your first buy in the window to yesterday; today is added live.
+    const pxb=(ts)=>{let i=b.t.findIndex(x=>x>ts+6*3600e3); i=i<0?b.t.length-1:Math.max(0,i-1); return b.c[i]||0;}, today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), pts=[];
+    a.t.forEach((ts,i)=>{ const d=new Date(ts).toLocaleDateString('en-CA',{timeZone:'America/New_York'}); if(d<yo[0][0]||d>=today)return; let v=+S.shVTI||0, x=+S.shVXUS||0;
       for(const o of yo) if(o[0]>d){ if(o[1]==='VTI')v-=o[2]*o[3]; else if(o[1]==='VXUS')x-=o[2]*o[3]; }
       let sv=+cp.savings||0; for(const t of so) if(t[0]>d)sv-=t[1];
-      pts.push({d, m:(ts-now)/(30.4375*864e5), v:Math.max(0,v)*px(a,ts)+Math.max(0,x)*px(b,ts)+Math.max(0,sv)+(+cp.brokerage||0)}); }
+      pts.push({d, v:Math.max(0,v)*a.c[i]+Math.max(0,x)*pxb(ts)+Math.max(0,sv)+(+cp.brokerage||0)}); });
     PAST=pts.length>1?{pts}:null; drawPast(); }catch(e){ PASTK=''; } }
-function drawPast(){ if($('tab-port').hidden)return; const el=$('pastChart'), hd=$('pastHd'), T0=holdings().total, fdm=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',year:'numeric'});
-  if(!PAST){ pastLoad(); hd.innerHTML='<b>'+usd(Math.round(T0))+'</b><span>Your history fills in after the next sync.</span>'; el.innerHTML=''; return; }
-  const pts=PAST.pts.concat([{d:new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}),m:0,v:T0}]), v0=pts[0].v;
-  const head=(p)=>{const ch=p.v-v0; hd.innerHTML='<b>'+usd(Math.round(p.v))+'</b><span>'+(p.m===0?'Total today':new Date(p.d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'}))+(ch>0?' · <span class="up">▲ '+big(ch)+' since '+fdm(pts[0].d)+'</span>':'')+'</span>';};
+// Holdings progress chart, Robinhood style: thin line, dotted line at the range's starting value, ranges underneath, drag to scrub.
+const PRANGES=[['3m','3M',91,'Past 3 months'],['6m','6M',182,'Past 6 months'],['ytd','YTD',0,'This year'],['1y','1Y',365,'Past year']];
+function drawPast(){ if($('tab-port').hidden)return; const el=$('pastChart'), hd=$('pastHd'), T0=holdings().total, rr=$('pastR');
+  if(!PAST){ pastLoad(); hd.innerHTML='<b>'+usd(Math.round(T0))+'</b><span>Your history fills in after the next sync.</span>'; el.innerHTML=''; rr.hidden=true; return; }
+  rr.hidden=false; const R=PRANGES.find(r=>r[0]===S.pr)||PRANGES[3], today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+  rr.innerHTML=PRANGES.map(r=>'<button type="button" data-r="'+r[0]+'" aria-pressed="'+(r===R)+'">'+r[1]+'</button>').join('');
+  rr.querySelectorAll('button').forEach(b2=>b2.onclick=()=>{haptic(); S.pr=b2.dataset.r; save(); drawPast();});
+  const from=R[0]==='ytd'?today.slice(0,4)+'-01-01':new Date(Date.now()-R[2]*864e5).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+  let pts=PAST.pts.filter(p=>p.d>=from); if(pts.length<2)pts=PAST.pts.slice(-2); pts=pts.concat([{d:today,v:T0,now:1}]);
+  const v0=pts[0].v, ch=T0-v0, up=ch>=0, col=up?css('--g'):css('--ink2'), ink2=css('--ink2');
+  const lab=p=>p.now?'Today':new Date(p.d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'});
+  const head=p=>{const c=p.v-v0; hd.innerHTML='<b>'+usd(Math.round(p.v))+'</b><span>'+(c>0?'<span class="up">▲ '+big(c)+' (+'+(v0?c/v0*100:0).toFixed(1)+'%)</span> ':'')+(p.now?R[3]:lab(p))+'</span>';};
   const fb=matchMedia('(max-width:640px)').matches, pw=$('pastWrap'); if(fb){const r=pw.parentElement.getBoundingClientRect(); el.style.marginLeft=(-r.left)+'px'; el.style.width=innerWidth+'px';} else {el.style.marginLeft='';el.style.width='';}
-  const W=fb?innerWidth:Math.max(300,pw.clientWidth), H=Math.round(fb?Math.max(220,W*.6):Math.min(340,Math.max(220,W*.45))), P={l:fb?16:4,r:fb?16:4,t:10,b:24}, iw=W-P.l-P.r, ih=H-P.t-P.b;
-  const vs=pts.map(p=>p.v), lo=Math.min(...vs)*.95, hi=Math.max(...vs)*1.03, m0=pts[0].m, X=mm=>P.l+(mm-m0)/(0-m0)*iw, Y=v=>P.t+(1-(v-lo)/((hi-lo)||1))*ih, g1=css('--g'), ink2=css('--ink2');
-  const path=pts.map((p,i)=>(i?'L':'M')+X(p.m).toFixed(1)+' '+Y(p.v).toFixed(1)).join('');
+  const W=fb?innerWidth:Math.max(300,pw.clientWidth), H=Math.round(fb?Math.max(220,W*.62):Math.min(340,Math.max(220,W*.45))), P={l:fb?0:2,r:fb?0:2,t:14,b:14}, iw=W-P.l-P.r, ih=H-P.t-P.b;
+  const vs=pts.map(p=>p.v), lo=Math.min(...vs), hi=Math.max(...vs), pad=(hi-lo)*.06||hi*.01, X=i=>P.l+i/(pts.length-1)*iw, Y=v=>P.t+(1-(v-lo+pad)/((hi-lo)+2*pad))*ih;
+  const path=pts.map((p,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(p.v).toFixed(1)).join('');
   el.setAttribute('viewBox','0 0 '+W+' '+H); el.setAttribute('width',W); el.setAttribute('height',H);
-  el.innerHTML='<defs><linearGradient id="pgf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+g1+'" stop-opacity=".28"/><stop offset="1" stop-color="'+g1+'" stop-opacity="0"/></linearGradient></defs>'+
-    '<path d="'+path+'L'+X(0).toFixed(1)+' '+(P.t+ih)+'L'+X(m0).toFixed(1)+' '+(P.t+ih)+'Z" fill="url(#pgf)"/><path d="'+path+'" fill="none" stroke="'+g1+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
-    '<circle cx="'+X(0)+'" cy="'+Y(T0)+'" r="5" fill="'+g1+'"/><text x="'+P.l+'" y="'+(H-6)+'" font-size="12" fill="'+ink2+'">'+fdm(pts[0].d)+'</text><text x="'+(W-P.r)+'" y="'+(H-6)+'" text-anchor="end" font-size="12" fill="'+ink2+'">Today</text>'+
-    '<line id="pxh" y1="'+P.t+'" y2="'+(P.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle id="pxd" r="5" fill="'+g1+'" stroke="'+css('--surface')+'" stroke-width="2" visibility="hidden"/>';
+  el.innerHTML='<line x1="0" x2="'+W+'" y1="'+Y(v0)+'" y2="'+Y(v0)+'" stroke="'+ink2+'" stroke-width="1.5" stroke-dasharray="1.5 4" stroke-linecap="round" opacity=".8"/>'+
+    '<path d="'+path+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'+
+    '<line id="pxh" y1="'+P.t+'" y2="'+(P.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle id="pxd" r="5" fill="'+col+'" stroke="'+css('--surface')+'" stroke-width="2" visibility="hidden"/>';
   head(pts[pts.length-1]); const xh=el.querySelector('#pxh'), xd=el.querySelector('#pxd'); let last=null;
-  el.onpointermove=el.onpointerdown=ev=>{const rc=el.getBoundingClientRect(), mm=m0+(ev.clientX-rc.left-P.l)/iw*(0-m0), p=pts.reduce((b,q)=>Math.abs(q.m-mm)<Math.abs(b.m-mm)?q:b);
-    if(p!==last){ if(last)haptic(); last=p; } xh.setAttribute('x1',X(p.m));xh.setAttribute('x2',X(p.m));xh.setAttribute('visibility','visible'); xd.setAttribute('cx',X(p.m));xd.setAttribute('cy',Y(p.v));xd.setAttribute('visibility','visible'); head(p);};
+  el.onpointermove=el.onpointerdown=ev=>{const rc=el.getBoundingClientRect(), i=Math.max(0,Math.min(pts.length-1,Math.round((ev.clientX-rc.left-P.l)/iw*(pts.length-1)))), p=pts[i];
+    if(p!==last){ if(last)haptic(); last=p; } xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.setAttribute('visibility','visible'); xd.setAttribute('cx',X(i));xd.setAttribute('cy',Y(p.v));xd.setAttribute('visibility','visible'); head(p);};
   el.onpointerleave=el.onpointerup=el.onpointercancel=()=>{xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden'); head(pts[pts.length-1]); last=null;}; }
 function draw(){
 
