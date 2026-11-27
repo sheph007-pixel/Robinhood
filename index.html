@@ -370,7 +370,9 @@ html{scrollbar-gutter:stable;overflow-y:scroll}
 .mkw svg{display:block;width:100%;height:auto}
 .mtip{position:absolute;top:0;display:none;pointer-events:none;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap}
 #mRange button{padding:6px 10px}
-#pastWrap{position:relative} #pastChart{touch-action:pan-y;display:block} .phd{display:flex;flex-direction:column;gap:2px;margin-bottom:6px} .phd b{font-size:30px;font-weight:800;letter-spacing:-.02em} .phd span{font-size:13px;color:var(--ink2)} .phd .up{color:var(--gt);font-weight:700}
+#pastWrap{position:relative} #pastChart{touch-action:pan-y;display:block}
+/* Charts: dragging scrubs values, so no iPhone text selection (blue highlight), copy/save callout or tap flash. */
+.pgc,#pastChart,#wrap,#chart,.mkw,.mkw svg{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent} .phd{display:flex;flex-direction:column;gap:2px;margin-bottom:6px} .phd b{font-size:30px;font-weight:800;letter-spacing:-.02em} .phd span{font-size:13px;color:var(--ink2)} .phd .up{color:var(--gt);font-weight:700}
 .mrr{display:flex;justify-content:space-between;gap:4px;padding:10px 0 2px} .mrr button{font:inherit;font-size:14px;font-weight:700;color:var(--gt);background:none;border:0;border-radius:8px;padding:5px 12px;cursor:pointer} .mrr button[aria-pressed="true"]{background:var(--g);color:#000}
 @media (min-width:641px){.mrr{justify-content:flex-start;gap:10px}} @media (max-width:420px){.mrr{gap:0} .mrr button{padding:5px 8px}}
 @media (max-width:640px){#mRange{flex-wrap:nowrap;gap:0;width:100%;justify-content:space-between} #mRange button{padding:6px 8px;font-size:14px}}
