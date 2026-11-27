@@ -487,7 +487,7 @@ function applySync(b) {
   // Past 12 months: shares and dollars bought and sold per fund, so the app can rebuild what you held a year ago.
   let y1 = (st.rh && st.rh.y1) || null;
   if (b.year && Array.isArray(b.year.orders)) { y1 = { since: String(b.year.since || '').slice(0, 10) };
-    for (const sym of ['VTI', 'VXUS']) { const m = b.year.orders.filter(o => o.symbol === sym), sum = (side, k) => m.filter(o => o.side === side).reduce((t, o) => t + (+o[k] || 0), 0);
+    for (const sym of ['VTI', 'VXUS']) { const m = b.year.orders.filter(o => o.symbol === sym && o.date >= y1.since), sum = (side, k) => m.filter(o => o.side === side).reduce((t, o) => t + (+o[k] || 0), 0);
       y1[sym] = { bs: sum('buy', 'shares'), ba: Math.round(sum('buy', 'amount')), ss: sum('sell', 'shares'), sa: Math.round(sum('sell', 'amount')) }; } }
   // Compact past-year VTI/VXUS orders [date, symbol, +1 buy / -1 sell, shares] so Home can draw your real value since you started.
   const yo = b.year && Array.isArray(b.year.orders) ? b.year.orders.filter(o => +o.shares > 0).map(o => [o.date, o.symbol, o.side === 'sell' ? -1 : 1, +o.shares]).sort((p, q) => p[0].localeCompare(q[0]))

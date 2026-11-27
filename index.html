@@ -1663,20 +1663,23 @@ function haptic(){ try{ if(navigator.vibrate){navigator.vibrate(8);return;}
 // Your actual value since you started (Robinhood orders + daily prices, weekly points): the solid line left of today.
 let PAST=null, PASTK='';
 async function pastLoad(){ const yo=(S.rh||{}).yo, so=(S.rh||{}).so||[], cp=S.cashParts||{savings:0,brokerage:+S.cash||0}; if(!yo||!yo.length)return; const k=yo.length+'|'+yo[yo.length-1][0]+'|'+S.shVTI+'|'+S.shVXUS+'|'+so.length+'|'+S.cash; if(k===PASTK)return; PASTK=k;
-  try{ const get=async s=>HC[s+'1y']||(HC[s+'1y']=await (await fetch('/api/history?s='+s+'&r=1y')).json()), [a,b]=await Promise.all([get('VTI'),get('VXUS')]);
-    // One point per trading day (VTI's daily closes) from your first buy in the window to yesterday; today is added live.
+  try{ const get=async(s,r)=>HC[s+r]||(HC[s+r]=await (await fetch('/api/history?s='+s+'&r='+r)).json()), old=yo[0][0]<new Date(Date.now()-700*864e5).toISOString().slice(0,10);
+    const [a1,b1,a5,b5]=await Promise.all([get('VTI','1y'),get('VXUS','1y'),old?get('VTI','max'):null,old?get('VXUS','max'):null]);
+    // Daily closes for the last ~2 years; monthly closes before that (when you started earlier). One point per day/month; today is added live.
+    const d0=a1.t[0], a=a5?{t:a5.t.filter(t=>t<d0).concat(a1.t),c:a5.c.filter((c,i)=>a5.t[i]<d0).concat(a1.c)}:a1, b=b5?{t:b5.t.filter(t=>t<b1.t[0]).concat(b1.t),c:b5.c.filter((c,i)=>b5.t[i]<b1.t[0]).concat(b1.c)}:b1;
     const pxb=(ts)=>{let i=b.t.findIndex(x=>x>ts+6*3600e3); i=i<0?b.t.length-1:Math.max(0,i-1); return b.c[i]||0;}, today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), pts=[];
-    a.t.forEach((ts,i)=>{ const d=new Date(ts).toLocaleDateString('en-CA',{timeZone:'America/New_York'}); if(d<yo[0][0]||d>=today)return; let v=+S.shVTI||0, x=+S.shVXUS||0;
+    a.t.forEach((ts,i)=>{ const d=new Date(ts).toLocaleDateString('en-CA',{timeZone:'America/New_York'}); if(d<yo[0][0].slice(0,7)+'-01'||d>=today)return; let v=+S.shVTI||0, x=+S.shVXUS||0;
       for(const o of yo) if(o[0]>d){ if(o[1]==='VTI')v-=o[2]*o[3]; else if(o[1]==='VXUS')x-=o[2]*o[3]; }
       let sv=+cp.savings||0; for(const t of so) if(t[0]>d)sv-=t[1];
       pts.push({d, v:Math.max(0,v)*a.c[i]+Math.max(0,x)*pxb(ts)+Math.max(0,sv)+(+cp.brokerage||0)}); });
     PAST=pts.length>1?{pts}:null; drawPast(); }catch(e){ PASTK=''; } }
 // Holdings progress chart, Robinhood style: thin line, dotted line at the range's starting value, ranges underneath, drag to scrub.
-const PRANGES=[['3m','3M',91,'Past 3 months'],['6m','6M',182,'Past 6 months'],['ytd','YTD',0,'This year'],['1y','1Y',365,'Past year']];
+const PRANGES=[['3m','3M',91,'Past 3 months'],['6m','6M',182,'Past 6 months'],['ytd','YTD',0,'This year'],['1y','1Y',365,'Past year'],['5y','5Y',1826,'Past 5 years'],['all','All',36500,'Since you started']];
 function drawPast(){ if($('tab-port').hidden)return; const el=$('pastChart'), hd=$('pastHd'), T0=holdings().total, rr=$('pastR');
   if(!PAST){ pastLoad(); hd.innerHTML='<b>'+usd(Math.round(T0))+'</b><span>Your history fills in after the next sync.</span>'; el.innerHTML=''; rr.hidden=true; return; }
-  rr.hidden=false; const R=PRANGES.find(r=>r[0]===S.pr)||PRANGES[3], today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
-  rr.innerHTML=PRANGES.map(r=>'<button type="button" data-r="'+r[0]+'" aria-pressed="'+(r===R)+'">'+r[1]+'</button>').join('');
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}), span=(Date.now()-Date.parse(PAST.pts[0].d))/864e5, RS=PRANGES.filter(r=>r[0]==='all'||r[0]==='ytd'||r[2]<span*1.05);
+  rr.hidden=false; const R=RS.find(r=>r[0]===S.pr)||RS.find(r=>r[0]==='1y')||RS[RS.length-1];
+  rr.innerHTML=RS.map(r=>'<button type="button" data-r="'+r[0]+'" aria-pressed="'+(r===R)+'">'+r[1]+'</button>').join('');
   rr.querySelectorAll('button').forEach(b2=>b2.onclick=()=>{haptic(); S.pr=b2.dataset.r; save(); drawPast();});
   const from=R[0]==='ytd'?today.slice(0,4)+'-01-01':new Date(Date.now()-R[2]*864e5).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
   let pts=PAST.pts.filter(p=>p.d>=from); if(pts.length<2)pts=PAST.pts.slice(-2); pts=pts.concat([{d:today,v:T0,now:1}]);
@@ -1685,16 +1688,13 @@ function drawPast(){ if($('tab-port').hidden)return; const el=$('pastChart'), hd
   const head=p=>{const c=p.v-v0; hd.innerHTML='<b>'+usd(Math.round(p.v))+'</b><span>'+(c>0?'<span class="up">▲ '+big(c)+' (+'+(v0?c/v0*100:0).toFixed(1)+'%)</span> ':'')+(p.now?R[3]:lab(p))+'</span>';};
   const fb=matchMedia('(max-width:640px)').matches, pw=$('pastWrap'); if(fb){const r=pw.parentElement.getBoundingClientRect(); el.style.marginLeft=(-r.left)+'px'; el.style.width=innerWidth+'px';} else {el.style.marginLeft='';el.style.width='';}
   const W=fb?innerWidth:Math.max(300,pw.clientWidth), H=Math.round(fb?Math.max(220,W*.62):Math.min(340,Math.max(220,W*.45))), P={l:fb?0:2,r:fb?0:2,t:14,b:14}, iw=W-P.l-P.r, ih=H-P.t-P.b;
-  const vs=pts.map(p=>p.v), lo=Math.min(...vs), hi=Math.max(...vs), pad=(hi-lo)*.06||hi*.01, X=i=>P.l+i/(pts.length-1)*iw, Y=v=>P.t+(1-(v-lo+pad)/((hi-lo)+2*pad))*ih;
+  const vs=pts.map(p=>p.v), lo=Math.min(...vs), hi=Math.max(...vs), pad=(hi-lo)*.06||hi*.01, T=pts.map(p=>Date.parse(p.d)), X=i=>P.l+(T[i]-T[0])/((T[T.length-1]-T[0])||1)*iw, Y=v=>P.t+(1-(v-lo+pad)/((hi-lo)+2*pad))*ih;
   const path=pts.map((p,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(p.v).toFixed(1)).join('');
   el.setAttribute('viewBox','0 0 '+W+' '+H); el.setAttribute('width',W); el.setAttribute('height',H);
-  // Trend: straight best-fit line through the range's daily values (dashed), next to the actual line.
-  const n=pts.length, mx=(n-1)/2, my=vs.reduce((t,v)=>t+v,0)/n; let sxy=0,sxx=0; vs.forEach((v,i)=>{sxy+=(i-mx)*(v-my); sxx+=(i-mx)*(i-mx);}); const sl=sxx?sxy/sxx:0, tr=i=>my+sl*(i-mx);
-  el.innerHTML='<line x1="'+X(0)+'" x2="'+X(n-1)+'" y1="'+Y(tr(0)).toFixed(1)+'" y2="'+Y(tr(n-1)).toFixed(1)+'" stroke="'+ink2+'" stroke-width="1.5" stroke-dasharray="5 5" stroke-linecap="round" opacity=".9"/>'+
-    '<path d="'+path+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'+
+  el.innerHTML=    '<path d="'+path+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'+
     '<line id="pxh" y1="'+P.t+'" y2="'+(P.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle id="pxd" r="5" fill="'+col+'" stroke="'+css('--surface')+'" stroke-width="2" visibility="hidden"/>';
   head(pts[pts.length-1]); const xh=el.querySelector('#pxh'), xd=el.querySelector('#pxd'); let last=null;
-  el.onpointermove=el.onpointerdown=ev=>{const rc=el.getBoundingClientRect(), i=Math.max(0,Math.min(pts.length-1,Math.round((ev.clientX-rc.left-P.l)/iw*(pts.length-1)))), p=pts[i];
+  el.onpointermove=el.onpointerdown=ev=>{const rc=el.getBoundingClientRect(), tx=T[0]+(ev.clientX-rc.left-P.l)/iw*(T[T.length-1]-T[0]); let i=0; T.forEach((t,k)=>{if(Math.abs(t-tx)<Math.abs(T[i]-tx))i=k;}); const p=pts[i];
     if(p!==last){ if(last)haptic(); last=p; } xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.setAttribute('visibility','visible'); xd.setAttribute('cx',X(i));xd.setAttribute('cy',Y(p.v));xd.setAttribute('visibility','visible'); head(p);};
   el.onpointerleave=el.onpointerup=el.onpointercancel=()=>{xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden'); head(pts[pts.length-1]); last=null;}; }
 function draw(){

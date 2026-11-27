@@ -157,13 +157,13 @@ module.exports = function makeRh(DATA_DIR) {
     try { const ba = await call('get_bank_accounts', {}, true), l = (((ba && ba.data) || {}).bank_accounts || []).filter(a => a.account_type === 'SAVINGS' && a.ownership === 'INDIVIDUAL' && a.account_status === 'NORMAL');
       if (l.length) savings = Math.round(l.reduce((t, a) => t + (+a.current_balance || 0), 0) * 100) / 100;
       // Posted savings transactions for the past year (incremental, merged by id), so Holdings can rebuild past cash.
-      const s365 = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), from = savCache ? new Date(savCache.at - 2 * 864e5).toISOString().slice(0, 10) : s365, got = [];
+      const s365 = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), from = savCache ? new Date(savCache.at - 2 * 864e5).toISOString().slice(0, 10) : '2015-01-01', got = [];
       for (const acct of l) { let cur; for (let i = 0; i < 40; i++) {
         const r = await call('get_banking_transactions', Object.assign({ account_id: acct.id, start_date: from, limit: 250 }, cur ? { cursor: cur } : {}), true), d = (r && r.data) || {};
         (d.transactions || []).filter(t => t.status === 'POSTED').forEach(t => got.push({ id: t.id, d: String(t.date).slice(0, 10), a: +t.amount || 0 }));
         cur = d.next; if (!cur) break; } }
       const byId = new Map(((savCache && savCache.tx) || []).map(t => [t.id, t])); got.forEach(t => byId.set(t.id, t));
-      savCache = { at: Date.now(), tx: [...byId.values()].filter(t => t.d >= s365) }; savTx = savCache.tx.map(t => [t.d, Math.round(t.a * 100) / 100]);
+      savCache = { at: Date.now(), tx: [...byId.values()] }; savTx = savCache.tx.map(t => [t.d, Math.round(t.a * 100) / 100]);
     } catch (e) { /* keep last */ }
     // Buys you place yourself (not the recurring ones), so Buy Alerts can be checked off. Only fetched while an alert is pending.
     const manual = [];
@@ -182,8 +182,9 @@ module.exports = function makeRh(DATA_DIR) {
     // The first sync pages through the full year; later syncs fetch only orders since the last check (with a 2-day overlap)
     // and merge them by id, then drop anything older than 365 days, so the window rolls forward on every sync.
     const since365 = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
-    const from = yearCache ? new Date(yearCache.at - 2 * 864e5).toISOString().slice(0, 10) : since365, got = []; let cur3;
-    for (let i = 0; i < 100; i++) {
+    // All VTI/VXUS history (not just a year), so Holdings can chart your progress since day one; y1 still uses the last 365 days.
+    const from = yearCache ? new Date(yearCache.at - 2 * 864e5).toISOString().slice(0, 10) : '2000-01-01', got = []; let cur3;
+    for (let i = 0; i < 200; i++) {
       const r = await call('get_equity_orders', Object.assign({ created_at_gte: from, state: 'filled' }, cur3 ? { cursor: cur3 } : {}));
       const d = (r && r.data) || {};
       (d.orders || []).filter(o => ['VTI', 'VXUS'].includes(o.symbol)).forEach(o => got.push({ id: o.id, date: String(o.created_at).slice(0, 10), symbol: o.symbol, side: o.side,
@@ -191,7 +192,7 @@ module.exports = function makeRh(DATA_DIR) {
       cur3 = d.next; if (!cur3) break;
     }
     const byId = new Map(((yearCache && yearCache.orders) || []).map(o => [o.id, o])); got.forEach(o => byId.set(o.id, o));
-    yearCache = { at: Date.now(), since: since365, orders: [...byId.values()].filter(o => o.date >= since365) };
+    yearCache = { at: Date.now(), since: since365, orders: [...byId.values()] };
     return { account: CORE_ACCOUNT, positions, cash, savings, savTx, orders, manual, year: yearCache };
   }
 
