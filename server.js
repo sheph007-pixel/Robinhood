@@ -428,7 +428,7 @@ const NYSE_HOLIDAYS = new Set(['2026-01-01','2026-01-19','2026-02-16','2026-04-0
   '2027-01-01','2027-01-18','2027-02-15','2027-03-26','2027-05-31','2027-06-18','2027-07-05','2027-09-06','2027-11-25','2027-12-24',
   '2028-01-17','2028-02-21','2028-04-14','2028-05-29','2028-06-19','2028-07-04','2028-09-04','2028-11-23','2028-12-25']);
 // Latest market day whose recurring buys should already have happened (they're placed around 11:20 AM ET).
-function expectedBuyDay() {
+function expectedBuyDay(nth = 1) {
   const et = s => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(s);
   const hm = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit' }).format(new Date()).split(':');
   let d = new Date(), first = true;
@@ -436,6 +436,7 @@ function expectedBuyDay() {
     const day = et(d), wd = new Date(day + 'T12:00:00Z').getUTCDay();
     if (wd === 0 || wd === 6 || NYSE_HOLIDAYS.has(day)) continue;
     if (first && (+hm[0] % 24) * 60 + +hm[1] < 12 * 60 + 30) continue; // today's buys not due yet
+    if (--nth > 0) continue;
     return day;
   }
   return '0000-00-00';
@@ -465,8 +466,9 @@ function summarizeRecurring(orders) {
   if (dates.length && (Date.now() - Date.parse(dates[0])) <= 5 * 864e5) { streak = 1; for (let i = 1; i < dates.length && (Date.parse(dates[i - 1]) - Date.parse(dates[i])) <= 4 * 864e5; i++) streak++; }
   const streakAll = streak > 0 && streak === dates.length; // reaches the start of the synced history
   // A schedule changed or paused in Robinhood can't be read directly, only the orders it creates. If the most
-  // recent market day has passed its buy time with no order, treat that recurring buy as stopped.
-  const exp = expectedBuyDay();
+  // recent market day has passed its buy time with no order, treat that recurring buy as stopped. Two missed market
+  // days in a row are needed, so one late or skipped day (a half-day session, a Robinhood delay) doesn't zero your plan.
+  const exp = expectedBuyDay(2);
   for (const r of recurring) if (r.lastDate < exp) { r.stopped = true; r.freq = 'stopped'; r.perMonth = 0; }
   const yr = String(new Date().getUTCFullYear());
   const buys = filled.filter(o => o.date.startsWith(yr)).map(o => ({ d: o.date, s: o.symbol, a: Math.round(o.amount * 100) / 100, p: o.price ? Math.round(o.price * 100) / 100 : null }));
