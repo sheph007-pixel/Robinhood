@@ -2572,6 +2572,9 @@ function dcaGoal(){
     else { mode='wait'; why='Updates <b>'+nbS+'</b> · 11:30 AM ET'; } }
   else if(P&&P.raise&&P.total>now.VTI+now.VXUS){ mode='chg'; to={VTI:P.VTI,VXUS:P.VXUS}; why='For a '+Math.round(PLAN_P*100)+'% chance'; }
   else if(last&&last.status==='done'&&same(now,last.to)){ const bo=F2.filter(f=>(last.bands[f]||0)>0); if(bo.length)why=bo.map(f=>f+' boosted '+mult(last.bands[f])+'×').join(' · ')+' while on sale'; }
+  // Robinhood skipped 2+ market days of a daily buy: keep the plan, but say so.
+  const lateR=((S.rh||{}).recurring||[]).filter(r=>r.late);
+  if(mode==='ok'&&lateR.length){ mode='chk'; why='No Robinhood buys since '+fdShort(lateR[0].lastDate)+'. Check your recurring investments in Robinhood.'; }
   const two=!!to&&F2.some(f=>to[f]!==now[f]), h2=mode==='chg'?'Change To':'New';
   const cell=(f,v)=>'<span class="'+(to[f]!==now[f]?'up':'')+'">'+usd(v)+'</span>';
   const tbl='<div class="dgt'+(two?' c3':'')+'"><span></span><span class="h">'+'Current'+'</span>'+(two?'<span class="h">'+h2+'</span>':'')+
