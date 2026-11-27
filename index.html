@@ -1688,7 +1688,9 @@ function drawPast(){ if($('tab-port').hidden)return; const el=$('pastChart'), hd
   const vs=pts.map(p=>p.v), lo=Math.min(...vs), hi=Math.max(...vs), pad=(hi-lo)*.06||hi*.01, X=i=>P.l+i/(pts.length-1)*iw, Y=v=>P.t+(1-(v-lo+pad)/((hi-lo)+2*pad))*ih;
   const path=pts.map((p,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(p.v).toFixed(1)).join('');
   el.setAttribute('viewBox','0 0 '+W+' '+H); el.setAttribute('width',W); el.setAttribute('height',H);
-  el.innerHTML='<line x1="0" x2="'+W+'" y1="'+Y(v0)+'" y2="'+Y(v0)+'" stroke="'+ink2+'" stroke-width="1.5" stroke-dasharray="1.5 4" stroke-linecap="round" opacity=".8"/>'+
+  // Trend: straight best-fit line through the range's daily values (dashed), next to the actual line.
+  const n=pts.length, mx=(n-1)/2, my=vs.reduce((t,v)=>t+v,0)/n; let sxy=0,sxx=0; vs.forEach((v,i)=>{sxy+=(i-mx)*(v-my); sxx+=(i-mx)*(i-mx);}); const sl=sxx?sxy/sxx:0, tr=i=>my+sl*(i-mx);
+  el.innerHTML='<line x1="'+X(0)+'" x2="'+X(n-1)+'" y1="'+Y(tr(0)).toFixed(1)+'" y2="'+Y(tr(n-1)).toFixed(1)+'" stroke="'+ink2+'" stroke-width="1.5" stroke-dasharray="5 5" stroke-linecap="round" opacity=".9"/>'+
     '<path d="'+path+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'+
     '<line id="pxh" y1="'+P.t+'" y2="'+(P.t+ih)+'" stroke="'+ink2+'" visibility="hidden"/><circle id="pxd" r="5" fill="'+col+'" stroke="'+css('--surface')+'" stroke-width="2" visibility="hidden"/>';
   head(pts[pts.length-1]); const xh=el.querySelector('#pxh'), xd=el.querySelector('#pxd'); let last=null;
